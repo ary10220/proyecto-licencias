@@ -1,0 +1,93 @@
+<div class="modal fade" id="modalHistorial{{ licencia.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content shadow-lg border-0">
+            
+            <div class="modal-header bg-secondary text-white">
+                <h5 class="modal-title">
+                    <i class="fa-solid fa-clock-rotate-left me-2"></i>Auditoría de Activo: {{ licencia.tipo.nombre }}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            
+            <div class="modal-body">
+                
+                <div class="row mb-3 p-2 bg-light rounded mx-1 border">
+                    <div class="col-md-6">
+                        <strong>Partner/Proveedor:</strong> {{ licencia.proveedor.nombre|default:"Adquisición Directa" }}<br>
+                        <strong>Empresa:</strong> {{ licencia.empresa.nombre|default:licencia.tenant.nombre }}
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <strong>Fecha de Caducidad:</strong> {{ licencia.fecha_vencimiento|date:"d/m/Y" }}<br>
+                        <strong>Estado Operativo:</strong> {{ licencia.estado }}
+                    </div>
+                </div>
+
+                <h6 class="text-primary mt-4 border-bottom pb-2">
+                    <i class="fa-solid fa-list-check me-2"></i>Bitácora de Asignaciones (Snapshots)
+                </h6>
+                
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped table-bordered align-middle text-center">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="text-start">Identidad (Empleado)</th>
+                                <th>Área</th>     
+                                <th>División</th> 
+                                <th>Alta</th>
+                                <th>Baja</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for asignacion in licencia.asignaciones.all %}
+                            <tr>
+                                <td class="text-start fw-bold">{{ asignacion.empleado.nombre_completo }}</td>
+                                
+                                <td>{{ asignacion.area_snapshot|default:"-" }}</td>
+                                <td>{{ asignacion.division_snapshot|default:"-" }}</td>
+                                
+                                <td>{{ asignacion.fecha_asignacion|date:"d/m/y" }}</td>
+                                <td>
+                                    {% if asignacion.activo %}
+                                        <span class="badge bg-success">En Uso</span>
+                                    {% else %}
+                                        {{ asignacion.fecha_retiro|date:"d/m/y" }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if asignacion.activo %}
+                                        <i class="fa-solid fa-circle-check text-success" title="Asignación Activa"></i>
+                                    {% else %}
+                                        <i class="fa-solid fa-circle-xmark text-secondary" title="Asignación Revocada"></i>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-3">
+                                    <em>Activo recién aprovisionado. Sin registros históricos en la bitácora.</em>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% with ultimo=licencia.asignaciones.last %}
+                    {% if ultimo and "Auditoría de historial archivado" in ultimo.observaciones or "Historial Antiguo" in ultimo.observaciones %}
+                        <div class="alert alert-warning mt-3 border-warning">
+                            <strong><i class="fa-solid fa-box-archive me-1"></i> Archivo Histórico (Cold Storage):</strong>
+                            <p class="mb-1 small text-muted">Registros consolidados por política de retención para optimización de base de datos.</p>
+                            <pre class="mt-2 mb-0 p-2 bg-white border rounded" style="white-space: pre-wrap; font-size: 0.85rem; font-family: monospace;">{{ ultimo.observaciones }}</pre>
+                        </div>
+                    {% endif %}
+                {% endwith %}
+
+            </div>
+            
+            <div class="modal-footer border-0 bg-light">
+                <button type="button" class="btn btn-secondary shadow-sm" data-bs-dismiss="modal">Cerrar Visor</button>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,43 @@
+<div class="modal fade" id="modalAsignar{{ licencia.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow">
+            
+            <form action="{% url 'asignar_licencia' licencia.id %}" method="POST">
+                
+                {% csrf_token %}
+                
+                <div class="modal-header bg-success text-white border-0">
+                    <h5 class="modal-title"><i class="fa-solid fa-user-plus me-2"></i>Asignar {{ licencia.tipo.nombre }}</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                
+                <div class="modal-body text-start bg-light">
+                    <div class="alert alert-info py-2 mb-4" style="font-size: 0.85rem;">
+                        <i class="fa-solid fa-circle-info me-1"></i> Esta licencia pertenece a la empresa: 
+                        <strong>{{ licencia.empresa.nombre|default:licencia.tenant.nombre }}</strong>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-secondary small">SELECCIONAR EMPLEADO:</label>
+                        <select name="empleado_id" class="form-select select2-empleado" required style="width: 100%;">
+                            <option value="">-- Buscar por nombre, empresa o área --</option>
+                            {% for emp in empleados %}
+                                <option value="{{ emp.id }}">
+                                    {{ emp.nombre_completo }} | {{ emp.empresa.nombre }} ({{ emp.area.codigo|default:"S/A" }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fa-solid fa-check me-1"></i> Confirmar Asignación
+                    </button>
+                </div>
+            </form>
+            
+        </div>
+    </div>
+</div>

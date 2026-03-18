@@ -1,0 +1,286 @@
+{% extends 'base.html' %}
+
+{% block title %}Directorio de Empleados - {{ titulo }}{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 style="color: #333; font-weight: bold;">
+            <i class="fa-solid fa-users-rectangle me-2"></i> {{ titulo }}
+        </h3>
+        
+        <button class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNuevoEmpleado" title="Registrar un nuevo empleado en el sistema">
+            <i class="fa-solid fa-user-plus me-2"></i> Nuevo Empleado
+        </button>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-6 mb-2 mb-md-0">
+            <div class="input-group shadow-sm">
+                <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                <input type="text" id="buscadorEmpleados" class="form-control border-start-0" placeholder="Buscar por nombre o Documento (CI)...">
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="input-group shadow-sm">
+                <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-building text-secondary"></i></span>
+                <select id="filtroEmpresa" class="form-select border-start-0 bg-light fw-bold" style="color: #df6e12;">
+                    <option value="todas">Todas las Empresas</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="card p-3 shadow-sm border-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle table-sm" id="tablaEmpleados">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nombre Completo</th>
+                        <th>C.I.</th>
+                        <th>Correo Electrónico</th>
+                        <th>Empresa</th>
+                        <th>Área / División</th>
+                        <th>Cargo</th>
+                        <th>Estado</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for emp in empleados %}
+                    <tr class="fila-empleado" data-empresa="{{ emp.empresa.nombre|default:'-'|lower }}">
+                        <td><strong>{{ emp.nombre_completo }}</strong></td>
+                        <td><span class="font-monospace text-muted">{{ emp.ci }}</span></td>
+                        <td>
+                            <a href="mailto:{{ emp.email_principal }}" class="text-decoration-none">
+                                <i class="fa-regular fa-envelope me-1 small"></i>{{ emp.email_principal|default:"Sin correo" }}
+                            </a>
+                        </td>
+                        <td><span class="badge bg-secondary">{{ emp.empresa.nombre }}</span></td>
+                        <td>
+                            {{ emp.area.codigo|default:"S/A" }}<br>
+                            <small class="text-muted">{{ emp.division.codigo|default:"-" }}</small>
+                        </td>
+                        <td>{{ emp.puesto|default:"-" }}</td>
+                        <td>
+                            {% if emp.activo %}
+                                <span class="badge bg-success" style="font-size: 0.7rem;"><i class="fa-solid fa-check me-1"></i>Activo</span>
+                            {% else %}
+                                <span class="badge bg-danger" style="font-size: 0.7rem;"><i class="fa-solid fa-ban me-1"></i>Inactivo</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <div class="d-flex justify-content-center align-items-center">
+                                <a href="{% url 'editar_empleado' emp.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar Empleado">
+                                    <i class="fa-solid fa-pen"></i>
+                                </a>
+                                
+                                {% if emp.activo %}
+                                    <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" 
+                                            data-url="{% url 'baja_empleado' emp.id %}"
+                                            data-nombre="{{ emp.nombre_completo|escapejs }}"
+                                            onclick="confirmarBaja(this)" title="Dar de Baja">
+                                        <i class="fa-solid fa-user-xmark"></i>
+                                    </button>
+                                {% else %}
+                                    <button type="button" class="btn btn-sm btn-outline-success py-0 px-2 ms-1" 
+                                            data-url="{% url 'reactivar_empleado' emp.id %}"
+                                            data-nombre="{{ emp.nombre_completo|escapejs }}"
+                                            onclick="confirmarReactivacion(this)" title="Reactivar Empleado">
+                                        <i class="fa-solid fa-user-check"></i>
+                                    </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="8" class="text-center py-5 text-muted">No hay empleados registrados.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalNuevoEmpleado" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content border-0 shadow">
+                <form method="POST" action="{% url 'lista_empleados' %}">
+                    {% csrf_token %}
+                    <div class="modal-header bg-primary text-white border-0">
+                        <h5 class="modal-title"><i class="fa-solid fa-address-card me-2"></i>Registrar Nuevo Empleado</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body bg-light">
+                        <div class="row">
+                            {% for field in form %}
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold text-secondary small">{{ field.label|upper }}</label>
+                                    {{ field }}
+                                    {% if field.errors %}
+                                        <div class="text-danger small mt-1 fw-bold">{{ field.errors|striptags }}</div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar Empleado</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .hover-scale { transition: transform 0.2s ease-in-out; }
+        .hover-scale:hover { transform: scale(1.02); cursor: pointer; }
+    </style>
+
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+    
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        $(document).ready(function(){
+            
+            // 1. Llenar automáticamente el filtro de empresas
+            var empresasUnicas = [];
+            $(".fila-empleado").each(function() {
+                var empresa = $(this).data("empresa");
+                if (empresa && empresa !== "-" && !empresasUnicas.includes(empresa)) {
+                    empresasUnicas.push(empresa);
+                }
+            });
+            
+            empresasUnicas.sort();
+            empresasUnicas.forEach(function(empresa) {
+                var nombreLindo = empresa.toUpperCase(); 
+                $("#filtroEmpresa").append(`<option value="${empresa}">${nombreLindo}</option>`);
+            });
+
+            // 2. Función para buscar y filtrar en la tabla
+            function aplicarFiltrosEmpleados() {
+                var textoBusqueda = $("#buscadorEmpleados").val().toLowerCase();
+                var empresaSeleccionada = $("#filtroEmpresa").val();
+
+                $("#tablaEmpleados tbody tr.fila-empleado").each(function() {
+                    var fila = $(this);
+                    var empresaFila = fila.data('empresa');
+                    var textoFila = fila.text().toLowerCase();
+
+                    var coincideEmpresa = (empresaSeleccionada === 'todas') || (empresaFila === empresaSeleccionada);
+                    var coincideTexto = textoFila.indexOf(textoBusqueda) > -1;
+
+                    if (coincideEmpresa && coincideTexto) {
+                        fila.show();
+                    } else {
+                        fila.hide();
+                    }
+                });
+            }
+
+            $("#buscadorEmpleados").on("keyup", aplicarFiltrosEmpleados);
+            $("#filtroEmpresa").on("change", aplicarFiltrosEmpleados);
+
+            // 3. Configurar buscador dentro del modal de crear empleado
+            $('#modalNuevoEmpleado').on('shown.bs.modal', function () {
+                $('.select2-busqueda').select2({
+                    theme: 'bootstrap-5',
+                    dropdownParent: $('#modalNuevoEmpleado'), 
+                    width: '100%',
+                    placeholder: "Buscar y seleccionar..."
+                });
+            });
+
+            // Mantener el modal abierto si hay un error al guardar
+            var hayErrores = "{% if form.errors %}si{% else %}no{% endif %}";
+            if (hayErrores === "si") {
+                $('#modalNuevoEmpleado').modal('show');
+            }
+
+            // 4. Actualizar listas de Áreas y Unidades dinámicamente
+            
+            // Al cambiar la Empresa, actualizar las Áreas
+            $("#id_empresa").change(function () {
+                var url = "{% url 'ajax_cargar_areas' %}";  
+                var empresaId = $(this).val();  
+
+                $.ajax({                       
+                    url: url,                    
+                    data: { 'empresa_id': empresaId },
+                    success: function (data) {   
+                        $("#id_area").html('<option value="">---------</option>');
+                        $("#id_unidad").html('<option value="">---------</option>');
+                        
+                        $.each(data, function(index, area) {
+                            $("#id_area").append('<option value="' + area.id + '">' + area.texto + '</option>');
+                        });
+                    }
+                });
+            });
+
+            // Al cambiar el Área, actualizar las Unidades
+            $("#id_area").change(function () {
+                var url = "{% url 'ajax_cargar_unidades' %}";  
+                var areaId = $(this).val();  
+
+                $.ajax({                       
+                    url: url,                    
+                    data: { 'area_id': areaId },
+                    success: function (data) {   
+                        $("#id_unidad").html('<option value="">---------</option>');
+                        
+                        $.each(data, function(index, unidad) {
+                            $("#id_unidad").append('<option value="' + unidad.id + '">' + unidad.nombre + '</option>');
+                        });
+                    }
+                });
+            });
+            
+        }); 
+
+        // 5. Alertas de Confirmación
+        
+        // Alerta para Dar de Baja
+        window.confirmarBaja = function(boton) {
+            var urlDestino = boton.getAttribute('data-url');
+            var nombreEmpleado = boton.getAttribute('data-nombre');
+            
+            Swal.fire({
+                title: '¿Dar de baja a este empleado?', 
+                text: "Se inhabilitará a " + nombreEmpleado + ". Sus licencias se liberarán automáticamente.", 
+                icon: 'warning',
+                showCancelButton: true, 
+                confirmButtonColor: '#dc3545', 
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sí, dar de baja', 
+                cancelButtonText: 'Cancelar',
+                showLoaderOnConfirm: true,
+                preConfirm: () => { window.location.href = urlDestino; return new Promise(() => {}); }
+            });
+        };
+
+        // Alerta para Reactivar
+        window.confirmarReactivacion = function(boton) {
+            var urlDestino = boton.getAttribute('data-url');
+            var nombreEmpleado = boton.getAttribute('data-nombre');
+            
+            Swal.fire({
+                title: '¿Reactivar Empleado?', 
+                text: nombreEmpleado + " volverá a estar activo en el sistema.", 
+                icon: 'info',
+                showCancelButton: true, 
+                confirmButtonColor: '#198754', 
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sí, reactivar', 
+                cancelButtonText: 'Cancelar',
+                showLoaderOnConfirm: true,
+                preConfirm: () => { window.location.href = urlDestino; return new Promise(() => {}); }
+            });
+        };
+    </script>
+{% endblock %}

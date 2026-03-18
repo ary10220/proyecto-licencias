@@ -1,0 +1,270 @@
+{% extends 'base.html' %}
+
+{% block title %}Configuración General - {{ titulo }}{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 style="color: #333; font-weight: bold;"><i class="fa-solid fa-gears me-2"></i> {{ titulo }}</h3>
+    </div>
+
+    <ul class="nav nav-tabs fw-bold" id="configTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active text-primary" data-bs-toggle="tab" data-bs-target="#tab-empresas" type="button" role="tab">Empresas</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link text-primary" data-bs-toggle="tab" data-bs-target="#tab-tenants" type="button" role="tab">Grupos Corporativos</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link text-primary" data-bs-toggle="tab" data-bs-target="#tab-proveedores" type="button" role="tab">Proveedores</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link text-primary" data-bs-toggle="tab" data-bs-target="#tab-tipos" type="button" role="tab">Tipos de Licencia</button>
+        </li>
+    </ul>
+
+    <div class="tab-content bg-white border border-top-0 p-4 shadow-sm rounded-bottom" id="configTabsContent">
+        
+        <div class="tab-pane fade show active" id="tab-empresas" role="tabpanel">
+            <div class="d-flex justify-content-between mb-3">
+                <h5 class="text-secondary">Lista de Empresas</h5>
+                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalEmpresa">
+                    <i class="fa-solid fa-plus me-1"></i> Nueva Empresa
+                </button>
+            </div>
+            <table class="table table-hover align-middle table-sm">
+                <thead class="table-light">
+                    <tr>
+                        <th>Grupo Corporativo</th>
+                        <th>Nombre de la Empresa</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for empresa in empresas %}
+                    <tr>
+                        <td><span class="badge bg-secondary">{{ empresa.tenant.nombre }}</span></td>
+                        <td><strong>{{ empresa.nombre }}</strong></td>
+                        <td class="text-end">
+                            <a href="{% url 'editar_empresa' empresa.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar Empresa">
+                                <i class="fa-solid fa-pen"></i>
+                            </a>
+                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" data-url="{% url 'eliminar_empresa' empresa.id %}" data-nombre="{{ empresa.nombre }}" onclick="confirmarEliminacion(this, 'la empresa')" title="Eliminar Empresa"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" class="text-center py-4 text-muted">No hay empresas registradas.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+       <div class="tab-pane fade" id="tab-tenants" role="tabpanel">
+            <div class="d-flex justify-content-between mb-3">
+                <h5 class="text-secondary">Grupos Corporativos</h5>
+                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalTenant">
+                    <i class="fa-solid fa-plus me-1"></i> Nuevo Grupo
+                </button>
+            </div>
+            <table class="table table-hover align-middle table-sm">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nombre del Grupo</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tenant in tenants %}
+                    <tr>
+                        <td><strong>{{ tenant.nombre }}</strong></td>
+                        <td class="text-end">
+                            <a href="{% url 'editar_tenant' tenant.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar Grupo">
+                                <i class="fa-solid fa-pen"></i>
+                            </a>
+                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" data-url="{% url 'eliminar_tenant' tenant.id %}" data-nombre="{{ tenant.nombre }}" onclick="confirmarEliminacion(this, 'el grupo')" title="Eliminar Grupo"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="2" class="text-center py-4 text-muted">No hay grupos registrados.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="tab-pane fade" id="tab-proveedores" role="tabpanel">
+            <div class="d-flex justify-content-between mb-3">
+                <h5 class="text-secondary">Lista de Proveedores</h5>
+                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalProveedor">
+                    <i class="fa-solid fa-plus me-1"></i> Nuevo Proveedor
+                </button>
+            </div>
+            <table class="table table-hover align-middle table-sm">
+                <thead class="table-light">
+                    <tr>
+                        <th>Proveedor</th>
+                        <th>Contacto Principal / Email</th>
+                        <th>Teléfono</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for prov in proveedores %}
+                    <tr>
+                        <td><strong>{{ prov.nombre }}</strong></td>
+                        <td>{{ prov.contacto|default:"-" }}</td>
+                        <td>{{ prov.telefono|default:"-" }}</td>
+                        <td class="text-end">
+                            <a href="{% url 'editar_proveedor' prov.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar Proveedor">
+                                <i class="fa-solid fa-pen"></i>
+                            </a>
+                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" data-url="{% url 'eliminar_proveedor' prov.id %}" data-nombre="{{ prov.nombre }}" onclick="confirmarEliminacion(this, 'el proveedor')" title="Eliminar Proveedor"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="text-center py-4 text-muted">No hay proveedores registrados.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="tab-pane fade" id="tab-tipos" role="tabpanel">
+            <div class="d-flex justify-content-between mb-3">
+                <h5 class="text-secondary">Catálogo de Tipos de Licencia</h5>
+                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalTipoLicencia">
+                    <i class="fa-solid fa-plus me-1"></i> Nueva Licencia
+                </button>
+            </div>
+            <table class="table table-hover align-middle table-sm">
+                <thead class="table-light">
+                    <tr>
+                        <th>Fabricante</th>
+                        <th>Nombre de la Licencia</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tipo in tipos_licencia %}
+                    <tr>
+                        <td><span class="badge bg-dark">{{ tipo.fabricante }}</span></td>
+                        <td><strong>{{ tipo.nombre }}</strong></td>
+                        <td class="text-end">
+                            <a href="{% url 'editar_tipo_licencia' tipo.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar Licencia">
+                                <i class="fa-solid fa-pen"></i>
+                            </a>
+                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" data-url="{% url 'eliminar_tipo_licencia' tipo.id %}" data-nombre="{{ tipo.nombre }}" onclick="confirmarEliminacion(this, 'este tipo de licencia')" title="Eliminar Licencia"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" class="text-center py-4 text-muted">No hay tipos de licencia registrados.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalEmpresa" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <form method="POST" action="{% url 'configuracion' %}" class="modal-content border-0 shadow">
+                {% csrf_token %}
+                <input type="hidden" name="tipo_formulario" value="empresa">
+                <div class="modal-header bg-primary text-white"><h5 class="modal-title">Registrar Nueva Empresa</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body bg-light">
+                    {% for field in form_empresa %}
+                        <div class="mb-3"><label class="form-label fw-bold small text-secondary">{{ field.label|upper }}</label>{{ field }}</div>
+                    {% endfor %}
+                </div>
+                <div class="modal-footer"><button type="submit" class="btn btn-primary">Guardar Empresa</button></div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalTenant" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <form method="POST" action="{% url 'configuracion' %}" class="modal-content border-0 shadow">
+                {% csrf_token %}
+                <input type="hidden" name="tipo_formulario" value="tenant">
+                <div class="modal-header bg-primary text-white"><h5 class="modal-title">Registrar Nuevo Grupo</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body bg-light">
+                    {% for field in form_tenant %}
+                        <div class="mb-3"><label class="form-label fw-bold small text-secondary">{{ field.label|upper }}</label>{{ field }}</div>
+                    {% endfor %}
+                </div>
+                <div class="modal-footer"><button type="submit" class="btn btn-primary">Guardar Grupo</button></div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalProveedor" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <form method="POST" action="{% url 'configuracion' %}" class="modal-content border-0 shadow">
+                {% csrf_token %}
+                <input type="hidden" name="tipo_formulario" value="proveedor">
+                <div class="modal-header bg-primary text-white"><h5 class="modal-title">Registrar Nuevo Proveedor</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body bg-light">
+                    {% for field in form_proveedor %}
+                        <div class="mb-3"><label class="form-label fw-bold small text-secondary">{{ field.label|upper }}</label>{{ field }}</div>
+                    {% endfor %}
+                </div>
+                <div class="modal-footer"><button type="submit" class="btn btn-primary">Guardar Proveedor</button></div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalTipoLicencia" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <form method="POST" action="{% url 'configuracion' %}" class="modal-content border-0 shadow">
+                {% csrf_token %}
+                <input type="hidden" name="tipo_formulario" value="tipo_licencia">
+                <div class="modal-header bg-primary text-white"><h5 class="modal-title">Registrar Tipo de Licencia</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body bg-light">
+                    {% for field in form_tipo %}
+                        <div class="mb-3"><label class="form-label fw-bold small text-secondary">{{ field.label|upper }}</label>{{ field }}</div>
+                    {% endfor %}
+                </div>
+                <div class="modal-footer"><button type="submit" class="btn btn-primary">Guardar Licencia</button></div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function(){
+            $('.modal').on('shown.bs.modal', function () {
+                $(this).find('.select2-busqueda').select2({
+                    theme: 'bootstrap-5',
+                    dropdownParent: $(this),
+                    width: '100%',
+                    placeholder: "Buscar y seleccionar..."
+                });
+            });
+
+            var errorEmpresa = "{% if form_empresa.errors %}si{% else %}no{% endif %}";
+            if (errorEmpresa === "si") { $('#modalEmpresa').modal('show'); }
+
+            var errorTenant = "{% if form_tenant.errors %}si{% else %}no{% endif %}";
+            if (errorTenant === "si") { $('#modalTenant').modal('show'); }
+
+            var errorProveedor = "{% if form_proveedor.errors %}si{% else %}no{% endif %}";
+            if (errorProveedor === "si") { $('#modalProveedor').modal('show'); }
+
+            var errorTipo = "{% if form_tipo.errors %}si{% else %}no{% endif %}";
+            if (errorTipo === "si") { $('#modalTipoLicencia').modal('show'); }
+
+            window.confirmarEliminacion = function(boton, tipoTexto) {
+                var urlDestino = boton.getAttribute('data-url');
+                var nombreItem = boton.getAttribute('data-nombre');
+                
+                Swal.fire({
+                    title: '¿Estás seguro?', 
+                    text: "Vas a eliminar permanentemente " + tipoTexto + ": " + nombreItem + ". Esta acción no se puede deshacer.", 
+                    icon: 'warning',
+                    showCancelButton: true, 
+                    confirmButtonColor: '#dc3545', 
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Sí, eliminar', 
+                    cancelButtonText: 'Cancelar',
+                    showLoaderOnConfirm: true,
+                    preConfirm: () => { window.location.href = urlDestino; return new Promise(() => {}); }
+                });
+            };
+        });
+    </script>
+{% endblock %}

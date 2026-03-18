@@ -1,0 +1,559 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - {{ titulo }}{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 style="color: #333; font-weight: bold;">{{ titulo }}</h3>
+        
+        <div class="d-flex align-items-center">
+            {% csrf_token %}
+            <button class="btn btn-sm btn-danger shadow-sm d-none me-3" id="btnBorrarMasivo" onclick="confirmarBorradoMasivo()">
+                <i class="fa-solid fa-trash-can me-1"></i> Borrar Seleccionadas (<span id="contadorSeleccionados">0</span>)
+            </button>
+
+            <div class="btn-group btn-group-sm">
+                {% if tenant_seleccionado %}
+                    <a href="{% url 'exportar_tenant' tenant_seleccionado.id %}" class="btn btn-success" title="Exportar Excel de esta empresa">
+                        <i class="fa-solid fa-file-excel me-2"></i> Excel (Empresa)
+                    </a>
+                {% else %}
+                    <a href="{% url 'exportar_general' %}" class="btn btn-success" title="Exportar Excel con todas las licencias">
+                        <i class="fa-solid fa-file-excel me-2"></i> Excel General
+                    </a>
+                {% endif %}
+                
+                <span class="mx-1"></span>
+                
+                <button class="btn text-white shadow-sm" style="background-color: #df6e12; border-color: #df6e12;" data-bs-toggle="modal" data-bs-target="#modalSincronizar" title="Sincronizar Excel de Microsoft">
+                    <i class="fa-solid fa-cloud-arrow-up me-2"></i> Sincronizar M365
+                </button>
+
+                <span class="mx-1"></span>
+                
+                <button class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNuevaLicencia" title="Registrar nueva compra de licencia">
+                    <i class="fa-solid fa-plus me-2"></i> Nueva Licencia
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-3" onclick="filtrarAlerta('todas')" style="cursor: pointer;">
+            <div class="card text-white bg-secondary h-100 shadow-sm border-0 hover-scale">
+                <div class="card-body d-flex justify-content-between align-items-center p-3">
+                    <div>
+                        <h6 class="text-uppercase mb-0" style="font-size: 0.7rem; opacity: 0.8;">Volumen Total</h6>
+                        <h3 class="fw-bold mb-0">{{ kpi_total }}</h3>
+                    </div>
+                    <i class="fa-solid fa-server fa-2x" style="opacity: 0.3;"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3" onclick="filtrarEstado('asignada')" style="cursor: pointer;">
+            <div class="card text-white h-100 shadow-sm border-0 hover-scale" style="background-color: #df6e12;">
+                <div class="card-body d-flex justify-content-between align-items-center p-3">
+                    <div>
+                        <h6 class="text-uppercase mb-0" style="font-size: 0.7rem; opacity: 0.9;">ASIGNADAS</h6>
+                        <div class="d-flex align-items-baseline">
+                            <h3 class="fw-bold mb-0 me-2">{{ kpi_ocupadas }}</h3>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-user-check fa-2x" style="opacity: 0.3;"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3" onclick="filtrarEstado('disponible')" style="cursor: pointer;">
+            <div class="card text-white bg-success h-100 shadow-sm border-0 hover-scale">
+                <div class="card-body d-flex justify-content-between align-items-center p-3">
+                    <div>
+                        <h6 class="text-uppercase mb-0" style="font-size: 0.7rem; opacity: 0.9;">DISPONIBLES</h6>
+                        <h3 class="fw-bold mb-0">{{ kpi_disponibles }}</h3>
+                    </div>
+                    <i class="fa-regular fa-circle-check fa-2x" style="opacity: 0.3;"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card text-white bg-danger h-100 shadow-sm border-0 overflow-hidden">
+                <div class="row g-0 h-100">
+                    <div class="col-6 border-end border-light border-opacity-25 hover-scale" onclick="filtrarAlerta('vencida')" style="cursor: pointer;">
+                        <div class="card-body p-3 d-flex flex-column justify-content-center align-items-center h-100 text-center">
+                            <h6 class="text-uppercase mb-1" style="font-size: 0.65rem; opacity: 0.9;">VENCIDAS</h6>
+                            <div class="d-flex align-items-center">
+                                <h3 class="fw-bold mb-0">{{ kpi_vencidas }}</h3>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-6 hover-scale" onclick="filtrarAlerta('urgente')" style="cursor: pointer;">
+                        <div class="card-body p-3 d-flex flex-column justify-content-center align-items-center h-100 text-center">
+                            <h6 class="text-uppercase mb-1" style="font-size: 0.65rem; opacity: 0.9;">POR VENCER (30 DÍAS)</h6>
+                            <div class="d-flex align-items-center">
+                                <h3 class="fw-bold mb-0">{{ kpi_por_vencer }}</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card p-3 shadow-sm border-0">
+        
+        <div class="row mb-3">
+            <div class="col-md-4 mb-2 mb-md-0">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                    <input type="text" id="buscadorTabla" class="form-control border-start-0" placeholder="Buscar por nombre, licencia o dominio...">
+                </div>
+            </div>
+            
+            <div class="col-md-4 mb-2 mb-md-0">
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-building text-secondary"></i></span>
+                    <select id="filtroEmpresa" class="form-select border-start-0 bg-light fw-bold" style="color: #df6e12;">
+                        <option value="todas">Todas las Empresas</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-microchip text-secondary"></i></span>
+                    <select id="filtroFabricante" class="form-select border-start-0 bg-light fw-bold" style="color: #df6e12;">
+                        <option value="todos">Todos los Software</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle table-sm" id="tablaLicencias">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 40px;" class="text-center">
+                            <input class="form-check-input border-secondary" type="checkbox" id="checkAll" onchange="toggleCheckAll(this)" title="Seleccionar todas">
+                        </th>
+                        <th>Licencia / Proveedor</th>
+                        <th>Empresa</th>
+                        <th>Estado</th>
+                        <th>Usuario</th>
+                        <th>Vencimiento</th>
+                        <th class="text-center">Acciones</th> 
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for licencia in licencias %}
+                    <tr class="fila-licencia" 
+                        data-estado="{% if licencia.usuario_activo %}asignada{% else %}{% if licencia.estado == 'VENCIDA' %}vencida{% else %}disponible{% endif %}{% endif %}"
+                        data-empresa="{{ licencia.empresa.nombre|default:'-'|lower }}"
+                        data-fabricante="{{ licencia.tipo.fabricante|default:'otros'|lower }}"
+                        data-alerta="{% if licencia.fecha_vencimiento < hoy %}vencida{% elif licencia.fecha_vencimiento <= limite_30_dias %}urgente{% else %}ok{% endif %}">
+                        
+                        <td class="text-center">
+                            <input class="form-check-input check-licencia border-secondary" type="checkbox" value="{{ licencia.id }}" onchange="actualizarContador()">
+                        </td>
+
+                        <td>
+                            <strong>{{ licencia.tipo.nombre }}</strong><br>
+                            <small class="text-muted" style="font-size: 0.75rem;">
+                                {{ licencia.tipo.fabricante }} | {{ licencia.proveedor.nombre|default:"Compra Directa" }}
+                            </small>
+                        </td>
+                        
+                        <td>
+                            {{ licencia.tenant.nombre }}<br>
+                            <small class="text-muted" style="font-size: 0.75rem;">{{ licencia.empresa.nombre|default:"-" }}</small>
+                        </td>
+                        
+                        <td>
+                            {% if licencia.usuario_activo %}
+                                <span class="status-badge bg-asignada">Asignada</span>
+                            {% else %}
+                                {% if licencia.estado == 'VENCIDA' %}
+                                    <span class="status-badge bg-vencida">Vencida</span>
+                                {% else %}
+                                    <span class="status-badge bg-disponible">Libre</span>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                        
+                        <td>
+                            {% if licencia.usuario_activo %}
+                                <div class="d-flex flex-column">
+                                    <span>
+                                        <i class="fa-solid fa-user text-primary small me-1"></i> 
+                                        <strong>{{ licencia.usuario_activo.empleado.nombre_completo }}</strong>
+                                    </span>
+                                    <small class="text-muted mt-1" style="font-size: 0.75rem;">
+                                        <i class="fa-solid fa-envelope me-1"></i> 
+                                        {{ licencia.usuario_activo.empleado.email_principal|default:"Sin correo" }}
+                                    </small>
+                                </div>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        
+                        <td>
+                            {% if licencia.fecha_vencimiento < hoy %}
+                                <span class="text-danger fw-bold">{{ licencia.fecha_vencimiento|date:"d/m/Y" }}</span>
+                            {% elif licencia.fecha_vencimiento <= limite_30_dias %}
+                                <span class="text-warning fw-bold" style="color: #d39e00 !important;">{{ licencia.fecha_vencimiento|date:"d/m/Y" }}</span>
+                            {% else %}
+                                {{ licencia.fecha_vencimiento|date:"d/m/Y" }}
+                            {% endif %}
+                        </td>
+                        
+                        <td class="text-center"> 
+                            <div class="d-flex justify-content-center align-items-center">
+                                <a href="{% url 'editar_licencia' licencia.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar Licencia">
+                                    <i class="fa-solid fa-pen"></i>
+                                </a>
+
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 ms-1" data-bs-toggle="modal" data-bs-target="#modalHistorial{{ licencia.id }}" title="Ver Historial">
+                                    <i class="fa-solid fa-eye"></i>
+                                </button>
+                                {% include 'partials/modal_historial.html' %}
+                                
+                                {% if licencia.usuario_activo %}
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" 
+                                            data-url="{% url 'liberar_licencia' licencia.id %}"
+                                            data-nombre="{{ licencia.usuario_activo.empleado.nombre_completo|escapejs }}"
+                                            onclick="confirmarLiberacion(this)"
+                                            title="Quitar Licencia">
+                                            <i class="fa-solid fa-arrow-rotate-left"></i>
+                                    </button>
+                                {% else %}
+                                    <button type="button" class="btn btn-sm btn-outline-success py-0 px-2 ms-1" data-bs-toggle="modal" data-bs-target="#modalAsignar{{ licencia.id }}" title="Asignar Licencia">
+                                        <i class="fa-solid fa-user-plus"></i>
+                                    </button>
+                                    {% include 'partials/modal_asignar.html' %}
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center py-5 text-muted">No hay licencias registradas.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalNuevaLicencia" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <form method="POST" action="{% url 'crear_licencia' %}" class="modal-content border-0 shadow">
+                {% csrf_token %}
+                <div class="modal-header bg-primary text-white border-0">
+                    <h5 class="modal-title"><i class="fa-solid fa-key me-2"></i>Registrar Nueva Licencia</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                
+                <div class="modal-body bg-light">
+                    <div class="row">
+                        {% for field in form_licencia %}
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold small text-secondary">{{ field.label|upper }}</label>
+                                {{ field }}
+                                {% if field.errors %}
+                                    <div class="text-danger small mt-1 fw-bold">{{ field.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+
+                        <div class="col-12 mt-3 mb-2 p-3 bg-white rounded border border-primary border-opacity-25 shadow-sm">
+                            <label class="form-label fw-bold text-primary"><i class="fa-solid fa-layer-group me-1"></i>Cantidad de Licencias a Crear</label>
+                            <div class="input-group">
+                                <input type="number" name="cantidad_masiva" class="form-control text-center fw-bold text-primary" value="1" min="1" max="500" required>
+                                <span class="input-group-text bg-light text-secondary">licencias idénticas</span>
+                            </div>
+                            <div class="form-text text-muted small mt-1">
+                                <strong>Tip:</strong> Si compraste un paquete de 20 licencias iguales, escribe "20" aquí y el sistema las creará todas de una vez.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Licencia(s)</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalSincronizar" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <form method="POST" action="{% url 'sincronizar' %}" enctype="multipart/form-data" class="modal-content border-0 shadow">
+                {% csrf_token %}
+                <div class="modal-header text-white border-0" style="background-color: #df6e12;">
+                    <h5 class="modal-title"><i class="fa-brands fa-microsoft me-2"></i>Conciliación de Entorno M365</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                
+                <div class="modal-body bg-light text-center p-4">
+                    <i class="fa-solid fa-file-excel fa-4x text-success mb-3 opacity-75"></i>
+                    <h6 class="fw-bold text-secondary mb-3">Carga de Payload (Reporte de Azure/M365)</h6>
+                    
+                    <div class="mb-3 text-start">
+                        <input class="form-control form-control-lg border-success" type="file" name="archivo_excel" accept=".xlsx, .xls, .csv" required>
+                    </div>
+                    
+                    <div class="alert alert-warning text-start small mb-0">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                        <strong>Importante:</strong> El motor de conciliación utilizará el <i>UPN (User Principal Name / Correo electrónico)</i> como llave primaria para resolver identidades, mapear dominios y actualizar el estado del inventario automáticamente.
+                    </div>
+                </div>
+                
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Abortar</button>
+                    <button type="submit" class="btn text-white px-4" style="background-color: #df6e12;" onclick="this.innerHTML='<i class=\'fa-solid fa-spinner fa-spin me-2\'></i>Procesando DataFrames...';">
+                        <i class="fa-solid fa-play me-1"></i> Iniciar Conciliación
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <style>
+        .hover-scale { transition: transform 0.2s ease-in-out; }
+        .hover-scale:hover { transform: scale(1.02); cursor: pointer; }
+    </style>
+
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        // Variables para los filtros
+        var estadoActual = 'todos';
+        var alertaActual = 'todas';
+
+        $(document).ready(function() {
+            
+            // 1. LLENAR LOS FILTROS AUTOMÁTICAMENTE
+            var empresasUnicas = [];
+            var fabricantesUnicos = []; 
+            
+            // Leer los datos de la tabla para llenar los selectores
+            $(".fila-licencia").each(function() {
+                var empresa = $(this).data("empresa");
+                var fabricante = $(this).data("fabricante"); 
+                
+                if (empresa && empresa !== "-" && !empresasUnicas.includes(empresa)) {
+                    empresasUnicas.push(empresa);
+                }
+                if (fabricante && fabricante !== "-" && !fabricantesUnicos.includes(fabricante)) {
+                    fabricantesUnicos.push(fabricante);
+                }
+            });
+            
+            empresasUnicas.sort();
+            fabricantesUnicos.sort();
+            
+            // Agregar las opciones a los menús desplegables
+            empresasUnicas.forEach(function(empresa) {
+                var nombreLindo = empresa.charAt(0).toUpperCase() + empresa.slice(1);
+                $("#filtroEmpresa").append(`<option value="${empresa}">${nombreLindo}</option>`);
+            });
+
+            fabricantesUnicos.forEach(function(fab) {
+                var nombreLindo = fab.charAt(0).toUpperCase() + fab.slice(1);
+                $("#filtroFabricante").append(`<option value="${fab}">${nombreLindo}</option>`);
+            });
+
+            aplicarFiltros();
+
+            // 2. BUSCADOR DENTRO DEL MODAL
+            $('#modalNuevaLicencia').on('shown.bs.modal', function () {
+                $(this).find('.select2-busqueda').select2({
+                    theme: 'bootstrap-5',
+                    dropdownParent: $('#modalNuevaLicencia'),
+                    width: '100%',
+                    placeholder: "Buscar..."
+                });
+            });
+
+            // 3. ACTUALIZAR EMPRESAS SEGÚN EL GRUPO SELECCIONADO
+            $('#modalNuevaLicencia #id_tenant').change(function () {
+                var url = "{% url 'ajax_cargar_empresas' %}";
+                var tenantId = $(this).val();
+
+                $.ajax({
+                    url: url,
+                    data: { 'tenant_id': tenantId },
+                    success: function (data) {
+                        var $empresaSelect = $('#modalNuevaLicencia #id_empresa');
+                        $empresaSelect.html('<option value="">---------</option>');
+                        
+                        $.each(data, function(index, empresa) {
+                            $empresaSelect.append('<option value="' + empresa.id + '">' + empresa.nombre + '</option>');
+                        });
+                    }
+                });
+            });
+
+            // Mostrar el modal automáticamente si hay errores al guardar
+            var errorLicencia = "{% if form_licencia.errors %}si{% else %}no{% endif %}";
+            if (errorLicencia === "si") { $('#modalNuevaLicencia').modal('show'); }
+        });
+
+        // 4. FUNCIONES DE FILTRADO DE LA TABLA
+        
+        function filtrarEstado(estado) {
+            estadoActual = estado; alertaActual = 'todas'; aplicarFiltros();
+        }
+
+        function filtrarAlerta(alerta) {
+            alertaActual = alerta; estadoActual = 'todos'; aplicarFiltros();
+        }
+
+        // Reaccionar cuando el usuario escribe o cambia un filtro
+        $("#buscadorTabla").on("keyup", function() { aplicarFiltros(); });
+        $("#filtroEmpresa").on("change", function() { aplicarFiltros(); });
+        $("#filtroFabricante").on("change", function() { aplicarFiltros(); });
+
+        function aplicarFiltros() {
+            var textoBusqueda = $("#buscadorTabla").val() ? $("#buscadorTabla").val().toLowerCase() : "";
+            var empresaSeleccionada = $("#filtroEmpresa").val() || 'todas';
+            var fabricanteSeleccionado = $("#filtroFabricante").val() || 'todos'; 
+            
+            // Revisar cada fila y ocultarla si no cumple las reglas
+            $("#tablaLicencias tbody tr.fila-licencia").each(function() {
+                var fila = $(this);
+                var estadoFila = fila.data('estado');
+                var empresaFila = fila.data('empresa');
+                var alertaFila = fila.data('alerta'); 
+                var fabricanteFila = fila.data('fabricante'); 
+                var textoFila = fila.text().toLowerCase();
+
+                var coincideEstado = (estadoActual === 'todos') || (estadoFila === estadoActual);
+                var coincideEmpresa = (empresaSeleccionada === 'todas') || (empresaFila === empresaSeleccionada);
+                var coincideFabricante = (fabricanteSeleccionado === 'todos') || (fabricanteFila === fabricanteSeleccionado); 
+                var coincideAlerta = (alertaActual === 'todas') || (alertaFila === alertaActual);
+                var coincideTexto = textoFila.indexOf(textoBusqueda) > -1;
+
+                if (coincideEstado && coincideEmpresa && coincideFabricante && coincideTexto && coincideAlerta) {
+                    fila.show();
+                } else {
+                    fila.hide();
+                }
+            });
+        }
+
+        // 5. FUNCIONES PARA ELIMINAR Y ASIGNAR
+        
+        // Seleccionar todas las casillas visibles
+        function toggleCheckAll(source) {
+            var checkboxes = document.querySelectorAll('.check-licencia');
+            for(var i=0; i < checkboxes.length; i++) {
+                if(checkboxes[i].closest('tr').style.display !== 'none') {
+                    checkboxes[i].checked = source.checked;
+                }
+            }
+            actualizarContador();
+        }
+
+        // Mostrar u ocultar el botón rojo de borrar varias
+        function actualizarContador() {
+            var seleccionados = document.querySelectorAll('.check-licencia:checked').length;
+            var btnBorrar = document.getElementById('btnBorrarMasivo');
+            document.getElementById('contadorSeleccionados').innerText = seleccionados;
+
+            if(seleccionados > 0) {
+                btnBorrar.classList.remove('d-none');
+            } else {
+                btnBorrar.classList.add('d-none');
+            }
+        }
+
+        // Alerta antes de borrar varias licencias a la vez
+        function confirmarBorradoMasivo() {
+            var seleccionados = document.querySelectorAll('.check-licencia:checked');
+            var ids = [];
+            seleccionados.forEach(function(check) {
+                ids.push(check.value);
+            });
+
+            Swal.fire({
+                title: '¿Eliminar ' + ids.length + ' licencias?',
+                text: "Esta acción no se puede deshacer. Se borrarán permanentemente del inventario.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Crear un formulario invisible para enviar los IDs de forma segura
+                    var form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = "{% url 'eliminar_licencias_masivo' %}";
+
+                    var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                    var inputCsrf = document.createElement('input');
+                    inputCsrf.type = 'hidden';
+                    inputCsrf.name = 'csrfmiddlewaretoken';
+                    inputCsrf.value = csrfToken;
+                    form.appendChild(inputCsrf);
+
+                    var inputIds = document.createElement('input');
+                    inputIds.type = 'hidden';
+                    inputIds.name = 'ids_licencias';
+                    inputIds.value = JSON.stringify(ids);
+                    form.appendChild(inputIds);
+
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
+        }
+        
+        // Alerta antes de quitarle una licencia a alguien
+        function confirmarLiberacion(boton) {
+            var urlDestino = boton.getAttribute('data-url');
+            var nombreEmpleado = boton.getAttribute('data-nombre');
+            
+            Swal.fire({
+                title: '¿Quitar Licencia?', 
+                text: "Se desvinculará esta licencia de " + nombreEmpleado + ". Quedará libre para otro usuario.", 
+                icon: 'warning',
+                showCancelButton: true, 
+                confirmButtonColor: '#df6e12', 
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sí, quitar licencia',
+                cancelButtonText: 'Cancelar',
+                showLoaderOnConfirm: true,
+                preConfirm: () => { window.location.href = urlDestino; return new Promise(() => {}); }
+            });
+        }
+
+        // Alerta antes de borrar una sola licencia
+        window.confirmarEliminacion = function(boton) {
+            var urlDestino = boton.getAttribute('data-url');
+            var nombreItem = boton.getAttribute('data-nombre');
+            
+            Swal.fire({
+                title: '¿Estás seguro?', 
+                text: "Vas a eliminar permanentemente la licencia: " + nombreItem + ". Esta acción no se puede deshacer.", 
+                icon: 'warning',
+                showCancelButton: true, 
+                confirmButtonColor: '#dc3545', 
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sí, eliminar', 
+                cancelButtonText: 'Cancelar',
+                showLoaderOnConfirm: true,
+                preConfirm: () => { window.location.href = urlDestino; return new Promise(() => {}); }
+            });
+        };
+    </script>
+{% endblock %}

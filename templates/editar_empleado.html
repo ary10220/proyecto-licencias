@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% block title %}Editar Empleado{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 style="color: #333; font-weight: bold;"><i class="fa-solid fa-user-pen me-2"></i> {{ titulo }}</h4>
+            <a href="{% url 'lista_empleados' %}" class="btn btn-outline-secondary"><i class="fa-solid fa-arrow-left me-1"></i> Volver al Directorio</a>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4 bg-light">
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="row">
+                        {% for field in form %}
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold text-secondary small">{{ field.label|upper }}</label>
+                                {{ field }}
+                                {% if field.errors %}
+                                    <div class="text-danger small mt-1 fw-bold">{{ field.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <hr class="mt-4 mb-3">
+                    <div class="d-flex justify-content-end mt-4">
+                        <a href="javascript:history.back()" class="btn btn-light border me-3 px-4 py-2">
+                        Cancelar
+                        </a>
+                        <button type="submit" class="btn text-white px-4 py-2" style="background-color: #df6e12; border-color: #df6e12;">
+                        Guardar Cambios
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+    $(document).ready(function(){
+        // Activar buscador en listas desplegables
+        $('.select2-busqueda').select2({ theme: 'bootstrap-5', width: '100%' });
+
+        // Carga dinámica: Al seleccionar una Empresa, actualizar las Áreas disponibles
+        $("#id_empresa").change(function () {
+            var url_areas = "{% url 'ajax_cargar_areas' %}";  
+            $.ajax({                       
+                url: url_areas,                    
+                data: { 'empresa_id': $(this).val() },
+                success: function (data) {   
+                    // Limpiar listas de áreas y unidades
+                    $("#id_area").html('<option value="">---------</option>');
+                    $("#id_unidad").html('<option value="">---------</option>'); 
+                    // Llenar lista de áreas con los nuevos datos
+                    $.each(data, function(index, area) {
+                        $("#id_area").append('<option value="' + area.id + '">' + area.texto + '</option>');
+                    });
+                }
+            });
+        });
+
+        // Carga dinámica: Al seleccionar un Área, actualizar las Unidades disponibles
+        $("#id_area").change(function () {
+            var url_unidades = "{% url 'ajax_cargar_unidades' %}";  
+            $.ajax({                       
+                url: url_unidades,                    
+                data: { 'area_id': $(this).val() },
+                success: function (data) {   
+                    // Limpiar lista de unidades
+                    $("#id_unidad").html('<option value="">---------</option>');
+                    // Llenar lista de unidades con los nuevos datos
+                    $.each(data, function(index, unidad) {
+                        $("#id_unidad").append('<option value="' + unidad.id + '">' + unidad.nombre + '</option>');
+                    });
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}
