@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     #MIS APPS
     'empleados',
     'licencias',
+    'axes',
 ]
 
 MIDDLEWARE = [
@@ -52,6 +53,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
+    'axes.middleware.AxesMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -106,16 +109,26 @@ AUTH_PASSWORD_VALIDATORS = [
 
 
 # Internationalization
-# https://docs.djangoproject.com/en/6.0/topics/i18n/
+# https://docs.djangoproject.com/en/5.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'es-bo'  
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/La_Paz'  
 
 USE_I18N = True
 
 USE_TZ = True
 
+AUTHENTICATION_BACKENDS = [
+    'axes.backends.AxesStandaloneBackend', # El guardia de intentos
+    'django.contrib.auth.backends.ModelBackend', # login normal de Django
+]
+
+# --- CONFIGURACIÓN DE SEGURIDAD (DJANGO-AXES) ---
+AXES_FAILURE_LIMIT = 3          # Bloquear al tercer intento fallido
+AXES_LOCK_OUT_AT_FAILURE = True # Activar el bloqueo automáticamente
+AXES_COOLOFF_TIME = 1           # Tiempo de castigo en horas (1 hora)
+AXES_RESET_ON_SUCCESS = True    # Si entra bien al intento 2, el contador vuelve a cero
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
