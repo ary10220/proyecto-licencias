@@ -135,9 +135,8 @@ AXES_RESET_ON_SUCCESS = True    # Si entra bien al intento 2, el contador vuelve
 
 STATIC_URL = 'static/'
 
-# --- AL FINAL DEL ARCHIVO ---
 
-# 1. URL de la página de Login (la que vamos a crear)
+# 1. URL de la página de Login 
 LOGIN_URL = 'login'
 
 # 2. A dónde ir después de loguearse exitosamente
