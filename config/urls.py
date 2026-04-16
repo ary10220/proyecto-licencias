@@ -15,7 +15,7 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path,include
 from django.contrib.auth import views as auth_views
 from licencias import views
 
@@ -70,10 +70,14 @@ urlpatterns = [
     path('configuracion/proveedor/<int:pk>/eliminar/', views.eliminar_proveedor, name='eliminar_proveedor'),
     path('configuracion/software/<int:pk>/editar/', views.editar_tipo_licencia, name='editar_tipo_licencia'),
     path('configuracion/software/<int:pk>/eliminar/', views.eliminar_tipo_licencia, name='eliminar_tipo_licencia'),
+    
+    path('bitacora/', include('bitacora.urls')),
 
     # Endpoints de API / AJAX
     path('ajax/cargar-empresas/', views.cargar_empresas, name='ajax_cargar_empresas'),
     path('ajax/cargar-divisiones/', views.cargar_divisiones, name='ajax_cargar_divisiones'),
     path('ajax/cargar-areas/', views.cargar_areas, name='ajax_cargar_areas'),
     path('ajax/cargar-unidades/', views.cargar_unidades, name='ajax_cargar_unidades'),
+    
+    
 ]

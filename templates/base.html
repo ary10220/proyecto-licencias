@@ -72,6 +72,11 @@
             <i class="fa-solid fa-gears me-2"></i> Configuración
         </a>
 
+        <a href="{% url 'lista_bitacora' %}" 
+        class="{% if request.resolver_match.url_name == 'lista_bitacora' %}active{% endif %}">
+            <i class="fa-solid fa-clipboard-list me-2"></i> Bitácora
+        </a>
+
         <hr class="mx-3" style="border-color: rgba(255,255,255,0.3);">
         
         <small class="text-uppercase ms-4 text-white-50" style="font-size: 0.7rem;">Tenans</small>
