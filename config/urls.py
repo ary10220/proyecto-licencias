@@ -50,6 +50,8 @@ urlpatterns = [
     path('licencias/eliminar-masivo/', views.eliminar_licencias_masivo, name='eliminar_licencias_masivo'),
     path('licencia/<int:licencia_id>/asignar/', views.asignar_licencia, name='asignar_licencia'),
     path('licencia/<int:licencia_id>/liberar/', views.liberar_licencia, name='liberar_licencia'),
+    # para token
+    path('desbloqueo-seguro/', views.validar_token_bloqueo, name='validar_token_bloqueo'),
 
     # Módulo de Empleados
     path('empleados/', views.lista_empleados, name='lista_empleados'),

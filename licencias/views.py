@@ -7,9 +7,16 @@ from datetime import timedelta
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
+from django.contrib.auth import login
+from axes.utils import reset
+from django.shortcuts import render, redirect
 from django.contrib import messages
+from django.core.cache import cache
+from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+
+
 
 from empleados.models import Empleado, GerenciaDivision, GerenciaArea, Unidad
 from .models import Licencia, Asignacion, Tenant, Empresa, Proveedor, TipoLicencia
@@ -121,8 +128,36 @@ def exportar_excel(request, tenant_id=None):
     wb.save(response)
     
     return response
+# ==========================================
+# MÓDULO token
+# ==========================================
 
+def validar_token_bloqueo(request):
+    username = request.session.get('usuario_bloqueado_nombre')
+    
+    if not username:
+        return redirect('login')
 
+    if request.method == 'POST':
+        token_ingresado = request.POST.get('token')
+        token_real = cache.get(f'token_desbloqueo_{username}')
+
+        if token_real and token_ingresado == token_real:
+            user = User.objects.get(username=username)
+            reset(username=username) # Limpia el bloqueo de Axes
+            
+            # LOGIN AUTOMÁTICO
+            login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+            
+            cache.delete(f'token_desbloqueo_{username}')
+            del request.session['usuario_bloqueado_nombre']
+            
+            messages.success(request, "Acceso concedido mediante token de seguridad.")
+            return redirect('dashboard_general')
+        else:
+            messages.error(request, "Código incorrecto o expirado.")
+
+    return render(request, 'registration/desbloqueo_token.html')
 # ==========================================
 # MÓDULO PRINCIPAL (DASHBOARD Y KPIS)
 # ==========================================
