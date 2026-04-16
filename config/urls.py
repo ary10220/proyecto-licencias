@@ -27,6 +27,12 @@ urlpatterns = [
     path('accounts/login/', auth_views.LoginView.as_view(), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
 
+    # Recuperación de contraseña
+    path('reset_password/', auth_views.PasswordResetView.as_view(template_name="registration/password_reset_form.html"), name="reset_password"),
+    path('reset_password_sent/', auth_views.PasswordResetDoneView.as_view(template_name="registration/password_reset_done.html"), name="password_reset_done"),
+    path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(template_name="registration/password_reset_confirm.html"), name="password_reset_confirm"),
+    path('reset_password_complete/', auth_views.PasswordResetCompleteView.as_view(template_name="registration/password_reset_complete.html"), name="password_reset_complete"),
+
     # Dashboard y Vistas Principales
     path('', views.dashboard, name='home'),
     path('dashboard/', views.dashboard, name='dashboard_general'),
@@ -44,6 +50,8 @@ urlpatterns = [
     path('licencias/eliminar-masivo/', views.eliminar_licencias_masivo, name='eliminar_licencias_masivo'),
     path('licencia/<int:licencia_id>/asignar/', views.asignar_licencia, name='asignar_licencia'),
     path('licencia/<int:licencia_id>/liberar/', views.liberar_licencia, name='liberar_licencia'),
+    # para token
+    path('desbloqueo-seguro/', views.validar_token_bloqueo, name='validar_token_bloqueo'),
 
     # Módulo de Empleados
     path('empleados/', views.lista_empleados, name='lista_empleados'),

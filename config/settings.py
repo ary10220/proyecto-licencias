@@ -51,10 +51,10 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'axes.middleware.AxesMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-
-    'axes.middleware.AxesMiddleware',
+    
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -127,11 +127,24 @@ AUTHENTICATION_BACKENDS = [
 # --- CONFIGURACIÓN DE SEGURIDAD (DJANGO-AXES) ---
 AXES_FAILURE_LIMIT = 3          # Bloquear al tercer intento fallido
 AXES_LOCK_OUT_AT_FAILURE = True # Activar el bloqueo automáticamente
-AXES_COOLOFF_TIME = 1           # Tiempo de castigo en horas (1 hora)
+AXES_COOLOFF_TIME = 0.001388          # Tiempo de castigo en horas (1 hora)
 AXES_RESET_ON_SUCCESS = True    # Si entra bien al intento 2, el contador vuelve a cero
+# Debajo de AXES_RESET_ON_SUCCESS = True añade:
+AXES_LOCK_OUT_BY_COMBINATION_USER_AND_IP = True
+AXES_ONLY_USER_FAILURES = True  # Bloquea al usuario específicamente
+# 1. Redirigir al usuario a nuestra vista de token cuando se bloquee
+AXES_LOCKOUT_URL = '/desbloqueo-seguro/'
 
+# 2. Configuración del Cache (necesario para guardar el token temporalmente)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+    }
+}
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
+
 
 STATIC_URL = 'static/'
 
