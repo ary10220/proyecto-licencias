@@ -1,9 +1,12 @@
 from django.shortcuts import render
 from .models import Bitacora
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 
 @login_required
 def lista_bitacora(request):
+    if not request.user.has_perm('bitacora.view_bitacora'):
+        raise PermissionDenied
 
     registros = Bitacora.objects.all()
 

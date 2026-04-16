@@ -64,26 +64,48 @@
     <div class="sidebar">
         <h4 class="text-center mb-4"><i class="fa-brands fa-microsoft"></i> Licencias</h4>
         
+        {% if perms.licencias.view_licencia %}
         <a href="{% url 'dashboard_general' %}" class="{% if request.resolver_match.url_name == 'dashboard_general' or request.resolver_match.url_name == 'home' %}active{% endif %}">
             <i class="fa-solid fa-chart-pie me-2"></i> Dashboard
         </a>
         
+        {% endif %}
+        
+        {% if perms.empleados.view_empleado %}
         <a href="{% url 'lista_empleados' %}" class="{% if request.resolver_match.url_name == 'lista_empleados' %}active{% endif %}">
             <i class="fa-solid fa-users me-2"></i> Empleados
         </a>
 
+        {% endif %}
+
+        {% if perms.empleados.view_gerenciadivision or perms.empleados.view_gerenciaarea or perms.empleados.view_unidad %}
         <a href="{% url 'organizacion' %}" class="{% if request.resolver_match.url_name == 'organizacion' %}active{% endif %}">
             <i class="fa-solid fa-sitemap me-2"></i> Áreas y Divisiones
         </a>
 
+        {% endif %}
+
+        {% if perms.licencias.view_tenant or perms.licencias.view_empresa or perms.licencias.view_proveedor or perms.licencias.view_tipolicencia %}
         <a href="{% url 'configuracion' %}" class="{% if request.resolver_match.url_name == 'configuracion' %}active{% endif %}">
             <i class="fa-solid fa-gears me-2"></i> Configuración
         </a>
 
+        {% endif %}
+
+        {% if perms.bitacora.view_bitacora %}
         <a href="{% url 'lista_bitacora' %}" 
         class="{% if request.resolver_match.url_name == 'lista_bitacora' %}active{% endif %}">
             <i class="fa-solid fa-clipboard-list me-2"></i> Bitácora
         </a>
+
+        {% endif %}
+
+        {% if perms.auth.view_user or perms.auth.view_group or perms.empleados.view_cargo %}
+        <a href="{% url 'lista_usuarios' %}" 
+        class="{% if request.resolver_match.url_name == 'lista_usuarios' or request.resolver_match.url_name == 'crear_usuario' or request.resolver_match.url_name == 'editar_usuario' or request.resolver_match.url_name == 'lista_roles' or request.resolver_match.url_name == 'crear_rol' or request.resolver_match.url_name == 'detalle_rol' or request.resolver_match.url_name == 'editar_rol' or request.resolver_match.url_name == 'lista_cargos' or request.resolver_match.url_name == 'crear_cargo' or request.resolver_match.url_name == 'editar_cargo' %}active{% endif %}">
+            <i class="fa-solid fa-users me-2"></i> Usuarios
+        </a>
+        {% endif %}
 
         <hr class="mx-3" style="border-color: rgba(255,255,255,0.3);">
         

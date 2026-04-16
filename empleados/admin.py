@@ -1,5 +1,12 @@
 from django.contrib import admin
-from .models import GerenciaDivision, GerenciaArea, Unidad, Empleado
+from .models import Cargo, GerenciaDivision, GerenciaArea, Unidad, Empleado
+
+
+@admin.register(Cargo)
+class CargoAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'activo')
+    list_filter = ('activo',)
+    search_fields = ('nombre', 'descripcion')
 
 @admin.register(GerenciaDivision)
 class GerenciaDivisionAdmin(admin.ModelAdmin):

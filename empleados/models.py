@@ -46,6 +46,23 @@ class Unidad(models.Model):
         return f"{self.nombre} ({self.area.codigo})"
 
 
+class Cargo(models.Model):
+    """
+    Catálogo de cargos que pueden asignarse a usuarios del sistema.
+    """
+    nombre = models.CharField(max_length=120, unique=True)
+    descripcion = models.CharField(max_length=255, blank=True)
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "Cargo"
+        verbose_name_plural = "Cargos"
+        ordering = ['nombre']
+
+    def __str__(self):
+        return self.nombre
+
+
 class Empleado(models.Model):
     """
     Entidad central que representa a un colaborador dentro del ecosistema corporativo.

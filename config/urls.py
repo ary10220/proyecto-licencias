@@ -72,6 +72,7 @@ urlpatterns = [
     path('configuracion/software/<int:pk>/eliminar/', views.eliminar_tipo_licencia, name='eliminar_tipo_licencia'),
     
     path('bitacora/', include('bitacora.urls')),
+    path('user/', include('user.urls')),
 
     # Endpoints de API / AJAX
     path('ajax/cargar-empresas/', views.cargar_empresas, name='ajax_cargar_empresas'),

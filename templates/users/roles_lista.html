@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+
+{% block title %}Roles - Gestión de Licencias{% endblock %}
+
+{% block content %}
+
+<style>
+    .roles-title {
+        color: var(--color-principal-dark);
+        font-size: 1.55rem;
+        font-weight: 800;
+    }
+
+    .roles-title i {
+        color: var(--color-principal);
+    }
+
+    .role-count-badge {
+        background: #fff3e7;
+        border: 1px solid #f2cfad;
+        border-radius: 999px;
+        color: var(--color-principal-dark);
+        display: inline-flex;
+        font-size: 0.8rem;
+        font-weight: 700;
+        padding: 0.35rem 0.7rem;
+    }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="roles-title mb-0">
+        <i class="fa-solid fa-user-lock me-2"></i>{{ titulo }}
+    </h4>
+
+    <div class="d-flex gap-2">
+        <a href="{% url 'lista_usuarios' %}" class="btn btn-outline-secondary shadow-sm">
+            <i class="fa-solid fa-users me-2"></i>Usuarios
+        </a>
+        <a href="{% url 'lista_cargos' %}" class="btn btn-outline-secondary shadow-sm">
+            <i class="fa-solid fa-id-badge me-2"></i>Cargos
+        </a>
+        <a href="{% url 'crear_rol' %}" class="btn btn-primary shadow-sm">
+            <i class="fa-solid fa-plus me-2"></i>Nuevo Rol
+        </a>
+    </div>
+</div>
+
+<div class="card p-3 shadow-sm border-0">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle text-center mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>ID</th>
+                    <th class="text-start">Rol</th>
+                    <th>Permisos</th>
+                    <th class="text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rol in roles %}
+                <tr>
+                    <td class="fw-bold text-muted">#{{ rol.id }}</td>
+                    <td class="text-start">
+                        <strong>{{ rol.name }}</strong>
+                    </td>
+                    <td>
+                        <span class="role-count-badge">
+                            {{ rol.permissions.count }} permiso(s)
+                        </span>
+                    </td>
+                    <td>
+                        <div class="d-flex justify-content-center gap-1">
+                            <a href="{% url 'detalle_rol' rol.id %}" class="btn btn-sm btn-outline-primary" title="Ver detalle del rol">
+                                <i class="fa-solid fa-eye"></i>
+                            </a>
+                            <button type="button" class="btn btn-sm btn-outline-danger" data-url="{% url 'eliminar_rol' rol.id %}" data-nombre="{{ rol.name }}" onclick="confirmarEliminacionRol(this)" title="Eliminar rol">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center text-muted py-4">
+                        <i class="fa-solid fa-circle-info me-2"></i>No hay roles registrados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    function confirmarEliminacionRol(button) {
+        const url = button.getAttribute('data-url');
+        const nombre = button.getAttribute('data-nombre');
+
+        Swal.fire({
+            title: '¿Eliminar rol?',
+            text: `Vas a eliminar el rol ${nombre}. Los usuarios perderán ese grupo asignado.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+            preConfirm: () => {
+                window.location.href = url;
+                return new Promise(() => {});
+            }
+        });
+    }
+</script>
+
+{% endblock %}
