@@ -1,0 +1,236 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Gestión de Licencias{% endblock %}
+
+{% block content %}
+
+<style>
+    .profile-hero {
+        background:
+            radial-gradient(circle at top left, rgba(223, 110, 18, 0.22), transparent 28rem),
+            linear-gradient(135deg, #fffaf6 0%, #ffffff 70%);
+        border: 1px solid #f0dfd0;
+        border-radius: 22px;
+        overflow: hidden;
+        padding: 1.5rem;
+    }
+
+    .profile-avatar {
+        align-items: center;
+        background: linear-gradient(135deg, var(--color-principal), var(--color-principal-dark));
+        border: 5px solid #ffffff;
+        border-radius: 50%;
+        box-shadow: 0 1rem 2rem rgba(95, 54, 18, 0.18);
+        color: #ffffff;
+        display: flex;
+        font-size: 2.4rem;
+        font-weight: 800;
+        height: 132px;
+        justify-content: center;
+        object-fit: cover;
+        width: 132px;
+    }
+
+    .profile-title {
+        color: var(--color-principal-dark);
+        font-weight: 850;
+    }
+
+    .info-card {
+        border: 1px solid #eee1d6;
+        border-radius: 16px;
+        height: 100%;
+        padding: 1rem;
+    }
+
+    .info-label {
+        color: #6c757d;
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    .role-chip {
+        background: #fff3e7;
+        border: 1px solid #f2cfad;
+        border-radius: 999px;
+        color: var(--color-principal-dark);
+        display: inline-flex;
+        font-size: 0.78rem;
+        font-weight: 800;
+        margin: 0.12rem;
+        padding: 0.32rem 0.65rem;
+    }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="profile-title mb-0">
+        <i class="fa-solid fa-user-circle me-2"></i>{{ titulo }}
+    </h4>
+</div>
+
+<div class="profile-hero mb-4">
+    <div class="row g-4 align-items-center">
+        <div class="col-md-auto text-center">
+            {% if perfil.foto %}
+                <img src="{{ perfil.foto.url }}" alt="Foto de {{ request.user.username }}" class="profile-avatar">
+            {% else %}
+                <div class="profile-avatar">
+                    {{ request.user.username|first|upper }}
+                </div>
+            {% endif %}
+        </div>
+        <div class="col">
+            <div class="text-muted fw-bold text-uppercase small">Usuario activo</div>
+            <h2 class="profile-title mb-1">
+                {{ request.user.get_full_name|default:request.user.username }}
+            </h2>
+            <div class="text-muted mb-3">{{ request.user.email|default:"Sin correo registrado" }}</div>
+            <div class="d-flex flex-wrap gap-2">
+                {% if request.user.is_active %}
+                    <span class="badge bg-success">Activo</span>
+                {% else %}
+                    <span class="badge bg-danger">Inactivo</span>
+                {% endif %}
+                {% if request.user.is_staff %}
+                    <span class="badge bg-primary">Acceso admin</span>
+                {% endif %}
+                {% if request.user.is_superuser %}
+                    <span class="badge bg-dark">Superusuario</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="info-card">
+            <div class="info-label">Usuario</div>
+            <div class="fw-bold">{{ request.user.username }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="info-card">
+            <div class="info-label">Área</div>
+            <div class="fw-bold">{{ perfil.get_area_display|default:"Sin área" }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="info-card">
+            <div class="info-label">Cargo</div>
+            <div class="fw-bold">{{ perfil.cargo|default:"Sin cargo" }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="info-card">
+            <div class="info-label">Último acceso</div>
+            <div class="fw-bold">{{ request.user.last_login|date:"d/m/Y H:i"|default:"Sin registro" }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card p-4 shadow-sm border-0">
+            <h5 class="fw-bold mb-3">
+                <i class="fa-solid fa-id-card me-2 text-primary"></i>Editar información personal
+            </h5>
+
+            <form method="post" enctype="multipart/form-data" id="perfilForm" novalidate>
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">{{ form.first_name.label }}</label>
+                        {{ form.first_name }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">{{ form.last_name.label }}</label>
+                        {{ form.last_name }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">{{ form.email.label }}</label>
+                        {{ form.email }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">{{ form.area.label }}</label>
+                        {{ form.area }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">{{ form.cargo.label }}</label>
+                        {{ form.cargo }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">{{ form.foto.label }}</label>
+                        {{ form.foto }}
+                        <div class="form-text">Formatos recomendados: JPG o PNG.</div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end mt-4">
+                    <button type="submit" id="btnGuardarPerfil" class="btn btn-primary px-4" disabled>
+                        <i class="fa-solid fa-floppy-disk me-1"></i>Guardar cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card p-4 shadow-sm border-0 mb-3">
+            <h5 class="fw-bold mb-3">
+                <i class="fa-solid fa-user-lock me-2 text-primary"></i>Roles asignados
+            </h5>
+            {% for rol in roles_usuario %}
+                <span class="role-chip">{{ rol.name }}</span>
+            {% empty %}
+                <div class="text-muted">No tienes roles asignados.</div>
+            {% endfor %}
+        </div>
+
+        <div class="card p-4 shadow-sm border-0">
+            <h5 class="fw-bold mb-3">
+                <i class="fa-solid fa-shield-halved me-2 text-primary"></i>Resumen de permisos
+            </h5>
+            <div class="display-6 fw-bold text-primary">{{ permisos_usuario|length }}</div>
+            <div class="text-muted">Permisos efectivos asociados a tu cuenta.</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (() => {
+        const form = document.getElementById('perfilForm');
+        const saveButton = document.getElementById('btnGuardarPerfil');
+
+        if (!form || !saveButton) return;
+
+        const controls = Array.from(form.querySelectorAll('input, select, textarea'))
+            .filter((control) => control.name !== 'csrfmiddlewaretoken');
+
+        const snapshot = () => controls.map((control) => {
+            if (control.type === 'file') {
+                return `${control.name}:${control.files.length}`;
+            }
+            return `${control.name}:${control.value}`;
+        }).join('|');
+
+        const initialState = snapshot();
+        const toggleSave = () => {
+            saveButton.disabled = snapshot() === initialState;
+        };
+
+        controls.forEach((control) => {
+            control.addEventListener('input', toggleSave);
+            control.addEventListener('change', toggleSave);
+        });
+
+        form.addEventListener('submit', () => {
+            saveButton.disabled = true;
+            saveButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>Guardando';
+        });
+    })();
+</script>
+
+{% endblock %}

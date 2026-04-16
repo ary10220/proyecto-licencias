@@ -136,6 +136,8 @@ AXES_RESET_ON_SUCCESS = True    # Si entra bien al intento 2, el contador vuelve
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+MEDIA_URL = 'media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 
 # 1. URL de la página de Login 

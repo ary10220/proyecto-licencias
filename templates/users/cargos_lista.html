@@ -25,6 +25,9 @@
         <a href="{% url 'lista_usuarios' %}" class="btn btn-outline-secondary shadow-sm">
             <i class="fa-solid fa-users me-2"></i>Usuarios
         </a>
+        <a href="{% url 'lista_areas' %}" class="btn btn-outline-primary shadow-sm">
+            <i class="fa-solid fa-layer-group me-2"></i>Areas
+        </a>
         <a href="{% url 'crear_cargo' %}" class="btn btn-primary shadow-sm">
             <i class="fa-solid fa-plus me-2"></i>Nuevo Cargo
         </a>
@@ -37,6 +40,7 @@
             <thead class="table-light">
                 <tr>
                     <th class="text-start">Cargo</th>
+                    <th>Area</th>
                     <th>Descripción</th>
                     <th>Estado</th>
                     <th class="text-center">Acciones</th>
@@ -46,6 +50,13 @@
                 {% for cargo in cargos %}
                 <tr>
                     <td class="text-start"><strong>{{ cargo.nombre }}</strong></td>
+                    <td>
+                        {% if cargo.area_usuario %}
+                            <span class="badge bg-primary">{{ cargo.area_usuario.nombre }}</span>
+                        {% else %}
+                            <span class="text-muted">Sin area</span>
+                        {% endif %}
+                    </td>
                     <td>{{ cargo.descripcion|default:"-" }}</td>
                     <td>
                         {% if cargo.activo %}
@@ -67,7 +78,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="4" class="text-center text-muted py-4">
+                    <td colspan="5" class="text-center text-muted py-4">
                         <i class="fa-solid fa-circle-info me-2"></i>No hay cargos registrados.
                     </td>
                 </tr>

@@ -1,0 +1,366 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Gestión de Licencias{% endblock %}
+
+{% block content %}
+
+<style>
+    .profile-hero {
+        background:
+            radial-gradient(circle at top left, rgba(223, 110, 18, 0.22), transparent 28rem),
+            linear-gradient(135deg, #fffaf6 0%, #ffffff 70%);
+        border: 1px solid #f0dfd0;
+        border-radius: 22px;
+        padding: 1.5rem;
+    }
+
+    .profile-avatar {
+        align-items: center;
+        background: linear-gradient(135deg, var(--color-principal), var(--color-principal-dark));
+        border: 5px solid #ffffff;
+        border-radius: 50%;
+        box-shadow: 0 1rem 2rem rgba(95, 54, 18, 0.18);
+        color: #ffffff;
+        display: flex;
+        font-size: 2.4rem;
+        font-weight: 800;
+        height: 132px;
+        justify-content: center;
+        object-fit: cover;
+        width: 132px;
+    }
+
+    .avatar-wrap {
+        display: inline-block;
+        position: relative;
+    }
+
+    .photo-menu {
+        background: #151719;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 16px;
+        box-shadow: 0 1rem 2rem rgba(0,0,0,0.25);
+        min-width: 210px;
+        overflow: hidden;
+        padding: 0.4rem;
+    }
+
+    .photo-menu .dropdown-item {
+        align-items: center;
+        border-radius: 10px;
+        color: #d7d7d7;
+        display: flex;
+        font-weight: 700;
+        gap: 0.75rem;
+        padding: 0.78rem 0.9rem;
+    }
+
+    .photo-menu .dropdown-item:hover {
+        background: rgba(255,255,255,0.08);
+        color: #ffffff;
+    }
+
+    .photo-menu .dropdown-item.text-danger:hover {
+        background: rgba(220,53,69,0.14);
+        color: #ff8a96 !important;
+    }
+
+    .photo-edit-btn {
+        background: #111417;
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 999px;
+        bottom: -0.35rem;
+        box-shadow: 0 0.7rem 1.4rem rgba(0,0,0,0.18);
+        color: #52d273;
+        font-weight: 800;
+        left: 50%;
+        padding: 0.35rem 0.85rem;
+        position: absolute;
+        transform: translateX(-50%);
+        white-space: nowrap;
+    }
+
+    .profile-title {
+        color: var(--color-principal-dark);
+        font-weight: 850;
+    }
+
+    .info-card {
+        border: 1px solid #eee1d6;
+        border-radius: 16px;
+        height: 100%;
+        padding: 1rem;
+    }
+
+    .info-label {
+        color: #6c757d;
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    .role-chip {
+        background: #fff3e7;
+        border: 1px solid #f2cfad;
+        border-radius: 999px;
+        color: var(--color-principal-dark);
+        display: inline-flex;
+        font-size: 0.78rem;
+        font-weight: 800;
+        margin: 0.12rem;
+        padding: 0.32rem 0.65rem;
+    }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="profile-title mb-0">
+        <i class="fa-solid fa-user-circle me-2"></i>{{ titulo }}
+    </h4>
+
+    {% if perms.auth.change_user %}
+        <a href="{% url 'editar_usuario' request.user.id %}" class="btn btn-primary btn-sm">
+            <i class="fa-solid fa-pen me-1"></i>Editar usuario
+        </a>
+    {% endif %}
+</div>
+
+<div class="profile-hero mb-4">
+    <div class="row g-4 align-items-center">
+        <div class="col-md-auto text-center">
+            <div class="avatar-wrap dropdown">
+                {% if perfil.foto %}
+                    <img src="{{ perfil.foto.url }}" alt="Foto de {{ request.user.username }}" class="profile-avatar">
+                {% else %}
+                    <div class="profile-avatar">
+                        {{ request.user.username|first|upper }}
+                    </div>
+                {% endif %}
+                <button class="photo-edit-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fa-solid fa-camera me-1"></i>Editar
+                </button>
+                <div class="dropdown-menu photo-menu">
+                    {% if perfil.foto %}
+                        <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#modalFotoPerfil">
+                            <i class="fa-regular fa-eye"></i>Ver foto
+                        </button>
+                    {% else %}
+                        <button class="dropdown-item disabled" type="button">
+                            <i class="fa-regular fa-eye"></i>Ver foto
+                        </button>
+                    {% endif %}
+                    <button class="dropdown-item" type="button" data-photo-action="camera">
+                        <i class="fa-solid fa-camera"></i>Tomar foto
+                    </button>
+                    <button class="dropdown-item" type="button" data-photo-action="upload">
+                        <i class="fa-regular fa-folder"></i>Subir foto
+                    </button>
+                    {% if perfil.foto %}
+                        <div class="dropdown-divider border-secondary"></div>
+                        <button class="dropdown-item text-danger" type="button" data-photo-action="delete">
+                            <i class="fa-regular fa-trash-can"></i>Quitar foto
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="text-muted fw-bold text-uppercase small">Usuario activo</div>
+            <h2 class="profile-title mb-1">
+                {{ request.user.get_full_name|default:request.user.username }}
+            </h2>
+            <div class="text-muted mb-3">{{ request.user.email|default:"Sin correo registrado" }}</div>
+            <div class="d-flex flex-wrap gap-2">
+                {% if request.user.is_active %}
+                    <span class="badge bg-success">Activo</span>
+                {% else %}
+                    <span class="badge bg-danger">Inactivo</span>
+                {% endif %}
+                {% if request.user.is_staff %}
+                    <span class="badge bg-primary">Acceso admin</span>
+                {% endif %}
+                {% if request.user.is_superuser %}
+                    <span class="badge bg-dark">Superusuario</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="info-card">
+            <div class="info-label">Usuario</div>
+            <div class="fw-bold">{{ request.user.username }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="info-card">
+            <div class="info-label">Área</div>
+            <div class="fw-bold">{{ perfil.area_usuario|default:"Sin area" }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="info-card">
+            <div class="info-label">Cargo</div>
+            <div class="fw-bold">{{ perfil.cargo|default:"Sin cargo" }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="info-card">
+            <div class="info-label">Último acceso</div>
+            <div class="fw-bold">{{ request.user.last_login|date:"d/m/Y H:i"|default:"Sin registro" }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card p-4 shadow-sm border-0 mb-3">
+            <h5 class="fw-bold mb-3">
+                <i class="fa-solid fa-address-card me-2 text-primary"></i>Información del perfil
+            </h5>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="info-card">
+                        <div class="info-label">Nombre</div>
+                        <div class="fw-bold">{{ request.user.first_name|default:"Sin nombre" }}</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="info-card">
+                        <div class="info-label">Apellido</div>
+                        <div class="fw-bold">{{ request.user.last_name|default:"Sin apellido" }}</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="info-card">
+                        <div class="info-label">Correo</div>
+                        <div class="fw-bold">{{ request.user.email|default:"Sin correo" }}</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="info-card">
+                        <div class="info-label">Fecha de alta</div>
+                        <div class="fw-bold">{{ request.user.date_joined|date:"d/m/Y H:i" }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card p-4 shadow-sm border-0">
+            <h5 class="fw-bold mb-3">
+                <i class="fa-solid fa-camera me-2 text-primary"></i>Foto de perfil
+            </h5>
+            <p class="text-muted mb-0">
+                Usa el boton <strong>Editar</strong> sobre tu foto para verla, tomar una nueva, subir una imagen o quitarla.
+            </p>
+
+            <form method="post" enctype="multipart/form-data" id="fotoPerfilForm" class="d-none" novalidate>
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="subir_foto">
+                <input type="file" name="foto" id="uploadPhotoInput" accept="image/*">
+                <input type="file" name="foto" id="cameraPhotoInput" accept="image/*" capture="user">
+                {% if form.foto.errors %}
+                    <div class="text-danger small mt-1">{{ form.foto.errors|striptags }}</div>
+                {% endif %}
+            </form>
+
+            {% if perfil.foto %}
+                <form method="post" id="eliminarFotoForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="accion" value="eliminar_foto">
+                </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card p-4 shadow-sm border-0 mb-3">
+            <h5 class="fw-bold mb-3">
+                <i class="fa-solid fa-user-lock me-2 text-primary"></i>Roles asignados
+            </h5>
+            {% for rol in roles_usuario %}
+                <span class="role-chip">{{ rol.name }}</span>
+            {% empty %}
+                <div class="text-muted">No tienes roles asignados.</div>
+            {% endfor %}
+        </div>
+
+        <div class="card p-4 shadow-sm border-0">
+            <h5 class="fw-bold mb-3">
+                <i class="fa-solid fa-shield-halved me-2 text-primary"></i>Resumen de permisos
+            </h5>
+            <div class="display-6 fw-bold text-primary">{{ permisos_usuario|length }}</div>
+            <div class="text-muted">Permisos efectivos asociados a tu cuenta.</div>
+        </div>
+    </div>
+</div>
+
+{% if perfil.foto %}
+    <div class="modal fade" id="modalFotoPerfil" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Foto de perfil</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <img src="{{ perfil.foto.url }}" alt="Foto de perfil" class="img-fluid rounded-4 shadow-sm">
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+<script>
+    (() => {
+        const form = document.getElementById('fotoPerfilForm');
+        const uploadInput = document.getElementById('uploadPhotoInput');
+        const cameraInput = document.getElementById('cameraPhotoInput');
+        const deleteForm = document.getElementById('eliminarFotoForm');
+
+        if (!form || !uploadInput || !cameraInput) return;
+
+        document.querySelectorAll('[data-photo-action]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const action = button.getAttribute('data-photo-action');
+
+                if (action === 'upload') {
+                    uploadInput.click();
+                }
+
+                if (action === 'camera') {
+                    cameraInput.click();
+                }
+
+                if (action === 'delete' && deleteForm) {
+                    Swal.fire({
+                        title: 'Quitar foto?',
+                        text: 'Se eliminara la foto de tu perfil.',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#dc3545',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Si, quitar',
+                        cancelButtonText: 'Cancelar',
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            deleteForm.submit();
+                        }
+                    });
+                }
+            });
+        });
+
+        [uploadInput, cameraInput].forEach((input) => {
+            input.addEventListener('change', () => {
+                if (input.files.length > 0) {
+                    form.submit();
+                }
+            });
+        });
+    })();
+</script>
+
+{% endblock %}

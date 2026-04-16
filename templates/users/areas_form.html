@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Gestion de Licencias{% endblock %}
+
+{% block content %}
+
+<style>
+    .area-form-title {
+        color: var(--color-principal-dark);
+        font-weight: 800;
+    }
+
+    .dependency-box {
+        background: #fffaf6;
+        border: 1px solid #f0dfd0;
+        border-radius: 16px;
+        padding: 1rem;
+    }
+
+    .cargo-chip {
+        background: #ffffff;
+        border: 1px solid #f2cfad;
+        border-radius: 999px;
+        color: var(--color-principal-dark);
+        display: inline-flex;
+        font-size: 0.78rem;
+        font-weight: 800;
+        margin: 0.12rem;
+        padding: 0.32rem 0.65rem;
+    }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="area-form-title mb-0">
+        <i class="fa-solid fa-layer-group me-2"></i>{{ titulo }}
+    </h4>
+
+    <a href="{% url 'lista_areas' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="fa-solid fa-arrow-left me-1"></i>Volver
+    </a>
+</div>
+
+<div class="card p-4 shadow-sm border-0">
+    <form method="post" id="areaForm" novalidate autocomplete="off">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="row g-4">
+            <div class="col-lg-7">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label fw-bold">{{ form.nombre.label }}</label>
+                        {{ form.nombre }}
+                        {% if form.nombre.errors %}
+                            <div class="text-danger small mt-1">{{ form.nombre.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label fw-bold">{{ form.descripcion.label }}</label>
+                        {{ form.descripcion }}
+                        {% if form.descripcion.errors %}
+                            <div class="text-danger small mt-1">{{ form.descripcion.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            {{ form.activo }}
+                            <label class="form-check-label">{{ form.activo.label }}</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-5">
+                <div class="dependency-box h-100">
+                    <h6 class="fw-bold mb-2">
+                        <i class="fa-solid fa-diagram-project me-1 text-primary"></i>Dependencias del area
+                    </h6>
+                    <label class="form-label fw-bold">{{ form.cargos_iniciales.label }}</label>
+                    {{ form.cargos_iniciales }}
+                    <div class="form-text">{{ form.cargos_iniciales.help_text }}</div>
+                    {% if form.cargos_iniciales.errors %}
+                        <div class="text-danger small mt-1">{{ form.cargos_iniciales.errors|striptags }}</div>
+                    {% endif %}
+
+                    {% if cargos_area %}
+                        <div class="mt-3">
+                            <div class="text-muted fw-bold text-uppercase small mb-2">Cargos actuales</div>
+                            {% for cargo in cargos_area %}
+                                <span class="cargo-chip">{{ cargo.nombre }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+            <a href="{% url 'lista_areas' %}" class="btn btn-light border px-4">Cancelar</a>
+            <button type="submit" id="btnGuardarArea" class="btn btn-primary px-4" disabled>
+                <i class="fa-solid fa-floppy-disk me-1"></i>
+                {% if modo == 'crear' %}Crear y revisar{% else %}Guardar cambios{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    (() => {
+        const form = document.getElementById('areaForm');
+        const saveButton = document.getElementById('btnGuardarArea');
+
+        if (!form || !saveButton) return;
+
+        const controls = Array.from(form.querySelectorAll('input, select, textarea'))
+            .filter((control) => control.name !== 'csrfmiddlewaretoken');
+
+        const snapshot = () => controls.map((control) => {
+            if (control.type === 'checkbox' || control.type === 'radio') {
+                return `${control.name}:${control.checked}`;
+            }
+            return `${control.name}:${control.value}`;
+        }).join('|');
+
+        const initialState = snapshot();
+        const toggleSave = () => {
+            saveButton.disabled = snapshot() === initialState;
+        };
+
+        controls.forEach((control) => {
+            control.addEventListener('input', toggleSave);
+            control.addEventListener('change', toggleSave);
+        });
+
+        form.addEventListener('submit', () => {
+            saveButton.disabled = true;
+            saveButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>Guardando';
+        });
+    })();
+</script>
+
+{% endblock %}

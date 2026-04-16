@@ -100,9 +100,9 @@
 
         {% endif %}
 
-        {% if perms.auth.view_user or perms.auth.view_group or perms.empleados.view_cargo %}
+        {% if perms.auth.view_user or perms.auth.view_group or perms.empleados.view_cargo or perms.user.view_areausuario %}
         <a href="{% url 'lista_usuarios' %}" 
-        class="{% if request.resolver_match.url_name == 'lista_usuarios' or request.resolver_match.url_name == 'crear_usuario' or request.resolver_match.url_name == 'editar_usuario' or request.resolver_match.url_name == 'lista_roles' or request.resolver_match.url_name == 'crear_rol' or request.resolver_match.url_name == 'detalle_rol' or request.resolver_match.url_name == 'editar_rol' or request.resolver_match.url_name == 'lista_cargos' or request.resolver_match.url_name == 'crear_cargo' or request.resolver_match.url_name == 'editar_cargo' %}active{% endif %}">
+        class="{% if request.resolver_match.url_name == 'lista_usuarios' or request.resolver_match.url_name == 'crear_usuario' or request.resolver_match.url_name == 'editar_usuario' or request.resolver_match.url_name == 'lista_roles' or request.resolver_match.url_name == 'crear_rol' or request.resolver_match.url_name == 'detalle_rol' or request.resolver_match.url_name == 'editar_rol' or request.resolver_match.url_name == 'lista_areas' or request.resolver_match.url_name == 'crear_area' or request.resolver_match.url_name == 'editar_area' or request.resolver_match.url_name == 'lista_cargos' or request.resolver_match.url_name == 'crear_cargo' or request.resolver_match.url_name == 'editar_cargo' %}active{% endif %}">
             <i class="fa-solid fa-users me-2"></i> Usuarios
         </a>
         {% endif %}
@@ -119,6 +119,9 @@
         <div style="flex-grow: 1;"></div> 
 
         <div class="mt-auto border-top border-secondary pt-2">
+            <a href="{% url 'mi_perfil' %}" class="{% if request.resolver_match.url_name == 'mi_perfil' %}active{% endif %}">
+                <i class="fa-solid fa-user-circle me-2"></i> Mi Perfil
+            </a>
             <form action="{% url 'logout' %}" method="post" class="px-3 pb-3">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-outline-light w-100 btn-sm text-start">

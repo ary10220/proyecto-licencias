@@ -4,9 +4,9 @@ from .models import Cargo, GerenciaDivision, GerenciaArea, Unidad, Empleado
 
 @admin.register(Cargo)
 class CargoAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'activo')
-    list_filter = ('activo',)
-    search_fields = ('nombre', 'descripcion')
+    list_display = ('nombre', 'area_usuario', 'activo')
+    list_filter = ('area_usuario', 'activo')
+    search_fields = ('nombre', 'descripcion', 'area_usuario__nombre')
 
 @admin.register(GerenciaDivision)
 class GerenciaDivisionAdmin(admin.ModelAdmin):

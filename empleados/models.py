@@ -50,6 +50,7 @@ class Cargo(models.Model):
     """
     Catálogo de cargos que pueden asignarse a usuarios del sistema.
     """
+    area_usuario = models.ForeignKey('user.AreaUsuario', on_delete=models.SET_NULL, null=True, blank=True, related_name='cargos')
     nombre = models.CharField(max_length=120, unique=True)
     descripcion = models.CharField(max_length=255, blank=True)
     activo = models.BooleanField(default=True)
@@ -60,6 +61,8 @@ class Cargo(models.Model):
         ordering = ['nombre']
 
     def __str__(self):
+        if self.area_usuario:
+            return f"{self.nombre} ({self.area_usuario.nombre})"
         return self.nombre
 
 

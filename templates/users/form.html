@@ -70,6 +70,9 @@
         <a href="{% url 'lista_cargos' %}" class="btn btn-outline-primary btn-sm">
             <i class="fa-solid fa-id-badge me-1"></i>Gestionar Cargos
         </a>
+        <a href="{% url 'lista_areas' %}" class="btn btn-outline-primary btn-sm">
+            <i class="fa-solid fa-layer-group me-1"></i>Gestionar Areas
+        </a>
         <a href="{% url 'lista_roles' %}" class="btn btn-outline-primary btn-sm">
             <i class="fa-solid fa-user-lock me-1"></i>Gestionar Roles
         </a>
@@ -123,11 +126,11 @@
             </div>
 
             <div class="col-md-6">
-                <label class="form-label fw-bold">{{ form.area.label }}</label>
-                {{ form.area }}
-                <div class="form-text">Opcional. Esta lista es propia de usuarios, no de empleados.</div>
-                {% if form.area.errors %}
-                    <div class="text-danger small mt-1">{{ form.area.errors|striptags }}</div>
+                <label class="form-label fw-bold">{{ form.area_usuario.label }}</label>
+                {{ form.area_usuario }}
+                <div class="form-text">Opcional. Esta area agrupa los cargos disponibles para usuarios del sistema.</div>
+                {% if form.area_usuario.errors %}
+                    <div class="text-danger small mt-1">{{ form.area_usuario.errors|striptags }}</div>
                 {% endif %}
             </div>
 
