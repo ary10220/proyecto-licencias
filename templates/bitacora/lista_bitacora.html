@@ -1,0 +1,383 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<style>
+    .bitacora-title {
+        color: var(--color-principal-dark);
+        font-size: 1.55rem;
+        font-weight: 800;
+        letter-spacing: 0.2px;
+    }
+
+    .bitacora-title i {
+        color: var(--color-principal);
+        font-size: 1.8rem;
+    }
+
+    .audit-action {
+        align-items: center;
+        border-radius: 999px;
+        display: inline-flex;
+        font-size: 0.78rem;
+        font-weight: 800;
+        gap: 0.4rem;
+        justify-content: center;
+        letter-spacing: 0.35px;
+        min-width: 118px;
+        padding: 0.48rem 0.82rem;
+    }
+
+    .audit-action i {
+        font-size: 0.95rem;
+    }
+
+    .audit-crear { background-color: #d1e7dd; color: #0f5132; }
+    .audit-editar { background-color: #fff3cd; color: #8a5a00; }
+    .audit-eliminar { background-color: #f8d7da; color: #842029; }
+    .audit-asignar { background-color: #cff4fc; color: #055160; }
+    .audit-liberar { background-color: #e2f3ef; color: #146c43; }
+    .audit-baja { background-color: #ead7dd; color: #7a1830; }
+    .audit-reactivar { background-color: #cfe2ff; color: #084298; }
+    .audit-sincronizar { background-color: #e0cffc; color: #4b238f; }
+    .audit-exportar { background-color: #d1e7dd; color: #0f5132; }
+    .audit-login { background-color: #dbeafe; color: #1d4ed8; }
+    .audit-logout { background-color: #ffe5d0; color: #b45309; }
+    .audit-default { background-color: #f1f3f5; color: #343a40; }
+
+    .filter-panel {
+        background: linear-gradient(135deg, #ffffff 0%, #fff7f0 100%);
+        border: 1px solid #f0dfd0;
+        border-radius: 14px;
+        padding: 1rem;
+    }
+
+    .filter-status {
+        color: var(--color-principal-dark);
+        display: none;
+        font-size: 0.75rem;
+        font-weight: 700;
+        margin-top: 0.55rem;
+    }
+
+    .filter-status.is-visible {
+        align-items: center;
+        display: inline-flex;
+        gap: 0.4rem;
+    }
+
+    .bitacora-table-shell {
+        min-height: 220px;
+        transition: opacity 220ms ease, transform 220ms ease, filter 220ms ease;
+        will-change: opacity, transform, filter;
+    }
+
+    .bitacora-table-shell.is-loading {
+        filter: blur(1px);
+        opacity: 0.45;
+        transform: translateY(4px);
+    }
+
+    .bitacora-table-shell.is-entering {
+        animation: auditTableEnter 260ms ease-out both;
+    }
+
+    @keyframes auditTableEnter {
+        from {
+            filter: blur(1px);
+            opacity: 0.35;
+            transform: translateY(6px);
+        }
+
+        to {
+            filter: blur(0);
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 bitacora-title">
+            <i class="fa-solid fa-clipboard-list me-2"></i> Bitácora del Sistema
+        </h5>
+    </div>
+
+    <div class="card-body">
+
+        <div class="table-responsive">
+            <form method="get" id="filtroForm" class="mb-4 filter-panel">
+
+                <div class="row g-2 align-items-end">
+
+                    <!-- 👤 USUARIO -->
+                    {% if request.user.is_superuser %}
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">Usuario</label>
+                        <select name="usuario" class="form-select">
+                            <option value="">Todos</option>
+                            {% for u in usuarios %}
+                                {% if u %}
+                                    <option value="{{ u }}" {% if filtros.usuario == u %}selected{% endif %}>
+                                        {{ u }}
+                                    </option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+
+                    <!-- ⚡ ACCIÓN -->
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">Acción</label>
+                        <select name="accion" class="form-select">
+                            <option value="">Todas</option>
+                            <option value="CREAR" {% if filtros.accion == "CREAR" %}selected{% endif %}>Crear</option>
+                            <option value="EDITAR" {% if filtros.accion == "EDITAR" %}selected{% endif %}>Editar</option>
+                            <option value="ELIMINAR" {% if filtros.accion == "ELIMINAR" %}selected{% endif %}>Eliminar</option>
+                            <option value="ASIGNAR" {% if filtros.accion == "ASIGNAR" %}selected{% endif %}>Asignar</option>
+                            <option value="LIBERAR" {% if filtros.accion == "LIBERAR" %}selected{% endif %}>Liberar</option>
+                            <option value="BAJA" {% if filtros.accion == "BAJA" %}selected{% endif %}>Baja</option>
+                            <option value="REACTIVAR" {% if filtros.accion == "REACTIVAR" %}selected{% endif %}>Reactivar</option>
+                            <option value="SINCRONIZAR" {% if filtros.accion == "SINCRONIZAR" %}selected{% endif %}>Sincronizar</option>
+                            <option value="EXPORTAR" {% if filtros.accion == "EXPORTAR" %}selected{% endif %}>Exportar</option>
+                            <option value="LOGIN" {% if filtros.accion == "LOGIN" %}selected{% endif %}>Login</option>
+                            <option value="LOGOUT" {% if filtros.accion == "LOGOUT" %}selected{% endif %}>Logout</option>
+                        </select>
+                    </div>
+
+                    <!-- 📅 FECHAS -->
+                    <div class="col-md-4">
+                        <label class="form-label small text-muted">Rango de fechas</label>
+                        <div class="d-flex gap-2">
+                            <input type="date" name="fecha_inicio" class="form-control"
+                                value="{{ filtros.fecha_inicio }}">
+                            <input type="date" name="fecha_fin" class="form-control"
+                                value="{{ filtros.fecha_fin }}">
+                        </div>
+                    </div>
+
+                    <!-- 🔘 BOTONES -->
+                    <div class="col-md-2 d-flex">
+                        <a href="{% url 'lista_bitacora' %}" id="limpiarFiltros" class="btn btn-outline-secondary w-100">
+                            <i class="fa fa-eraser me-1"></i> Limpiar
+                        </a>
+                    </div>
+
+                </div>
+
+                <span id="filterStatus" class="filter-status">
+                    <i class="fa-solid fa-spinner fa-spin"></i> Aplicando filtros...
+                </span>
+
+            </form>
+            <div id="bitacoraTableContainer" class="bitacora-table-shell">
+            <table class="table table-hover table-bordered align-middle text-center">
+                
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>Usuario</th>
+                        <th>Acción</th>
+                        <th>Módulo</th>
+                        <th class="text-center">Descripción</th>
+                        <th>Fecha</th>
+                        <th>IP</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for registro in registros %}
+                    <tr>
+                        <td><strong>{{ forloop.counter }}</strong></td>
+
+                        <td>
+                            <i class="fa-solid fa-user me-1 text-secondary"></i>
+                            {{ registro.usuario|default:"-" }}
+                        </td>
+                        <td>
+                            <span class="audit-action
+                                {% if registro.accion == 'CREAR' %}audit-crear
+                                {% elif registro.accion == 'EDITAR' %}audit-editar
+                                {% elif registro.accion == 'ELIMINAR' %}audit-eliminar
+                                {% elif registro.accion == 'ASIGNAR' %}audit-asignar
+                                {% elif registro.accion == 'LIBERAR' %}audit-liberar
+                                {% elif registro.accion == 'BAJA' %}audit-baja
+                                {% elif registro.accion == 'REACTIVAR' %}audit-reactivar
+                                {% elif registro.accion == 'SINCRONIZAR' %}audit-sincronizar
+                                {% elif registro.accion == 'EXPORTAR' %}audit-exportar
+                                {% elif registro.accion == 'LOGIN' %}audit-login
+                                {% elif registro.accion == 'LOGOUT' %}audit-logout
+                                {% else %}audit-default
+                                {% endif %}
+                            ">
+                                {% if registro.accion == 'CREAR' %}<i class="fa-solid fa-circle-plus"></i>
+                                {% elif registro.accion == 'EDITAR' %}<i class="fa-solid fa-pen-to-square"></i>
+                                {% elif registro.accion == 'ELIMINAR' %}<i class="fa-solid fa-trash-can"></i>
+                                {% elif registro.accion == 'ASIGNAR' %}<i class="fa-solid fa-user-plus"></i>
+                                {% elif registro.accion == 'LIBERAR' %}<i class="fa-solid fa-unlock"></i>
+                                {% elif registro.accion == 'BAJA' %}<i class="fa-solid fa-user-slash"></i>
+                                {% elif registro.accion == 'REACTIVAR' %}<i class="fa-solid fa-user-check"></i>
+                                {% elif registro.accion == 'SINCRONIZAR' %}<i class="fa-solid fa-rotate"></i>
+                                {% elif registro.accion == 'EXPORTAR' %}<i class="fa-solid fa-file-export"></i>
+                                {% elif registro.accion == 'LOGIN' %}<i class="fa-solid fa-right-to-bracket"></i>
+                                {% elif registro.accion == 'LOGOUT' %}<i class="fa-solid fa-right-from-bracket"></i>
+                                {% else %}<i class="fa-solid fa-circle-info"></i>
+                                {% endif %}
+                                {{ registro.accion }}
+                            </span>
+                        </td>
+
+                        <td>
+                            <span class="badge bg-light text-dark border">
+                                {{ registro.modulo }}
+                            </span>
+                        </td>
+
+                        <!-- Descripción alineada a la izquierda -->
+                        <td class="text-center">
+                            {{ registro.descripcion }}
+                        </td>
+
+                        <td>
+                            <small class="text-muted">
+                                {{ registro.fecha|date:"d/m/Y H:i" }}
+                            </small>
+                        </td>
+
+                        <td>
+                            <code>{{ registro.ip|default:"-" }}</code>
+                        </td>
+                    </tr>
+
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">
+                            <i class="fa-solid fa-circle-info me-2"></i>
+                            No hay registros en la bitácora
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+
+            </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    (() => {
+        const form = document.getElementById('filtroForm');
+        const status = document.getElementById('filterStatus');
+        const tableContainer = document.getElementById('bitacoraTableContainer');
+        const clearButton = document.getElementById('limpiarFiltros');
+        const transitionDuration = 220;
+
+        if (!form || !tableContainer) return;
+
+        const controls = form.querySelectorAll('select, input[type="date"]');
+        let timeout = null;
+        let controller = null;
+        let requestId = 0;
+
+        const setLoading = (isLoading) => {
+            if (status) {
+                status.classList.toggle('is-visible', isLoading);
+            }
+
+            tableContainer.classList.toggle('is-loading', isLoading);
+        };
+
+        const resetFormControls = () => {
+            controls.forEach((control) => {
+                control.value = '';
+            });
+        };
+
+        const updateTable = async (url = null) => {
+            if (controller) {
+                controller.abort();
+            }
+
+            requestId += 1;
+            const currentRequestId = requestId;
+            controller = new AbortController();
+            const params = new URLSearchParams(new FormData(form));
+            const queryString = params.toString();
+            const nextUrl = url || (queryString ? `${window.location.pathname}?${queryString}` : window.location.pathname);
+
+            setLoading(true);
+
+            try {
+                const response = await fetch(nextUrl, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    signal: controller.signal,
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const html = await response.text();
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const nextTable = doc.getElementById('bitacoraTableContainer');
+
+                if (!nextTable) {
+                    throw new Error('No se encontrÃ³ la tabla filtrada.');
+                }
+
+                if (currentRequestId !== requestId) return;
+
+                await new Promise((resolve) => setTimeout(resolve, transitionDuration));
+
+                if (currentRequestId !== requestId) return;
+
+                tableContainer.innerHTML = nextTable.innerHTML;
+                tableContainer.classList.remove('is-loading');
+                tableContainer.classList.add('is-entering');
+                tableContainer.addEventListener('animationend', () => {
+                    tableContainer.classList.remove('is-entering');
+                }, { once: true });
+                window.history.replaceState({}, '', nextUrl);
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    form.submit();
+                }
+            } finally {
+                if (currentRequestId === requestId) {
+                    if (!tableContainer.classList.contains('is-entering')) {
+                        setLoading(false);
+                    } else if (status) {
+                        status.classList.remove('is-visible');
+                    }
+                }
+            }
+        };
+
+        const submitWithDelay = () => {
+            clearTimeout(timeout);
+
+            timeout = setTimeout(() => {
+                updateTable();
+            }, 180);
+        };
+
+        controls.forEach((control) => {
+            control.addEventListener('change', submitWithDelay);
+        });
+
+        if (clearButton) {
+            clearButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                clearTimeout(timeout);
+                resetFormControls();
+                updateTable(clearButton.getAttribute('href') || window.location.pathname);
+            });
+        }
+    })();
+</script>
+
+{% endblock %}

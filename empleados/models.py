@@ -46,6 +46,26 @@ class Unidad(models.Model):
         return f"{self.nombre} ({self.area.codigo})"
 
 
+class Cargo(models.Model):
+    """
+    Catálogo de cargos que pueden asignarse a usuarios del sistema.
+    """
+    area_usuario = models.ForeignKey('user.AreaUsuario', on_delete=models.SET_NULL, null=True, blank=True, related_name='cargos')
+    nombre = models.CharField(max_length=120, unique=True)
+    descripcion = models.CharField(max_length=255, blank=True)
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "Cargo"
+        verbose_name_plural = "Cargos"
+        ordering = ['nombre']
+
+    def __str__(self):
+        if self.area_usuario:
+            return f"{self.nombre} ({self.area_usuario.nombre})"
+        return self.nombre
+
+
 class Empleado(models.Model):
     """
     Entidad central que representa a un colaborador dentro del ecosistema corporativo.

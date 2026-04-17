@@ -1,0 +1,264 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Gestión de Licencias{% endblock %}
+
+{% block content %}
+
+<style>
+    .user-form-title {
+        color: var(--color-principal-dark);
+        font-weight: 800;
+    }
+
+    .user-form-title i {
+        color: var(--color-principal);
+    }
+
+    .permission-card {
+        background: #fffaf6;
+        border: 1px solid #f0dfd0;
+        border-radius: 12px;
+        padding: 1rem;
+    }
+
+    .roles-grid {
+        display: grid;
+        gap: 0.75rem;
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    }
+
+    .role-card {
+        align-items: flex-start;
+        background: #ffffff;
+        border: 1px solid #eee1d6;
+        border-radius: 14px;
+        cursor: pointer;
+        display: flex;
+        gap: 0.7rem;
+        padding: 0.9rem;
+        transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+    }
+
+    .role-card:hover {
+        border-color: var(--color-principal);
+        box-shadow: 0 0.45rem 1rem rgba(223, 110, 18, 0.12);
+        transform: translateY(-1px);
+    }
+
+    .role-card input:checked + .role-card-body .role-name {
+        color: var(--color-principal-dark);
+    }
+
+    .role-name {
+        font-weight: 800;
+        line-height: 1.1;
+    }
+
+    .role-description {
+        color: #6c757d;
+        font-size: 0.82rem;
+        margin-top: 0.25rem;
+    }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="user-form-title mb-0">
+        <i class="fa-solid fa-user-shield me-2"></i>{{ titulo }}
+    </h4>
+
+    <div class="d-flex gap-2">
+        <a href="{% url 'lista_cargos' %}" class="btn btn-outline-primary btn-sm">
+            <i class="fa-solid fa-id-badge me-1"></i>Gestionar Cargos
+        </a>
+        <a href="{% url 'lista_areas' %}" class="btn btn-outline-primary btn-sm">
+            <i class="fa-solid fa-layer-group me-1"></i>Gestionar Areas
+        </a>
+        <a href="{% url 'lista_roles' %}" class="btn btn-outline-primary btn-sm">
+            <i class="fa-solid fa-user-lock me-1"></i>Gestionar Roles
+        </a>
+        <a href="{% url 'lista_usuarios' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-arrow-left me-1"></i>Volver
+        </a>
+    </div>
+</div>
+
+<div class="card p-4 shadow-sm border-0">
+    <form method="post" id="usuarioForm" novalidate autocomplete="off">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label fw-bold">{{ form.username.label }}</label>
+                {{ form.username }}
+                {% if form.username.errors %}
+                    <div class="text-danger small mt-1">{{ form.username.errors|striptags }}</div>
+                {% endif %}
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label fw-bold">{{ form.first_name.label }}</label>
+                {{ form.first_name }}
+                {% if form.first_name.errors %}
+                    <div class="text-danger small mt-1">{{ form.first_name.errors|striptags }}</div>
+                {% endif %}
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label fw-bold">{{ form.last_name.label }}</label>
+                {{ form.last_name }}
+                {% if form.last_name.errors %}
+                    <div class="text-danger small mt-1">{{ form.last_name.errors|striptags }}</div>
+                {% endif %}
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label fw-bold">{{ form.email.label }}</label>
+                {{ form.email }}
+                {% if form.email.errors %}
+                    <div class="text-danger small mt-1">{{ form.email.errors|striptags }}</div>
+                {% endif %}
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label fw-bold">{{ form.area_usuario.label }}</label>
+                {{ form.area_usuario }}
+                <div class="form-text">Opcional. Esta area agrupa los cargos disponibles para usuarios del sistema.</div>
+                {% if form.area_usuario.errors %}
+                    <div class="text-danger small mt-1">{{ form.area_usuario.errors|striptags }}</div>
+                {% endif %}
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label fw-bold">{{ form.cargo.label }}</label>
+                {{ form.cargo }}
+                {% if form.cargo.errors %}
+                    <div class="text-danger small mt-1">{{ form.cargo.errors|striptags }}</div>
+                {% endif %}
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label fw-bold">{{ form.password.label }}</label>
+                {{ form.password }}
+                {% if modo == 'editar' %}
+                    <div class="form-text">Deja este campo vacío si no deseas cambiar la contraseña.</div>
+                {% endif %}
+                {% if form.password.errors %}
+                    <div class="text-danger small mt-1">{{ form.password.errors|striptags }}</div>
+                {% endif %}
+            </div>
+
+            <div class="col-md-6">
+                <div class="permission-card h-100">
+                    <h6 class="fw-bold text-secondary mb-3">
+                        <i class="fa-solid fa-key me-1"></i>Estado y privilegios de cuenta
+                    </h6>
+
+                    <div class="form-check form-switch mb-2">
+                        {{ form.is_active }}
+                        <label class="form-check-label">{{ form.is_active.label }}</label>
+                        {% if form.is_active.errors %}
+                            <div class="text-danger small mt-1">{{ form.is_active.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-check form-switch mb-2">
+                        {{ form.is_staff }}
+                        <label class="form-check-label">{{ form.is_staff.label }}</label>
+                        <div class="form-text">Permite entrar al panel administrativo de Django.</div>
+                        {% if form.is_staff.errors %}
+                            <div class="text-danger small mt-1">{{ form.is_staff.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-check form-switch">
+                        {{ form.is_superuser }}
+                        <label class="form-check-label">{{ form.is_superuser.label }}</label>
+                        <div class="form-text">Cuenta maestra: ignora roles y tiene todos los permisos.</div>
+                        {% if form.is_superuser.errors %}
+                            <div class="text-danger small mt-1">{{ form.is_superuser.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label fw-bold">{{ form.groups.label }}</label>
+                <div class="roles-grid">
+                    {% for role in form.groups.field.queryset %}
+                        <label class="role-card">
+                            <input type="checkbox" name="{{ form.groups.name }}" value="{{ role.id }}" class="form-check-input mt-1" {% if role.id|stringformat:"s" in form.groups.value %}checked{% endif %}>
+                            <span class="role-card-body">
+                                <span class="role-name">{{ role.name }}</span>
+                                <span class="role-description d-block">
+                                    {{ role.permissions.count }} permiso(s) configurado(s)
+                                </span>
+                            </span>
+                        </label>
+                    {% empty %}
+                        <div class="alert alert-warning mb-0">
+                            Aún no hay roles creados. Primero crea un rol en Gestión de Roles.
+                        </div>
+                    {% endfor %}
+                </div>
+                <div class="form-text">
+                    Selecciona uno o varios roles. Para administradores usa el rol Administrador; marca Superusuario solo para cuentas maestras.
+                </div>
+                {% if form.groups.errors %}
+                    <div class="text-danger small mt-1">{{ form.groups.errors|striptags }}</div>
+                {% endif %}
+            </div>
+
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+            <a href="{% url 'lista_usuarios' %}" class="btn btn-light border px-4">Cancelar</a>
+            <button type="submit" id="btnGuardarUsuario" class="btn btn-primary px-4" disabled>
+                <i class="fa-solid fa-floppy-disk me-1"></i>
+                {% if modo == 'crear' %}Crear y revisar{% else %}Guardar cambios{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    (() => {
+        const form = document.getElementById('usuarioForm');
+        const saveButton = document.getElementById('btnGuardarUsuario');
+
+        if (!form || !saveButton) return;
+
+        const controls = Array.from(form.querySelectorAll('input, select, textarea'))
+            .filter((control) => control.name !== 'csrfmiddlewaretoken');
+
+        const snapshot = () => controls.map((control) => {
+            if (control.type === 'checkbox' || control.type === 'radio') {
+                return `${control.name}:${control.checked}`;
+            }
+            return `${control.name}:${control.value}`;
+        }).join('|');
+
+        const initialState = snapshot();
+
+        const toggleSave = () => {
+            saveButton.disabled = snapshot() === initialState;
+        };
+
+        controls.forEach((control) => {
+            control.addEventListener('input', toggleSave);
+            control.addEventListener('change', toggleSave);
+        });
+
+        form.addEventListener('submit', () => {
+            saveButton.disabled = true;
+            saveButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>Guardando';
+        });
+    })();
+</script>
+
+{% endblock %}

@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Gestión de Licencias{% endblock %}
+
+{% block content %}
+
+<style>
+    .role-detail-title {
+        color: var(--color-principal-dark);
+        font-weight: 800;
+    }
+
+    .role-detail-title i {
+        color: var(--color-principal);
+    }
+
+    .summary-card {
+        background: #fffaf6;
+        border: 1px solid #f0dfd0;
+        border-radius: 14px;
+        padding: 1rem;
+    }
+
+    .module-card {
+        border: 1px solid #ead8c8;
+        border-radius: 14px;
+        overflow: hidden;
+    }
+
+    .module-card-header {
+        background: #fff7ef;
+        border-bottom: 1px solid #ead8c8;
+        padding: 0.9rem 1rem;
+    }
+
+    .permission-grid {
+        display: grid;
+        gap: 0.65rem;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        padding: 1rem;
+    }
+
+    .permission-pill {
+        align-items: center;
+        background: #ffffff;
+        border: 1px solid #eee1d6;
+        border-radius: 12px;
+        display: flex;
+        gap: 0.55rem;
+        padding: 0.65rem 0.75rem;
+    }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="role-detail-title mb-0">
+        <i class="fa-solid fa-eye me-2"></i>{{ titulo }}
+    </h4>
+
+    <div class="d-flex gap-2">
+        <a href="{% url 'editar_rol' rol.id %}" class="btn btn-outline-primary btn-sm">
+            <i class="fa-solid fa-pen me-1"></i>Editar
+        </a>
+        <a href="{% url 'lista_roles' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-arrow-left me-1"></i>Volver
+        </a>
+    </div>
+</div>
+
+<div class="summary-card mb-3">
+    <div class="row g-3 align-items-center">
+        <div class="col-md-4">
+            <div class="text-muted small fw-bold text-uppercase">ID</div>
+            <div class="fs-5 fw-bold">#{{ rol.id }}</div>
+        </div>
+        <div class="col-md-4">
+            <div class="text-muted small fw-bold text-uppercase">Rol</div>
+            <div class="fs-5 fw-bold">{{ rol.name }}</div>
+        </div>
+        <div class="col-md-4">
+            <div class="text-muted small fw-bold text-uppercase">Permisos asignados</div>
+            <div class="fs-5 fw-bold">{{ rol.permissions.count }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    {% for grupo in permission_groups %}
+        <div class="col-12">
+            <div class="module-card">
+                <div class="module-card-header">
+                    <strong>{{ grupo.titulo }}</strong>
+                    <div class="small text-muted">{{ grupo.descripcion }}</div>
+                </div>
+                <div class="permission-grid">
+                    {% for permiso in grupo.permisos %}
+                        {% if permiso.id|stringformat:"s" in grupo.seleccionados %}
+                            <div class="permission-pill">
+                                <i class="fa-solid fa-check text-success"></i>
+                                <span>
+                                    {% if permiso.codename|slice:":5" == "view_" %}
+                                        Ver {{ permiso.name|cut:"Can view " }}
+                                    {% elif permiso.codename|slice:":4" == "add_" %}
+                                        Crear {{ permiso.name|cut:"Can add " }}
+                                    {% elif permiso.codename|slice:":7" == "change_" %}
+                                        Editar {{ permiso.name|cut:"Can change " }}
+                                    {% elif permiso.codename|slice:":7" == "delete_" %}
+                                        Eliminar {{ permiso.name|cut:"Can delete " }}
+                                    {% else %}
+                                        {{ permiso.name }}
+                                    {% endif %}
+                                </span>
+                            </div>
+                        {% endif %}
+                    {% empty %}
+                        <span class="text-muted small">No hay permisos disponibles en este módulo.</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+{% endblock %}

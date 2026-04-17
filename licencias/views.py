@@ -14,6 +14,7 @@ from django.contrib import messages
 from django.core.cache import cache
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.db import transaction
 
 
@@ -25,6 +26,16 @@ from .forms import (
     TenantForm, EmpresaForm, ProveedorForm, TipoLicenciaForm, LicenciaForm
 )
 
+
+def exigir_permiso(request, permiso):
+    if not request.user.has_perm(permiso):
+        raise PermissionDenied
+
+
+def exigir_algun_permiso(request, permisos):
+    if not any(request.user.has_perm(permiso) for permiso in permisos):
+        raise PermissionDenied
+
 # ==========================================
 # MÓDULO DE EXPORTACIÓN Y REPORTES
 # ==========================================
@@ -35,6 +46,7 @@ def exportar_excel(request, tenant_id=None):
     Genera un reporte consolidado en formato Excel (.xlsx) de los activos de software.
     Implementa OpenPyXL para el formateo directo del buffer de memoria sin escritura en disco.
     """
+    exigir_permiso(request, 'licencias.view_licencia')
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Reporte Completo"
@@ -169,6 +181,7 @@ def dashboard(request, tenant_id=None):
     Calcula KPIs operativos (Asignaciones, Disponibilidad, Riesgo de Vencimiento)
     mediante iteración única para minimizar la carga transaccional en la base de datos.
     """
+    exigir_permiso(request, 'licencias.view_licencia')
     tenants = Tenant.objects.all()
     
     if tenant_id:
@@ -239,6 +252,7 @@ def asignar_licencia(request, licencia_id):
     Ejecuta la transacción de vinculación entre un activo de software y un colaborador.
     Implementa validaciones de control de duplicidad y concurrencia.
     """
+    exigir_permiso(request, 'licencias.add_asignacion')
     if request.method == 'POST':
         licencia = get_object_or_404(Licencia, pk=licencia_id)
         empleado_id = request.POST.get('empleado_id')
@@ -276,6 +290,7 @@ def liberar_licencia(request, licencia_id):
     Revoca el acceso a un activo de software, clausurando la asignación activa
     y generando el registro en el historial de auditoría.
     """
+    exigir_permiso(request, 'licencias.change_asignacion')
     licencia = get_object_or_404(Licencia, pk=licencia_id)
     asignaciones_activas = licencia.asignaciones.filter(activo=True)
     
@@ -302,6 +317,10 @@ def liberar_licencia(request, licencia_id):
 @login_required
 def lista_empleados(request):
     """Gestor principal del directorio de identidades y altas de personal."""
+    if request.method == 'POST':
+        exigir_permiso(request, 'empleados.add_empleado')
+    else:
+        exigir_permiso(request, 'empleados.view_empleado')
     empleados = Empleado.objects.all().select_related('empresa', 'area', 'division').order_by('nombre_completo')
     
     if request.method == 'POST':
@@ -326,6 +345,7 @@ def lista_empleados(request):
 @login_required
 def editar_empleado(request, empleado_id):
     """Actualización de metadata operativa de una identidad existente."""
+    exigir_permiso(request, 'empleados.change_empleado')
     empleado = get_object_or_404(Empleado, id=empleado_id)
     
     if request.method == 'POST':
@@ -353,6 +373,7 @@ def baja_empleado(request, empleado_id):
     Inhabilita operativamente a un colaborador y ejecuta la política de
     revocación automática de todos sus activos de software vinculados.
     """
+    exigir_permiso(request, 'empleados.change_empleado')
     empleado = get_object_or_404(Empleado, id=empleado_id)
     
     # 1. Inhabilitación de la identidad
@@ -383,6 +404,7 @@ def baja_empleado(request, empleado_id):
 @login_required
 def reactivar_empleado(request, empleado_id):
     """Restablece el estado operativo de una identidad previamente inhabilitada."""
+    exigir_permiso(request, 'empleados.change_empleado')
     empleado = get_object_or_404(Empleado, id=empleado_id)
     empleado.activo = True
     empleado.save()
@@ -402,6 +424,20 @@ def organizacion(request):
     Gestiona la visualización jerárquica y el alta de Divisiones, Áreas y Unidades.
     """
     # Optimización de consultas jerárquicas (Prevención de N+1 Queries)
+    if request.method == 'POST':
+        permisos_creacion = {
+            'division': 'empleados.add_gerenciadivision',
+            'area': 'empleados.add_gerenciaarea',
+            'unidad': 'empleados.add_unidad',
+        }
+        exigir_permiso(request, permisos_creacion.get(request.POST.get('tipo_formulario'), 'empleados.view_gerenciaarea'))
+    else:
+        exigir_algun_permiso(request, [
+            'empleados.view_gerenciadivision',
+            'empleados.view_gerenciaarea',
+            'empleados.view_unidad',
+        ])
+
     divisiones = GerenciaDivision.objects.all().select_related('empresa').order_by('empresa__nombre', 'nombre')
     areas = GerenciaArea.objects.all().select_related('empresa', 'division').order_by('empresa__nombre', 'nombre')
     unidades = Unidad.objects.all().select_related('area').order_by('area__nombre', 'nombre')
@@ -502,6 +538,22 @@ def configuracion(request):
     Panel de administración de catálogos paramétricos.
     Gestiona altas de Tenants, Empresas, Proveedores y SKUs de Licencias.
     """
+    if request.method == 'POST':
+        permisos_creacion = {
+            'tenant': 'licencias.add_tenant',
+            'empresa': 'licencias.add_empresa',
+            'proveedor': 'licencias.add_proveedor',
+            'tipo_licencia': 'licencias.add_tipolicencia',
+        }
+        exigir_permiso(request, permisos_creacion.get(request.POST.get('tipo_formulario'), 'licencias.view_empresa'))
+    else:
+        exigir_algun_permiso(request, [
+            'licencias.view_tenant',
+            'licencias.view_empresa',
+            'licencias.view_proveedor',
+            'licencias.view_tipolicencia',
+        ])
+
     tenants = Tenant.objects.all().order_by('nombre')
     empresas = Empresa.objects.all().select_related('tenant').order_by('tenant__nombre', 'nombre')
     proveedores = Proveedor.objects.all().order_by('nombre')
@@ -564,6 +616,7 @@ def configuracion(request):
 @login_required
 def editar_licencia(request, licencia_id):
     """Actualización de atributos físicos de un activo de software."""
+    exigir_permiso(request, 'licencias.change_licencia')
     licencia = get_object_or_404(Licencia, id=licencia_id)
     
     if request.method == 'POST':
@@ -587,6 +640,7 @@ def editar_licencia(request, licencia_id):
 
 @login_required
 def editar_division(request, pk):
+    exigir_permiso(request, 'empleados.change_gerenciadivision')
     division = get_object_or_404(GerenciaDivision, pk=pk)
     if request.method == 'POST':
         form = GerenciaDivisionForm(request.POST, instance=division)
@@ -601,6 +655,7 @@ def editar_division(request, pk):
 
 @login_required
 def editar_area(request, pk):
+    exigir_permiso(request, 'empleados.change_gerenciaarea')
     area = get_object_or_404(GerenciaArea, pk=pk)
     if request.method == 'POST':
         form = GerenciaAreaForm(request.POST, instance=area)
@@ -615,6 +670,7 @@ def editar_area(request, pk):
 
 @login_required
 def editar_unidad(request, pk):
+    exigir_permiso(request, 'empleados.change_unidad')
     unidad = get_object_or_404(Unidad, pk=pk)
     if request.method == 'POST':
         form = UnidadForm(request.POST, instance=unidad)
@@ -629,6 +685,7 @@ def editar_unidad(request, pk):
 
 @login_required
 def editar_tenant(request, pk):
+    exigir_permiso(request, 'licencias.change_tenant')
     tenant = get_object_or_404(Tenant, pk=pk)
     if request.method == 'POST':
         form = TenantForm(request.POST, instance=tenant)
@@ -646,6 +703,7 @@ def editar_tenant(request, pk):
 @login_required
 def editar_empresa(request, pk):
     """Modificación de metadatos de una razón social (Empresa)."""
+    exigir_permiso(request, 'licencias.change_empresa')
     empresa = get_object_or_404(Empresa, pk=pk)
     if request.method == 'POST':
         form = EmpresaForm(request.POST, instance=empresa)
@@ -661,6 +719,7 @@ def editar_empresa(request, pk):
 @login_required
 def editar_proveedor(request, pk):
     """Modificación de parámetros de un socio comercial."""
+    exigir_permiso(request, 'licencias.change_proveedor')
     proveedor = get_object_or_404(Proveedor, pk=pk)
     if request.method == 'POST':
         form = ProveedorForm(request.POST, instance=proveedor)
@@ -676,6 +735,7 @@ def editar_proveedor(request, pk):
 @login_required
 def editar_tipo_licencia(request, pk):
     """Edición del catálogo de SKUs de software."""
+    exigir_permiso(request, 'licencias.change_tipolicencia')
     tipo = get_object_or_404(TipoLicencia, pk=pk)
     if request.method == 'POST':
         form = TipoLicenciaForm(request.POST, instance=tipo)
@@ -694,42 +754,49 @@ def editar_tipo_licencia(request, pk):
 
 @login_required
 def eliminar_division(request, pk):
+    exigir_permiso(request, 'empleados.delete_gerenciadivision')
     get_object_or_404(GerenciaDivision, pk=pk).delete()
     messages.success(request, "Entidad divisional purgada del sistema.")
     return redirect('organizacion')
 
 @login_required
 def eliminar_area(request, pk):
+    exigir_permiso(request, 'empleados.delete_gerenciaarea')
     get_object_or_404(GerenciaArea, pk=pk).delete()
     messages.success(request, "Área operativa purgada del sistema.")
     return redirect('organizacion')
 
 @login_required
 def eliminar_unidad(request, pk):
+    exigir_permiso(request, 'empleados.delete_unidad')
     get_object_or_404(Unidad, pk=pk).delete()
     messages.success(request, "Unidad purgada del sistema.")
     return redirect('organizacion')
 
 @login_required
 def eliminar_tenant(request, pk):
+    exigir_permiso(request, 'licencias.delete_tenant')
     get_object_or_404(Tenant, pk=pk).delete()
     messages.success(request, "Grupo corporativo purgado del ecosistema.")
     return redirect('configuracion')
 
 @login_required
 def eliminar_empresa(request, pk):
+    exigir_permiso(request, 'licencias.delete_empresa')
     get_object_or_404(Empresa, pk=pk).delete()
     messages.success(request, "Razón social purgada del catálogo.")
     return redirect('configuracion')
 
 @login_required
 def eliminar_proveedor(request, pk):
+    exigir_permiso(request, 'licencias.delete_proveedor')
     get_object_or_404(Proveedor, pk=pk).delete()
     messages.success(request, "Proveedor retirado del catálogo.")
     return redirect('configuracion')
 
 @login_required
 def eliminar_tipo_licencia(request, pk):
+    exigir_permiso(request, 'licencias.delete_tipolicencia')
     get_object_or_404(TipoLicencia, pk=pk).delete()
     messages.success(request, "SKU de software retirado del catálogo global.")
     return redirect('configuracion')
@@ -738,6 +805,7 @@ def eliminar_tipo_licencia(request, pk):
 def eliminar_licencia(request, licencia_id):
     """Destrucción física del registro de activo de software y sus dependencias."""
     licencia = get_object_or_404(Licencia, id=licencia_id)
+    exigir_permiso(request, 'licencias.delete_licencia')
     nombre_licencia = licencia.tipo.nombre
     licencia.delete()
     
@@ -756,6 +824,7 @@ def crear_licencia(request):
     Implementa inserción masiva (Bulk Create) para optimizar transacciones I/O
     y minimizar la latencia en la base de datos durante cargas de alto volumen.
     """
+    exigir_permiso(request, 'licencias.add_licencia')
     if request.method == 'POST':
         form = LicenciaForm(request.POST)
         

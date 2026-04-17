@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+
+{% block title %}Cargos - Gestión de Licencias{% endblock %}
+
+{% block content %}
+
+<style>
+    .cargos-title {
+        color: var(--color-principal-dark);
+        font-size: 1.55rem;
+        font-weight: 800;
+    }
+
+    .cargos-title i {
+        color: var(--color-principal);
+    }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="cargos-title mb-0">
+        <i class="fa-solid fa-id-badge me-2"></i>{{ titulo }}
+    </h4>
+
+    <div class="d-flex gap-2">
+        <a href="{% url 'lista_usuarios' %}" class="btn btn-outline-secondary shadow-sm">
+            <i class="fa-solid fa-users me-2"></i>Usuarios
+        </a>
+        <a href="{% url 'lista_areas' %}" class="btn btn-outline-primary shadow-sm">
+            <i class="fa-solid fa-layer-group me-2"></i>Areas
+        </a>
+        <a href="{% url 'crear_cargo' %}" class="btn btn-primary shadow-sm">
+            <i class="fa-solid fa-plus me-2"></i>Nuevo Cargo
+        </a>
+    </div>
+</div>
+
+<div class="card p-3 shadow-sm border-0">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle text-center mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th class="text-start">Cargo</th>
+                    <th>Area</th>
+                    <th>Descripción</th>
+                    <th>Estado</th>
+                    <th class="text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cargo in cargos %}
+                <tr>
+                    <td class="text-start"><strong>{{ cargo.nombre }}</strong></td>
+                    <td>
+                        {% if cargo.area_usuario %}
+                            <span class="badge bg-primary">{{ cargo.area_usuario.nombre }}</span>
+                        {% else %}
+                            <span class="text-muted">Sin area</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ cargo.descripcion|default:"-" }}</td>
+                    <td>
+                        {% if cargo.activo %}
+                            <span class="badge bg-success">Activo</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Inactivo</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="d-flex justify-content-center gap-1">
+                            <a href="{% url 'editar_cargo' cargo.id %}" class="btn btn-sm btn-outline-primary" title="Editar cargo">
+                                <i class="fa-solid fa-pen"></i>
+                            </a>
+                            <button type="button" class="btn btn-sm btn-outline-danger" data-url="{% url 'eliminar_cargo' cargo.id %}" data-nombre="{{ cargo.nombre }}" onclick="confirmarEliminacionCargo(this)" title="Eliminar cargo">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center text-muted py-4">
+                        <i class="fa-solid fa-circle-info me-2"></i>No hay cargos registrados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    function confirmarEliminacionCargo(button) {
+        const url = button.getAttribute('data-url');
+        const nombre = button.getAttribute('data-nombre');
+
+        Swal.fire({
+            title: '¿Eliminar cargo?',
+            text: `Vas a eliminar el cargo ${nombre}.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+            preConfirm: () => {
+                window.location.href = url;
+                return new Promise(() => {});
+            }
+        });
+    }
+</script>
+
+{% endblock %}

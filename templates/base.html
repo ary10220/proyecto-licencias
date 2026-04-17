@@ -49,6 +49,14 @@
         
         /* Ajuste para el buscador desplegable */
        .select2-container { width: 100% !important; z-index: 9999; }
+
+       .badge.bg-success { background-color: #198754 !important; }
+        .badge.bg-danger { background-color: #dc3545 !important; }
+        .badge.bg-warning { background-color: #ffc107 !important; color: #000 !important; }
+        .badge.bg-info { background-color: #0dcaf0 !important; color: #000 !important; }
+        .badge.bg-primary { background-color: #0d6efd !important; }
+        .badge.bg-secondary { background-color: #6c757d !important; }
+        .badge.bg-dark { background-color: #212529 !important; }
     </style>
 </head>
 <body>
@@ -56,21 +64,48 @@
     <div class="sidebar">
         <h4 class="text-center mb-4"><i class="fa-brands fa-microsoft"></i> Licencias</h4>
         
+        {% if perms.licencias.view_licencia %}
         <a href="{% url 'dashboard_general' %}" class="{% if request.resolver_match.url_name == 'dashboard_general' or request.resolver_match.url_name == 'home' %}active{% endif %}">
             <i class="fa-solid fa-chart-pie me-2"></i> Dashboard
         </a>
         
+        {% endif %}
+        
+        {% if perms.empleados.view_empleado %}
         <a href="{% url 'lista_empleados' %}" class="{% if request.resolver_match.url_name == 'lista_empleados' %}active{% endif %}">
             <i class="fa-solid fa-users me-2"></i> Empleados
         </a>
 
+        {% endif %}
+
+        {% if perms.empleados.view_gerenciadivision or perms.empleados.view_gerenciaarea or perms.empleados.view_unidad %}
         <a href="{% url 'organizacion' %}" class="{% if request.resolver_match.url_name == 'organizacion' %}active{% endif %}">
             <i class="fa-solid fa-sitemap me-2"></i> Áreas y Divisiones
         </a>
 
+        {% endif %}
+
+        {% if perms.licencias.view_tenant or perms.licencias.view_empresa or perms.licencias.view_proveedor or perms.licencias.view_tipolicencia %}
         <a href="{% url 'configuracion' %}" class="{% if request.resolver_match.url_name == 'configuracion' %}active{% endif %}">
             <i class="fa-solid fa-gears me-2"></i> Configuración
         </a>
+
+        {% endif %}
+
+        {% if perms.bitacora.view_bitacora %}
+        <a href="{% url 'lista_bitacora' %}" 
+        class="{% if request.resolver_match.url_name == 'lista_bitacora' %}active{% endif %}">
+            <i class="fa-solid fa-clipboard-list me-2"></i> Bitácora
+        </a>
+
+        {% endif %}
+
+        {% if perms.auth.view_user or perms.auth.view_group or perms.empleados.view_cargo or perms.user.view_areausuario %}
+        <a href="{% url 'lista_usuarios' %}" 
+        class="{% if request.resolver_match.url_name == 'lista_usuarios' or request.resolver_match.url_name == 'crear_usuario' or request.resolver_match.url_name == 'editar_usuario' or request.resolver_match.url_name == 'lista_roles' or request.resolver_match.url_name == 'crear_rol' or request.resolver_match.url_name == 'detalle_rol' or request.resolver_match.url_name == 'editar_rol' or request.resolver_match.url_name == 'lista_areas' or request.resolver_match.url_name == 'crear_area' or request.resolver_match.url_name == 'editar_area' or request.resolver_match.url_name == 'lista_cargos' or request.resolver_match.url_name == 'crear_cargo' or request.resolver_match.url_name == 'editar_cargo' %}active{% endif %}">
+            <i class="fa-solid fa-users me-2"></i> Usuarios
+        </a>
+        {% endif %}
 
         <hr class="mx-3" style="border-color: rgba(255,255,255,0.3);">
         
@@ -84,6 +119,9 @@
         <div style="flex-grow: 1;"></div> 
 
         <div class="mt-auto border-top border-secondary pt-2">
+            <a href="{% url 'mi_perfil' %}" class="{% if request.resolver_match.url_name == 'mi_perfil' %}active{% endif %}">
+                <i class="fa-solid fa-user-circle me-2"></i> Mi Perfil
+            </a>
             <form action="{% url 'logout' %}" method="post" class="px-3 pb-3">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-outline-light w-100 btn-sm text-start">
