@@ -1,0 +1,367 @@
+{% extends 'base.html' %}
+
+{% block title %}Inicio - Gestion de Licencias{% endblock %}
+
+{% block content %}
+<style>
+    .home-hero {
+        background: linear-gradient(135deg, #f07d1b 0%, #d76510 56%, #a94409 100%);
+        border-radius: 8px;
+        box-shadow: 0 18px 40px rgba(169, 68, 9, 0.2);
+        color: #ffffff;
+        overflow: hidden;
+        padding: 1.45rem;
+        position: relative;
+    }
+
+    .home-hero::after {
+        background: rgba(255, 255, 255, 0.14);
+        content: "";
+        height: 230px;
+        position: absolute;
+        right: -64px;
+        top: -72px;
+        transform: rotate(18deg);
+        width: 150px;
+    }
+
+    .home-eyebrow {
+        color: rgba(255, 255, 255, 0.76);
+        font-size: 0.72rem;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    .home-title {
+        font-size: 1.8rem;
+        font-weight: 850;
+        margin: 0.15rem 0 0;
+    }
+
+    .home-copy {
+        color: rgba(255, 255, 255, 0.86);
+        font-size: 0.98rem;
+        margin: 0.55rem 0 0;
+        max-width: 760px;
+    }
+
+    .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.65rem;
+        margin-top: 1.15rem;
+        position: relative;
+        z-index: 1;
+    }
+
+    .hero-button {
+        align-items: center;
+        background: #ffffff;
+        border-radius: 8px;
+        color: #b14b0b;
+        display: inline-flex;
+        font-weight: 850;
+        gap: 0.55rem;
+        min-height: 42px;
+        padding: 0.6rem 0.85rem;
+        text-decoration: none;
+    }
+
+    .hero-button:hover {
+        color: #8d3905;
+    }
+
+    .hero-button.secondary {
+        background: rgba(255, 255, 255, 0.14);
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        color: #ffffff;
+    }
+
+    .metric-card,
+    .module-card,
+    .activity-card {
+        background: #ffffff;
+        border: 1px solid #eef0f4;
+        border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(31, 38, 50, 0.06);
+    }
+
+    .metric-card {
+        min-height: 124px;
+        padding: 1rem;
+    }
+
+    .metric-label {
+        color: #697382;
+        font-size: 0.72rem;
+        font-weight: 850;
+        text-transform: uppercase;
+    }
+
+    .metric-value {
+        color: #252b36;
+        font-size: 1.75rem;
+        font-weight: 850;
+        line-height: 1;
+        margin-top: 0.55rem;
+    }
+
+    .metric-note {
+        color: #697382;
+        font-size: 0.82rem;
+        margin-top: 0.35rem;
+    }
+
+    .metric-icon {
+        align-items: center;
+        background: #fff3e8;
+        border-radius: 8px;
+        color: #c05b0e;
+        display: inline-flex;
+        height: 38px;
+        justify-content: center;
+        width: 38px;
+    }
+
+    .section-title {
+        color: #252b36;
+        font-size: 1.05rem;
+        font-weight: 850;
+        margin: 0;
+    }
+
+    .module-card {
+        display: flex;
+        flex-direction: column;
+        gap: 0.55rem;
+        min-height: 170px;
+        padding: 1rem;
+        text-decoration: none;
+        transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .module-card:hover {
+        box-shadow: 0 14px 30px rgba(31, 38, 50, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .module-icon {
+        align-items: center;
+        background: #fff3e8;
+        border-radius: 8px;
+        color: #c05b0e;
+        display: inline-flex;
+        height: 42px;
+        justify-content: center;
+        width: 42px;
+    }
+
+    .module-title {
+        color: #252b36;
+        font-size: 0.98rem;
+        font-weight: 850;
+    }
+
+    .module-copy {
+        color: #697382;
+        font-size: 0.86rem;
+        line-height: 1.45;
+    }
+
+    .activity-card {
+        padding: 1rem;
+    }
+
+    .activity-row {
+        align-items: center;
+        border-top: 1px solid #eef0f4;
+        display: flex;
+        gap: 0.75rem;
+        padding: 0.75rem 0;
+    }
+
+    .activity-row:first-of-type {
+        border-top: 0;
+    }
+
+    .activity-dot {
+        background: #fff3e8;
+        border-radius: 8px;
+        color: #c05b0e;
+        flex: 0 0 36px;
+        height: 36px;
+        line-height: 36px;
+        text-align: center;
+    }
+</style>
+
+<section class="home-hero mb-4">
+    <div class="home-eyebrow">Centro de control</div>
+    <h1 class="home-title">Bienvenido, {{ request.user.first_name|default:request.user.username }}</h1>
+    <p class="home-copy">
+        Gestiona licencias, empleados, empresas y permisos desde una vista clara. Entra rapido a lo que necesitas y revisa las señales importantes antes de operar.
+    </p>
+    <div class="hero-actions">
+        {% if perms.licencias.view_licencia %}
+            <a href="{% url 'dashboard_general' %}" class="hero-button">
+                <i class="fa-solid fa-chart-pie"></i> Abrir dashboard
+            </a>
+        {% endif %}
+        {% if perms.empleados.view_empleado %}
+            <a href="{% url 'lista_empleados' %}" class="hero-button secondary">
+                <i class="fa-solid fa-users"></i> Ver empleados
+            </a>
+        {% endif %}
+        <a href="{% url 'mi_perfil' %}" class="hero-button secondary">
+            <i class="fa-solid fa-user-circle"></i> Mi perfil
+        </a>
+    </div>
+</section>
+
+<div class="row g-3 mb-4">
+    {% if puede_ver_licencias %}
+        <div class="col-xl-3 col-md-6">
+            <div class="metric-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="metric-label">Licencias</div>
+                        <div class="metric-value">{{ total_licencias }}</div>
+                        <div class="metric-note">Activos registrados</div>
+                    </div>
+                    <span class="metric-icon"><i class="fa-solid fa-server"></i></span>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="metric-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="metric-label">Asignadas</div>
+                        <div class="metric-value">{{ licencias_asignadas }}</div>
+                        <div class="metric-note">En uso actualmente</div>
+                    </div>
+                    <span class="metric-icon"><i class="fa-solid fa-user-check"></i></span>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="metric-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="metric-label">Disponibles</div>
+                        <div class="metric-value">{{ licencias_disponibles }}</div>
+                        <div class="metric-note">Listas para asignar</div>
+                    </div>
+                    <span class="metric-icon"><i class="fa-regular fa-circle-check"></i></span>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="metric-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="metric-label">Por vencer</div>
+                        <div class="metric-value">{{ licencias_por_vencer }}</div>
+                        <div class="metric-note">Proximos 30 dias</div>
+                    </div>
+                    <span class="metric-icon"><i class="fa-solid fa-triangle-exclamation"></i></span>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if puede_ver_empleados %}
+        <div class="col-xl-3 col-md-6">
+            <div class="metric-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="metric-label">Empleados</div>
+                        <div class="metric-value">{{ empleados_activos }}</div>
+                        <div class="metric-note">Identidades activas</div>
+                    </div>
+                    <span class="metric-icon"><i class="fa-solid fa-id-badge"></i></span>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if perms.licencias.view_empresa %}
+        <div class="col-xl-3 col-md-6">
+            <div class="metric-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="metric-label">Empresas</div>
+                        <div class="metric-value">{{ empresas_registradas }}</div>
+                        <div class="metric-note">Razones sociales</div>
+                    </div>
+                    <span class="metric-icon"><i class="fa-solid fa-building"></i></span>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="section-title">Accesos principales</h2>
+</div>
+
+<div class="row g-3 mb-4">
+    {% if perms.licencias.view_licencia %}
+        <div class="col-xl-3 col-md-6">
+            <a href="{% url 'dashboard_general' %}" class="module-card">
+                <span class="module-icon"><i class="fa-solid fa-chart-pie"></i></span>
+                <span class="module-title">Dashboard</span>
+                <span class="module-copy">Consulta KPIs, stock, vencimientos y el inventario completo de licencias.</span>
+            </a>
+        </div>
+    {% endif %}
+    {% if perms.empleados.view_empleado %}
+        <div class="col-xl-3 col-md-6">
+            <a href="{% url 'lista_empleados' %}" class="module-card">
+                <span class="module-icon"><i class="fa-solid fa-users"></i></span>
+                <span class="module-title">Empleados</span>
+                <span class="module-copy">Administra identidades, estados operativos y asignaciones vinculadas.</span>
+            </a>
+        </div>
+    {% endif %}
+    {% if perms.licencias.view_empresa or perms.licencias.view_tenant or perms.licencias.view_proveedor or perms.licencias.view_tipolicencia %}
+        <div class="col-xl-3 col-md-6">
+            <a href="{% url 'configuracion' %}" class="module-card">
+                <span class="module-icon"><i class="fa-solid fa-gears"></i></span>
+                <span class="module-title">Configuracion</span>
+                <span class="module-copy">Mantiene empresas, tenants, proveedores y catalogos base de la plataforma.</span>
+            </a>
+        </div>
+    {% endif %}
+    {% if perms.auth.view_user or perms.auth.view_group %}
+        <div class="col-xl-3 col-md-6">
+            <a href="{% if perms.auth.view_user %}{% url 'lista_usuarios' %}{% else %}{% url 'lista_roles' %}{% endif %}" class="module-card">
+                <span class="module-icon"><i class="fa-solid fa-user-gear"></i></span>
+                <span class="module-title">Usuarios y roles</span>
+                <span class="module-copy">Controla accesos, perfiles, permisos y responsabilidades del sistema.</span>
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+{% if puede_ver_licencias %}
+<div class="activity-card">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h2 class="section-title">Movimiento reciente</h2>
+        <a href="{% url 'dashboard_general' %}" class="btn btn-sm btn-outline-secondary">Ver dashboard</a>
+    </div>
+
+    {% for asignacion in ultimas_asignaciones %}
+        <div class="activity-row">
+            <span class="activity-dot"><i class="fa-solid fa-user-check"></i></span>
+            <div>
+                <div class="fw-bold">{{ asignacion.empleado.nombre_completo }}</div>
+                <div class="text-muted small">{{ asignacion.licencia.tipo.nombre }} asignada el {{ asignacion.fecha_asignacion|date:"d/m/Y" }}</div>
+            </div>
+        </div>
+    {% empty %}
+        <div class="text-muted py-3">Todavia no hay asignaciones activas para mostrar.</div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

@@ -34,15 +34,21 @@
     </h4>
 
     <div class="d-flex gap-2">
-        <a href="{% url 'lista_roles' %}" class="btn btn-outline-secondary shadow-sm">
-            <i class="fa-solid fa-user-lock me-2"></i>Roles
-        </a>
-        <a href="{% url 'lista_cargos' %}" class="btn btn-outline-secondary shadow-sm">
-            <i class="fa-solid fa-id-badge me-2"></i>Cargos
-        </a>
-        <a href="{% url 'crear_usuario' %}" class="btn btn-primary shadow-sm">
-            <i class="fa-solid fa-user-plus me-2"></i>Nuevo Usuario
-        </a>
+        {% if perms.auth.view_group %}
+            <a href="{% url 'lista_roles' %}" class="btn btn-outline-secondary shadow-sm">
+                <i class="fa-solid fa-user-lock me-2"></i>Roles
+            </a>
+        {% endif %}
+        {% if perms.empleados.view_cargo %}
+            <a href="{% url 'lista_cargos' %}" class="btn btn-outline-secondary shadow-sm">
+                <i class="fa-solid fa-id-badge me-2"></i>Cargos
+            </a>
+        {% endif %}
+        {% if perms.auth.add_user %}
+            <a href="{% url 'crear_usuario' %}" class="btn btn-primary shadow-sm">
+                <i class="fa-solid fa-user-plus me-2"></i>Nuevo Usuario
+            </a>
+        {% endif %}
     </div>
 </div>
 
@@ -102,16 +108,22 @@
                     </td>
                     <td>
                         <div class="d-flex justify-content-center gap-1">
-                            <a href="{% url 'editar_usuario' u.id %}" class="btn btn-sm btn-outline-primary" title="Editar usuario">
-                                <i class="fa-solid fa-pen"></i>
-                            </a>
-                            <a href="{% url 'toggle_usuario' u.id %}" class="btn btn-sm {% if u.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}" title="Activar o desactivar usuario">
-                                {% if u.is_active %}
-                                    <i class="fa-solid fa-user-slash"></i>
-                                {% else %}
-                                    <i class="fa-solid fa-user-check"></i>
+                            {% if perms.auth.change_user %}
+                                <a href="{% url 'editar_usuario' u.id %}" class="btn btn-sm btn-outline-primary" title="Editar usuario">
+                                    <i class="fa-solid fa-pen"></i>
+                                </a>
+                                {% if u.id != request.user.id %}
+                                    <button type="button" class="btn btn-sm {% if u.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}" data-url="{% url 'toggle_usuario' u.id %}" data-nombre="{{ u.username }}" data-activo="{% if u.is_active %}1{% else %}0{% endif %}" onclick="confirmarToggleUsuario(this)" title="Activar o desactivar usuario">
+                                        {% if u.is_active %}
+                                            <i class="fa-solid fa-user-slash"></i>
+                                        {% else %}
+                                            <i class="fa-solid fa-user-check"></i>
+                                        {% endif %}
+                                    </button>
                                 {% endif %}
-                            </a>
+                            {% else %}
+                                <span class="text-muted small">Sin permisos</span>
+                            {% endif %}
                         </div>
                     </td>
                 </tr>
@@ -126,5 +138,44 @@
         </table>
     </div>
 </div>
+
+<script>
+    function enviarPostSeguro(url) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = url;
+
+        const csrf = document.createElement('input');
+        csrf.type = 'hidden';
+        csrf.name = 'csrfmiddlewaretoken';
+        csrf.value = '{{ csrf_token }}';
+
+        form.appendChild(csrf);
+        document.body.appendChild(form);
+        form.submit();
+    }
+
+    function confirmarToggleUsuario(button) {
+        const url = button.getAttribute('data-url');
+        const nombre = button.getAttribute('data-nombre');
+        const activo = button.getAttribute('data-activo') === '1';
+        const accion = activo ? 'desactivar' : 'activar';
+
+        Swal.fire({
+            title: activo ? '¿Desactivar usuario?' : '¿Activar usuario?',
+            text: `Vas a ${accion} el usuario ${nombre}.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: activo ? '#dc3545' : '#198754',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: `Sí, ${accion}`,
+            cancelButtonText: 'Cancelar',
+            preConfirm: () => {
+                enviarPostSeguro(url);
+                return new Promise(() => {});
+            }
+        });
+    }
+</script>
 
 {% endblock %}

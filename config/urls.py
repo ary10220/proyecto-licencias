@@ -36,7 +36,8 @@ urlpatterns = [
     path('reset_password_complete/', auth_views.PasswordResetCompleteView.as_view(template_name="registration/password_reset_complete.html"), name="password_reset_complete"),
 
     # Dashboard y Vistas Principales
-    path('', views.dashboard, name='home'),
+    path('', views.inicio, name='home'),
+    path('inicio/', views.inicio, name='inicio'),
     path('dashboard/', views.dashboard, name='dashboard_general'),
     path('dashboard/<int:tenant_id>/', views.dashboard, name='dashboard_tenant'),
 

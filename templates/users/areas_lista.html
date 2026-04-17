@@ -41,12 +41,16 @@
     </h4>
 
     <div class="d-flex gap-2">
-        <a href="{% url 'lista_cargos' %}" class="btn btn-outline-primary shadow-sm">
-            <i class="fa-solid fa-id-badge me-2"></i>Cargos
-        </a>
-        <a href="{% url 'crear_area' %}" class="btn btn-primary shadow-sm">
-            <i class="fa-solid fa-plus me-2"></i>Nueva Area
-        </a>
+        {% if perms.empleados.view_cargo %}
+            <a href="{% url 'lista_cargos' %}" class="btn btn-outline-primary shadow-sm">
+                <i class="fa-solid fa-id-badge me-2"></i>Cargos
+            </a>
+        {% endif %}
+        {% if perms.user.add_areausuario %}
+            <a href="{% url 'crear_area' %}" class="btn btn-primary shadow-sm">
+                <i class="fa-solid fa-plus me-2"></i>Nueva Area
+            </a>
+        {% endif %}
     </div>
 </div>
 
@@ -76,12 +80,16 @@
                 </div>
 
                 <div class="d-flex justify-content-end gap-1 mt-4">
-                    <a href="{% url 'editar_area' area.id %}" class="btn btn-sm btn-outline-primary" title="Editar area">
-                        <i class="fa-solid fa-pen"></i>
-                    </a>
-                    <button type="button" class="btn btn-sm btn-outline-danger" data-url="{% url 'eliminar_area' area.id %}" data-nombre="{{ area.nombre }}" onclick="confirmarEliminacionArea(this)" title="Eliminar area">
-                        <i class="fa-solid fa-trash"></i>
-                    </button>
+                    {% if perms.user.change_areausuario %}
+                        <a href="{% url 'editar_area' area.id %}" class="btn btn-sm btn-outline-primary" title="Editar area">
+                            <i class="fa-solid fa-pen"></i>
+                        </a>
+                    {% endif %}
+                    {% if perms.user.delete_areausuario %}
+                        <button type="button" class="btn btn-sm btn-outline-danger" data-url="{% url 'eliminar_area' area.id %}" data-nombre="{{ area.nombre }}" onclick="confirmarEliminacionArea(this)" title="Eliminar area">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -97,6 +105,21 @@
 </div>
 
 <script>
+    function enviarPostSeguro(url) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = url;
+
+        const csrf = document.createElement('input');
+        csrf.type = 'hidden';
+        csrf.name = 'csrfmiddlewaretoken';
+        csrf.value = '{{ csrf_token }}';
+
+        form.appendChild(csrf);
+        document.body.appendChild(form);
+        form.submit();
+    }
+
     function confirmarEliminacionArea(button) {
         const url = button.getAttribute('data-url');
         const nombre = button.getAttribute('data-nombre');
@@ -111,7 +134,7 @@
             confirmButtonText: 'Si, eliminar',
             cancelButtonText: 'Cancelar',
             preConfirm: () => {
-                window.location.href = url;
+                enviarPostSeguro(url);
                 return new Promise(() => {});
             }
         });

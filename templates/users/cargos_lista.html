@@ -22,15 +22,21 @@
     </h4>
 
     <div class="d-flex gap-2">
-        <a href="{% url 'lista_usuarios' %}" class="btn btn-outline-secondary shadow-sm">
-            <i class="fa-solid fa-users me-2"></i>Usuarios
-        </a>
-        <a href="{% url 'lista_areas' %}" class="btn btn-outline-primary shadow-sm">
-            <i class="fa-solid fa-layer-group me-2"></i>Areas
-        </a>
-        <a href="{% url 'crear_cargo' %}" class="btn btn-primary shadow-sm">
-            <i class="fa-solid fa-plus me-2"></i>Nuevo Cargo
-        </a>
+        {% if perms.auth.view_user %}
+            <a href="{% url 'lista_usuarios' %}" class="btn btn-outline-secondary shadow-sm">
+                <i class="fa-solid fa-users me-2"></i>Usuarios
+            </a>
+        {% endif %}
+        {% if perms.user.view_areausuario %}
+            <a href="{% url 'lista_areas' %}" class="btn btn-outline-primary shadow-sm">
+                <i class="fa-solid fa-layer-group me-2"></i>Areas
+            </a>
+        {% endif %}
+        {% if perms.empleados.add_cargo %}
+            <a href="{% url 'crear_cargo' %}" class="btn btn-primary shadow-sm">
+                <i class="fa-solid fa-plus me-2"></i>Nuevo Cargo
+            </a>
+        {% endif %}
     </div>
 </div>
 
@@ -67,12 +73,16 @@
                     </td>
                     <td>
                         <div class="d-flex justify-content-center gap-1">
-                            <a href="{% url 'editar_cargo' cargo.id %}" class="btn btn-sm btn-outline-primary" title="Editar cargo">
-                                <i class="fa-solid fa-pen"></i>
-                            </a>
-                            <button type="button" class="btn btn-sm btn-outline-danger" data-url="{% url 'eliminar_cargo' cargo.id %}" data-nombre="{{ cargo.nombre }}" onclick="confirmarEliminacionCargo(this)" title="Eliminar cargo">
-                                <i class="fa-solid fa-trash"></i>
-                            </button>
+                            {% if perms.empleados.change_cargo %}
+                                <a href="{% url 'editar_cargo' cargo.id %}" class="btn btn-sm btn-outline-primary" title="Editar cargo">
+                                    <i class="fa-solid fa-pen"></i>
+                                </a>
+                            {% endif %}
+                            {% if perms.empleados.delete_cargo %}
+                                <button type="button" class="btn btn-sm btn-outline-danger" data-url="{% url 'eliminar_cargo' cargo.id %}" data-nombre="{{ cargo.nombre }}" onclick="confirmarEliminacionCargo(this)" title="Eliminar cargo">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            {% endif %}
                         </div>
                     </td>
                 </tr>
@@ -89,6 +99,21 @@
 </div>
 
 <script>
+    function enviarPostSeguro(url) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = url;
+
+        const csrf = document.createElement('input');
+        csrf.type = 'hidden';
+        csrf.name = 'csrfmiddlewaretoken';
+        csrf.value = '{{ csrf_token }}';
+
+        form.appendChild(csrf);
+        document.body.appendChild(form);
+        form.submit();
+    }
+
     function confirmarEliminacionCargo(button) {
         const url = button.getAttribute('data-url');
         const nombre = button.getAttribute('data-nombre');
@@ -103,7 +128,7 @@
             confirmButtonText: 'Sí, eliminar',
             cancelButtonText: 'Cancelar',
             preConfirm: () => {
-                window.location.href = url;
+                enviarPostSeguro(url);
                 return new Promise(() => {});
             }
         });

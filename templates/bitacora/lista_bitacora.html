@@ -5,27 +5,54 @@
 <style>
     .bitacora-title {
         color: var(--color-principal-dark);
-        font-size: 1.55rem;
+        font-size: 1.28rem;
         font-weight: 800;
         letter-spacing: 0.2px;
     }
 
     .bitacora-title i {
         color: var(--color-principal);
-        font-size: 1.8rem;
+        font-size: 1.35rem;
+    }
+
+    .main-content {
+        height: 100vh;
+        overflow: hidden;
+        padding: 18px 22px;
+    }
+
+    .audit-card {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 36px);
+        overflow: hidden;
+    }
+
+    .audit-card .card-header {
+        flex: 0 0 auto;
+        padding: 0.75rem 1rem;
+    }
+
+    .audit-card-body {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+        padding: 0.85rem;
     }
 
     .audit-action {
         align-items: center;
         border-radius: 999px;
         display: inline-flex;
-        font-size: 0.78rem;
+        font-size: 0.7rem;
         font-weight: 800;
         gap: 0.4rem;
         justify-content: center;
         letter-spacing: 0.35px;
-        min-width: 118px;
-        padding: 0.48rem 0.82rem;
+        min-width: 104px;
+        padding: 0.34rem 0.62rem;
     }
 
     .audit-action i {
@@ -48,8 +75,21 @@
     .filter-panel {
         background: linear-gradient(135deg, #ffffff 0%, #fff7f0 100%);
         border: 1px solid #f0dfd0;
-        border-radius: 14px;
-        padding: 1rem;
+        border-radius: 8px;
+        flex: 0 0 auto;
+        padding: 0.7rem;
+    }
+
+    .filter-panel .form-label {
+        margin-bottom: 0.18rem;
+    }
+
+    .filter-panel .form-control,
+    .filter-panel .form-select,
+    .filter-panel .btn {
+        min-height: 36px;
+        padding-bottom: 0.35rem;
+        padding-top: 0.35rem;
     }
 
     .filter-status {
@@ -67,9 +107,37 @@
     }
 
     .bitacora-table-shell {
-        min-height: 220px;
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
         transition: opacity 220ms ease, transform 220ms ease, filter 220ms ease;
         will-change: opacity, transform, filter;
+    }
+
+    .audit-table-scroll {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: auto;
+    }
+
+    .audit-table {
+        font-size: 0.82rem;
+        margin-bottom: 0;
+    }
+
+    .audit-table th,
+    .audit-table td {
+        padding: 0.48rem 0.55rem;
+        vertical-align: middle;
+    }
+
+    .audit-table .description-cell {
+        max-width: 420px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .bitacora-table-shell.is-loading {
@@ -80,6 +148,71 @@
 
     .bitacora-table-shell.is-entering {
         animation: auditTableEnter 260ms ease-out both;
+    }
+
+    .audit-pagination {
+        align-items: center;
+        display: flex;
+        flex: 0 0 auto;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        justify-content: center;
+        margin-top: 0.65rem;
+    }
+
+    .audit-pagination a,
+    .audit-pagination span {
+        align-items: center;
+        border: 1px solid #ead8c8;
+        border-radius: 8px;
+        color: var(--color-principal-dark);
+        display: inline-flex;
+        font-weight: 800;
+        justify-content: center;
+        min-height: 32px;
+        min-width: 32px;
+        padding: 0.34rem 0.58rem;
+        text-decoration: none;
+    }
+
+    .audit-pagination a:hover {
+        background: #fff3e8;
+    }
+
+    .audit-pagination .is-current {
+        background: var(--color-principal);
+        border-color: var(--color-principal);
+        color: #ffffff;
+    }
+
+    .audit-page-summary {
+        color: #697382;
+        font-size: 0.82rem;
+        font-weight: 700;
+        margin-top: 0.35rem;
+        text-align: center;
+    }
+
+    @media (max-width: 992px) {
+        .main-content {
+            height: auto;
+            overflow: visible;
+            padding: 16px;
+        }
+
+        .audit-card {
+            height: auto;
+            min-height: calc(100vh - 32px);
+        }
+
+        .audit-card-body,
+        .bitacora-table-shell {
+            overflow: visible;
+        }
+
+        .audit-table-scroll {
+            max-height: 58vh;
+        }
     }
 
     @keyframes auditTableEnter {
@@ -97,23 +230,23 @@
     }
 </style>
 
-<div class="card">
+<div class="card audit-card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0 bitacora-title">
             <i class="fa-solid fa-clipboard-list me-2"></i> Bitácora del Sistema
         </h5>
     </div>
 
-    <div class="card-body">
+    <div class="card-body audit-card-body">
 
-        <div class="table-responsive">
-            <form method="get" id="filtroForm" class="mb-4 filter-panel">
+        <div class="table-responsive audit-workspace">
+            <form method="get" id="filtroForm" class="mb-2 filter-panel">
 
                 <div class="row g-2 align-items-end">
 
                     <!-- 👤 USUARIO -->
                     {% if request.user.is_superuser %}
-                    <div class="col-md-3">
+                    <div class="col-lg-3 col-md-6">
                         <label class="form-label small text-muted">Usuario</label>
                         <select name="usuario" class="form-select">
                             <option value="">Todos</option>
@@ -129,7 +262,7 @@
                     {% endif %}
 
                     <!-- ⚡ ACCIÓN -->
-                    <div class="col-md-3">
+                    <div class="col-lg-3 col-md-6">
                         <label class="form-label small text-muted">Acción</label>
                         <select name="accion" class="form-select">
                             <option value="">Todas</option>
@@ -148,7 +281,7 @@
                     </div>
 
                     <!-- 📅 FECHAS -->
-                    <div class="col-md-4">
+                    <div class="col-lg-4 col-md-8">
                         <label class="form-label small text-muted">Rango de fechas</label>
                         <div class="d-flex gap-2">
                             <input type="date" name="fecha_inicio" class="form-control"
@@ -159,7 +292,7 @@
                     </div>
 
                     <!-- 🔘 BOTONES -->
-                    <div class="col-md-2 d-flex">
+                    <div class="col-lg-2 col-md-4 d-flex">
                         <a href="{% url 'lista_bitacora' %}" id="limpiarFiltros" class="btn btn-outline-secondary w-100">
                             <i class="fa fa-eraser me-1"></i> Limpiar
                         </a>
@@ -173,7 +306,8 @@
 
             </form>
             <div id="bitacoraTableContainer" class="bitacora-table-shell">
-            <table class="table table-hover table-bordered align-middle text-center">
+            <div class="audit-table-scroll">
+            <table class="table table-sm table-hover table-bordered align-middle text-center audit-table">
                 
                 <thead class="table-light">
                     <tr>
@@ -190,7 +324,7 @@
                 <tbody>
                     {% for registro in registros %}
                     <tr>
-                        <td><strong>{{ forloop.counter }}</strong></td>
+                        <td><strong>{{ page_obj.start_index|add:forloop.counter0 }}</strong></td>
 
                         <td>
                             <i class="fa-solid fa-user me-1 text-secondary"></i>
@@ -236,7 +370,7 @@
                         </td>
 
                         <!-- Descripción alineada a la izquierda -->
-                        <td class="text-center">
+                        <td class="text-center description-cell" title="{{ registro.descripcion }}">
                             {{ registro.descripcion }}
                         </td>
 
@@ -262,6 +396,39 @@
                 </tbody>
 
             </table>
+            </div>
+            {% if page_obj.paginator.num_pages > 1 %}
+                <nav class="audit-pagination" aria-label="Paginacion de bitacora">
+                    {% if page_obj.has_previous %}
+                        <a href="?{% if query_string %}{{ query_string }}&{% endif %}page=1" title="Primera pagina">
+                            <i class="fa-solid fa-angles-left"></i>
+                        </a>
+                        <a href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.previous_page_number }}" title="Pagina anterior">
+                            <i class="fa-solid fa-angle-left"></i>
+                        </a>
+                    {% endif %}
+
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if num == page_obj.number %}
+                            <span class="is-current">{{ num }}</span>
+                        {% elif num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+                            <a href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ num }}">{{ num }}</a>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                        <a href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.next_page_number }}" title="Pagina siguiente">
+                            <i class="fa-solid fa-angle-right"></i>
+                        </a>
+                        <a href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.paginator.num_pages }}" title="Ultima pagina">
+                            <i class="fa-solid fa-angles-right"></i>
+                        </a>
+                    {% endif %}
+                </nav>
+                <div class="audit-page-summary">
+                    Mostrando {{ page_obj.start_index }}-{{ page_obj.end_index }} de {{ page_obj.paginator.count }} registros
+                </div>
+            {% endif %}
             </div>
         </div>
 

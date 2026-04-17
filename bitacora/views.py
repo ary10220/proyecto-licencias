@@ -2,6 +2,7 @@ from django.shortcuts import render
 from .models import Bitacora
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.core.paginator import Paginator
 
 @login_required
 def lista_bitacora(request):
@@ -32,12 +33,19 @@ def lista_bitacora(request):
 
     registros = registros.order_by('-fecha')
 
+    paginator = Paginator(registros, 10)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
     usuarios = Bitacora.objects.values_list('usuario__username', flat=True).distinct()
+    query_params = request.GET.copy()
+    query_params.pop('page', None)
 
     context = {
-        'registros': registros,
+        'registros': page_obj,
+        'page_obj': page_obj,
         'usuarios': usuarios,
-        'filtros': request.GET
+        'filtros': request.GET,
+        'query_string': query_params.urlencode(),
     }
 
     return render(request, 'bitacora/lista_bitacora.html', context)
