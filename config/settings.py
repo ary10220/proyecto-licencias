@@ -126,16 +126,11 @@ AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend', # login normal de Django
 ]
 
-# --- CONFIGURACIÓN DE SEGURIDAD (DJANGO-AXES) ---
-AXES_FAILURE_LIMIT = 3          # Bloquear al tercer intento fallido
-AXES_LOCK_OUT_AT_FAILURE = True # Activar el bloqueo automáticamente
-AXES_COOLOFF_TIME = 0.001388          # Tiempo de castigo en horas (1 hora)
-AXES_RESET_ON_SUCCESS = True    # Si entra bien al intento 2, el contador vuelve a cero
-# Debajo de AXES_RESET_ON_SUCCESS = True añade:
-AXES_LOCK_OUT_BY_COMBINATION_USER_AND_IP = True
-AXES_ONLY_USER_FAILURES = True  # Bloquea al usuario específicamente
-# 1. Redirigir al usuario a nuestra vista de token cuando se bloquee
-AXES_LOCKOUT_URL = '/desbloqueo-seguro/'
+# --- CONFIGURACIÓN ESTRICTA DE EJECUCIÓN (DJANGO-AXES) ---
+AXES_FAILURE_LIMIT = 3          # Exactamente 3 intentos
+AXES_LOCK_OUT_AT_FAILURE = True # Bloqueo inmediato en el 3er fallo
+AXES_ONLY_USER_FAILURES = True  # Bloquea solo a ese usuario, no a toda la red
+AXES_LOCKOUT_URL = '/desbloqueo-seguro/' # Redirige a tu pantalla naranja
 
 # 2. Configuración del Cache (necesario para guardar el token temporalmente)
 CACHES = {
