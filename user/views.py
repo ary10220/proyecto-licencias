@@ -2,8 +2,10 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.models import User, Group, Permission
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
-from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.decorators import login_required
 from django.db.models import Q
+from django.views.decorators.http import require_POST
+from functools import wraps
 from bitacora.services import log_event
 from empleados.models import Cargo
 from .forms import AreaUsuarioForm, CargoForm, FotoPerfilForm, GroupForm, ROLE_PERMISSION_GROUPS, UserForm
@@ -19,6 +21,18 @@ def tiene_permiso(permiso):
     def verificar(user):
         return user.is_authenticated and (user.is_superuser or user.has_perm(permiso))
     return verificar
+
+
+def permiso_requerido(permiso, fallback='mi_perfil'):
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapper(request, *args, **kwargs):
+            if request.user.is_superuser or request.user.has_perm(permiso):
+                return view_func(request, *args, **kwargs)
+            messages.error(request, "No tienes permiso para acceder a esa accion.")
+            return redirect(fallback)
+        return wrapper
+    return decorator
 
 
 def obtener_permisos_por_modulo(form):
@@ -122,7 +136,7 @@ def mi_perfil(request):
 
 # LISTAR USUARIOS
 @login_required
-@user_passes_test(tiene_permiso('auth.view_user'))
+@permiso_requerido('auth.view_user')
 def lista_usuarios(request):
     usuarios = User.objects.select_related('perfil', 'perfil__area_usuario', 'perfil__cargo').prefetch_related('groups').order_by('username')
     context = {
@@ -135,7 +149,7 @@ def lista_usuarios(request):
 
 # CREAR USUARIO
 @login_required
-@user_passes_test(tiene_permiso('auth.add_user'))
+@permiso_requerido('auth.add_user')
 def crear_usuario(request):
     if request.method == 'POST':
         form = UserForm(request.POST, current_user=request.user)
@@ -158,7 +172,7 @@ def crear_usuario(request):
 
 # EDITAR USUARIO
 @login_required
-@user_passes_test(tiene_permiso('auth.change_user'))
+@permiso_requerido('auth.change_user')
 def editar_usuario(request, user_id):
     usuario = get_object_or_404(User, id=user_id)
 
@@ -187,7 +201,8 @@ def editar_usuario(request, user_id):
 
 # ACTIVAR / DESACTIVAR
 @login_required
-@user_passes_test(tiene_permiso('auth.change_user'))
+@permiso_requerido('auth.change_user', fallback='lista_usuarios')
+@require_POST
 def toggle_usuario(request, user_id):
     usuario = get_object_or_404(User, id=user_id)
     if usuario.pk == request.user.pk:
@@ -204,7 +219,7 @@ def toggle_usuario(request, user_id):
 
 # LISTAR ROLES
 @login_required
-@user_passes_test(tiene_permiso('auth.view_group'))
+@permiso_requerido('auth.view_group')
 def lista_roles(request):
     roles = Group.objects.prefetch_related('permissions').order_by('name')
     context = {
@@ -217,7 +232,7 @@ def lista_roles(request):
 
 # CREAR ROL
 @login_required
-@user_passes_test(tiene_permiso('auth.add_group'))
+@permiso_requerido('auth.add_group')
 def crear_rol(request):
     if request.method == 'POST':
         form = GroupForm(request.POST)
@@ -241,7 +256,7 @@ def crear_rol(request):
 
 # EDITAR ROL
 @login_required
-@user_passes_test(tiene_permiso('auth.change_group'))
+@permiso_requerido('auth.change_group')
 def editar_rol(request, group_id):
     rol = get_object_or_404(Group, id=group_id)
 
@@ -268,7 +283,7 @@ def editar_rol(request, group_id):
 
 # VER DETALLE DE ROL
 @login_required
-@user_passes_test(tiene_permiso('auth.view_group'))
+@permiso_requerido('auth.view_group')
 def detalle_rol(request, group_id):
     rol = get_object_or_404(Group.objects.prefetch_related('permissions__content_type'), id=group_id)
     permisos_por_modulo = obtener_permisos_por_modulo(GroupForm(instance=rol))
@@ -284,7 +299,8 @@ def detalle_rol(request, group_id):
 
 # ELIMINAR ROL
 @login_required
-@user_passes_test(tiene_permiso('auth.delete_group'))
+@permiso_requerido('auth.delete_group', fallback='lista_roles')
+@require_POST
 def eliminar_rol(request, group_id):
     rol = get_object_or_404(Group, id=group_id)
     nombre = rol.name
@@ -297,7 +313,7 @@ def eliminar_rol(request, group_id):
 
 # LISTAR AREAS DE USUARIO
 @login_required
-@user_passes_test(tiene_permiso('user.view_areausuario'))
+@permiso_requerido('user.view_areausuario')
 def lista_areas(request):
     areas = AreaUsuario.objects.prefetch_related('cargos').order_by('nombre')
     context = {
@@ -309,7 +325,7 @@ def lista_areas(request):
 
 
 @login_required
-@user_passes_test(tiene_permiso('user.add_areausuario'))
+@permiso_requerido('user.add_areausuario')
 def crear_area(request):
     if request.method == 'POST':
         form = AreaUsuarioForm(request.POST)
@@ -333,7 +349,7 @@ def crear_area(request):
 
 
 @login_required
-@user_passes_test(tiene_permiso('user.change_areausuario'))
+@permiso_requerido('user.change_areausuario')
 def editar_area(request, area_id):
     area = get_object_or_404(AreaUsuario, id=area_id)
 
@@ -361,7 +377,8 @@ def editar_area(request, area_id):
 
 
 @login_required
-@user_passes_test(tiene_permiso('user.delete_areausuario'))
+@permiso_requerido('user.delete_areausuario', fallback='lista_areas')
+@require_POST
 def eliminar_area(request, area_id):
     area = get_object_or_404(AreaUsuario, id=area_id)
     nombre = area.nombre
@@ -375,7 +392,7 @@ def eliminar_area(request, area_id):
 
 # LISTAR CARGOS
 @login_required
-@user_passes_test(tiene_permiso('empleados.view_cargo'))
+@permiso_requerido('empleados.view_cargo')
 def lista_cargos(request):
     cargos = Cargo.objects.select_related('area_usuario').order_by('area_usuario__nombre', 'nombre')
     context = {
@@ -388,7 +405,7 @@ def lista_cargos(request):
 
 # CREAR CARGO
 @login_required
-@user_passes_test(tiene_permiso('empleados.add_cargo'))
+@permiso_requerido('empleados.add_cargo')
 def crear_cargo(request):
     if request.method == 'POST':
         form = CargoForm(request.POST)
@@ -411,7 +428,7 @@ def crear_cargo(request):
 
 # EDITAR CARGO
 @login_required
-@user_passes_test(tiene_permiso('empleados.change_cargo'))
+@permiso_requerido('empleados.change_cargo')
 def editar_cargo(request, cargo_id):
     cargo = get_object_or_404(Cargo, id=cargo_id)
 
@@ -437,7 +454,8 @@ def editar_cargo(request, cargo_id):
 
 # ELIMINAR CARGO
 @login_required
-@user_passes_test(tiene_permiso('empleados.delete_cargo'))
+@permiso_requerido('empleados.delete_cargo', fallback='lista_cargos')
+@require_POST
 def eliminar_cargo(request, cargo_id):
     cargo = get_object_or_404(Cargo, id=cargo_id)
     nombre = cargo.nombre

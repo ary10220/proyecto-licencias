@@ -175,6 +175,37 @@ def validar_token_bloqueo(request):
 # ==========================================
 
 @login_required
+def inicio(request):
+    """Pantalla de bienvenida y resumen rapido de la plataforma."""
+    hoy = timezone.now().date()
+    limite_30_dias = hoy + timedelta(days=30)
+
+    puede_ver_licencias = request.user.has_perm('licencias.view_licencia')
+    puede_ver_empleados = request.user.has_perm('empleados.view_empleado')
+    puede_ver_bitacora = request.user.has_perm('bitacora.view_bitacora')
+
+    licencias = Licencia.objects.all()
+    asignaciones_activas = Asignacion.objects.filter(activo=True)
+
+    context = {
+        'tenants': Tenant.objects.all(),
+        'titulo': 'Inicio',
+        'hoy': hoy,
+        'puede_ver_licencias': puede_ver_licencias,
+        'puede_ver_empleados': puede_ver_empleados,
+        'puede_ver_bitacora': puede_ver_bitacora,
+        'total_licencias': licencias.count() if puede_ver_licencias else 0,
+        'licencias_asignadas': asignaciones_activas.count() if puede_ver_licencias else 0,
+        'licencias_disponibles': licencias.exclude(asignaciones__activo=True).filter(fecha_vencimiento__gte=hoy).count() if puede_ver_licencias else 0,
+        'licencias_por_vencer': licencias.filter(fecha_vencimiento__gte=hoy, fecha_vencimiento__lte=limite_30_dias).count() if puede_ver_licencias else 0,
+        'empleados_activos': Empleado.objects.filter(activo=True).count() if puede_ver_empleados else 0,
+        'empresas_registradas': Empresa.objects.count() if request.user.has_perm('licencias.view_empresa') else 0,
+        'ultimas_asignaciones': asignaciones_activas.select_related('licencia__tipo', 'empleado').order_by('-fecha_asignacion')[:4] if puede_ver_licencias else [],
+    }
+    return render(request, 'inicio.html', context)
+
+
+@login_required
 def dashboard(request, tenant_id=None):
     """
     Controlador principal de la vista gerencial. 

@@ -129,7 +129,8 @@ AUTHENTICATION_BACKENDS = [
 # --- CONFIGURACIÓN ESTRICTA DE EJECUCIÓN (DJANGO-AXES) ---
 AXES_FAILURE_LIMIT = 3          # Exactamente 3 intentos
 AXES_LOCK_OUT_AT_FAILURE = True # Bloqueo inmediato en el 3er fallo
-AXES_ONLY_USER_FAILURES = True  # Bloquea solo a ese usuario, no a toda la red
+# AXES_ONLY_USER_FAILURES = True  # Bloquea solo a ese usuario, no a toda la red
+AXES_LOCKOUT_PARAMETERS = ['username', 'ip_address']
 AXES_LOCKOUT_URL = '/desbloqueo-seguro/' # Redirige a tu pantalla naranja
 
 # 2. Configuración del Cache (necesario para guardar el token temporalmente)
@@ -152,7 +153,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 LOGIN_URL = 'login'
 
 # 2. A dónde ir después de loguearse exitosamente
-LOGIN_REDIRECT_URL = 'dashboard_general'
+LOGIN_REDIRECT_URL = 'home'
 
 # 3. A dónde ir después de cerrar sesión
 LOGOUT_REDIRECT_URL = 'login'

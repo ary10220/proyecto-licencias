@@ -33,15 +33,21 @@
     </h4>
 
     <div class="d-flex gap-2">
-        <a href="{% url 'lista_usuarios' %}" class="btn btn-outline-secondary shadow-sm">
-            <i class="fa-solid fa-users me-2"></i>Usuarios
-        </a>
-        <a href="{% url 'lista_cargos' %}" class="btn btn-outline-secondary shadow-sm">
-            <i class="fa-solid fa-id-badge me-2"></i>Cargos
-        </a>
-        <a href="{% url 'crear_rol' %}" class="btn btn-primary shadow-sm">
-            <i class="fa-solid fa-plus me-2"></i>Nuevo Rol
-        </a>
+        {% if perms.auth.view_user %}
+            <a href="{% url 'lista_usuarios' %}" class="btn btn-outline-secondary shadow-sm">
+                <i class="fa-solid fa-users me-2"></i>Usuarios
+            </a>
+        {% endif %}
+        {% if perms.empleados.view_cargo %}
+            <a href="{% url 'lista_cargos' %}" class="btn btn-outline-secondary shadow-sm">
+                <i class="fa-solid fa-id-badge me-2"></i>Cargos
+            </a>
+        {% endif %}
+        {% if perms.auth.add_group %}
+            <a href="{% url 'crear_rol' %}" class="btn btn-primary shadow-sm">
+                <i class="fa-solid fa-plus me-2"></i>Nuevo Rol
+            </a>
+        {% endif %}
     </div>
 </div>
 
@@ -70,12 +76,21 @@
                     </td>
                     <td>
                         <div class="d-flex justify-content-center gap-1">
-                            <a href="{% url 'detalle_rol' rol.id %}" class="btn btn-sm btn-outline-primary" title="Ver detalle del rol">
-                                <i class="fa-solid fa-eye"></i>
-                            </a>
-                            <button type="button" class="btn btn-sm btn-outline-danger" data-url="{% url 'eliminar_rol' rol.id %}" data-nombre="{{ rol.name }}" onclick="confirmarEliminacionRol(this)" title="Eliminar rol">
-                                <i class="fa-solid fa-trash"></i>
-                            </button>
+                            {% if perms.auth.view_group %}
+                                <a href="{% url 'detalle_rol' rol.id %}" class="btn btn-sm btn-outline-primary" title="Ver detalle del rol">
+                                    <i class="fa-solid fa-eye"></i>
+                                </a>
+                            {% endif %}
+                            {% if perms.auth.change_group %}
+                                <a href="{% url 'editar_rol' rol.id %}" class="btn btn-sm btn-outline-secondary" title="Editar rol">
+                                    <i class="fa-solid fa-pen"></i>
+                                </a>
+                            {% endif %}
+                            {% if perms.auth.delete_group %}
+                                <button type="button" class="btn btn-sm btn-outline-danger" data-url="{% url 'eliminar_rol' rol.id %}" data-nombre="{{ rol.name }}" onclick="confirmarEliminacionRol(this)" title="Eliminar rol">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            {% endif %}
                         </div>
                     </td>
                 </tr>
@@ -92,6 +107,21 @@
 </div>
 
 <script>
+    function enviarPostSeguro(url) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = url;
+
+        const csrf = document.createElement('input');
+        csrf.type = 'hidden';
+        csrf.name = 'csrfmiddlewaretoken';
+        csrf.value = '{{ csrf_token }}';
+
+        form.appendChild(csrf);
+        document.body.appendChild(form);
+        form.submit();
+    }
+
     function confirmarEliminacionRol(button) {
         const url = button.getAttribute('data-url');
         const nombre = button.getAttribute('data-nombre');
@@ -106,7 +136,7 @@
             confirmButtonText: 'Sí, eliminar',
             cancelButtonText: 'Cancelar',
             preConfirm: () => {
-                window.location.href = url;
+                enviarPostSeguro(url);
                 return new Promise(() => {});
             }
         });
