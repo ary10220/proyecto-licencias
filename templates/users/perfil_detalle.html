@@ -11,7 +11,7 @@
         border-radius: 8px;
         box-shadow: 0 18px 40px rgba(169, 68, 9, 0.18);
         color: #ffffff;
-        overflow: hidden;
+        overflow: visible;
         padding: 1.25rem;
         position: relative;
     }
@@ -25,6 +25,13 @@
         top: -62px;
         transform: rotate(18deg);
         width: 128px;
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .profile-hero > .row {
+        position: relative;
+        z-index: 1;
     }
 
     .profile-avatar {
@@ -46,6 +53,7 @@
     .avatar-wrap {
         display: inline-block;
         position: relative;
+        z-index: 5;
     }
 
     .photo-menu {
@@ -56,6 +64,7 @@
         min-width: 210px;
         overflow: hidden;
         padding: 0.4rem;
+        z-index: 1080;
     }
 
     .photo-menu .dropdown-item {
@@ -76,6 +85,11 @@
     .photo-menu .dropdown-item.text-danger:hover {
         background: #fff1f2;
         color: #dc3545 !important;
+    }
+
+    .photo-menu .dropdown-divider {
+        border-color: #f0dfd0;
+        margin: 0.35rem 0.2rem;
     }
 
     .photo-edit-btn {
