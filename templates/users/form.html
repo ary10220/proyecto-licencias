@@ -19,6 +19,8 @@
         border: 1px solid #f0dfd0;
         border-radius: 12px;
         padding: 1rem;
+        display: flex;
+        flex-direction: column;
     }
 
     .roles-grid {
@@ -59,6 +61,18 @@
         font-size: 0.82rem;
         margin-top: 0.25rem;
     }
+
+    .btn-outline-brand {
+        border-color: var(--color-principal);
+        color: var(--color-principal-dark);
+        font-weight: 800;
+    }
+
+    .btn-outline-brand:hover {
+        background: var(--color-principal);
+        border-color: var(--color-principal);
+        color: #ffffff;
+    }
 </style>
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -93,6 +107,10 @@
         {% endif %}
 
         <div class="row g-3">
+            <div class="col-12">
+                <div class="text-muted small fw-bold text-uppercase">Datos del usuario</div>
+                <hr class="mt-2 mb-0">
+            </div>
             <div class="col-md-6">
                 <label class="form-label fw-bold">{{ form.username.label }}</label>
                 {{ form.username }}
@@ -142,7 +160,7 @@
                 {% endif %}
             </div>
 
-            <div class="col-md-6">
+            <div class="col-md-6 d-none">
                 <label class="form-label fw-bold">{{ form.password.label }}</label>
                 {{ form.password }}
                 {% if modo == 'editar' %}
@@ -184,6 +202,23 @@
                             <div class="text-danger small mt-1">{{ form.is_superuser.errors|striptags }}</div>
                         {% endif %}
                     </div>
+
+                    {% if modo == 'editar' %}
+                        <div class="security-slot mt-3 pt-3 border-top">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <div class="text-muted small fw-bold text-uppercase">Seguridad</div>
+                                <button
+                                    type="button"
+                                    class="btn btn-outline-brand btn-sm"
+                                    id="btnResetPassword"
+                                    data-reset-url="{% url 'reset_password_usuario' form.instance.id %}"
+                                >
+                                    <i class="fa-solid fa-key me-1"></i>Restablecer contrasena
+                                </button>
+                            </div>
+                            <div class="form-text mt-2">Envia un correo con enlace para que el usuario defina una nueva contrasena.</div>
+                        </div>
+                    {% endif %}
                 </div>
             </div>
 
@@ -218,6 +253,14 @@
 
         <div class="d-flex justify-content-end gap-2 mt-4">
             <a href="{% url 'lista_usuarios' %}" class="btn btn-light border px-4">Cancelar</a>
+            {% comment %}
+                <form method="post" action="{% url 'reset_password_usuario' form.instance.id %}" class="d-none" id="resetPasswordFormBottom">
+                    {% csrf_token %}
+                    <button type="button" class="btn btn-outline-primary px-4" id="btnResetPasswordBottom">
+                        <i class="fa-solid fa-key me-1"></i>Restablecer contraseña
+                    </button>
+                </form>
+            {% endcomment %}
             <button type="submit" id="btnGuardarUsuario" class="btn btn-primary px-4" disabled>
                 <i class="fa-solid fa-floppy-disk me-1"></i>
                 {% if modo == 'crear' %}Crear y revisar{% else %}Guardar cambios{% endif %}
@@ -257,6 +300,96 @@
         form.addEventListener('submit', () => {
             saveButton.disabled = true;
             saveButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>Guardando';
+        });
+    })();
+
+    (() => {
+        const button = document.getElementById('btnResetPassword');
+        if (!button) return;
+
+        const url = button.getAttribute('data-reset-url');
+        const csrfInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+        if (!url || !csrfInput) return;
+        let inFlight = false;
+
+        button.addEventListener('click', () => {
+            const showConfirm = (cb) => {
+                if (typeof Swal === 'undefined') {
+                    if (confirm('Se enviara un correo con un enlace de recuperacion al usuario. Continuar?')) cb();
+                    return;
+                }
+                Swal.fire({
+                title: 'Restablecer contraseña?',
+                text: 'Se enviara un correo con un enlace de recuperacion al usuario.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#df6e12',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Si, enviar',
+                cancelButtonText: 'Cancelar',
+                }).then((result) => {
+                    if (result.isConfirmed) cb();
+                });
+            };
+
+            if (inFlight) return;
+            showConfirm(() => {
+                if (inFlight) return;
+                inFlight = true;
+                button.disabled = true;
+                button.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>Enviando';
+
+                const body = new FormData();
+                body.append('csrfmiddlewaretoken', csrfInput.value);
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': csrfInput.value,
+                    },
+                    body,
+                    credentials: 'same-origin',
+                })
+                .then(async (res) => {
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok || !data.ok) {
+                        throw new Error(data.message || 'No se pudo enviar el enlace.');
+                    }
+                    return data;
+                })
+                .then((data) => {
+                    if (typeof Swal === 'undefined') {
+                        alert(`Se envio el link de recuperacion a ${data.email}.`);
+                        return;
+                    }
+                    Swal.fire({
+                        title: 'Enlace enviado',
+                        text: `Se envio el link de recuperacion a ${data.email}.`,
+                        icon: 'success',
+                        confirmButtonColor: '#df6e12',
+                        confirmButtonText: 'Confirmar',
+                    });
+                })
+                .catch((err) => {
+                    if (typeof Swal === 'undefined') {
+                        alert(err.message || 'No se pudo enviar el enlace.');
+                        return;
+                    }
+                    Swal.fire({
+                        title: 'No se pudo enviar',
+                        text: err.message || 'Intenta nuevamente.',
+                        icon: 'error',
+                        confirmButtonColor: '#df6e12',
+                        confirmButtonText: 'Entendido',
+                    });
+                })
+                .finally(() => {
+                    inFlight = false;
+                    button.disabled = false;
+                    button.innerHTML = '<i class="fa-solid fa-key me-1"></i>Restablecer contrasena';
+                });
+            });
         });
     })();
 </script>

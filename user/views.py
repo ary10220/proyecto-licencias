@@ -2,9 +2,19 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.models import User, Group, Permission
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth.views import PasswordChangeView
 from django.contrib.auth.decorators import login_required
+from django.urls import reverse, reverse_lazy
 from django.db.models import Q
 from django.views.decorators.http import require_POST
+from django.http import JsonResponse, HttpResponse
+from django.template.loader import render_to_string
+from django.utils import timezone
+from django.core.cache import cache
+from django.core.mail import send_mail
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
 from functools import wraps
 from bitacora.services import log_event
 from empleados.models import Cargo
@@ -197,6 +207,61 @@ def editar_usuario(request, user_id):
         'modo': 'editar'
     }
     return render(request, 'users/form.html', context)
+
+
+@login_required
+@permiso_requerido('auth.change_user', fallback='lista_usuarios')
+@require_POST
+def reset_password_usuario(request, user_id):
+    usuario = get_object_or_404(User, id=user_id)
+    email = (usuario.email or '').strip()
+
+    if not email:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'ok': False, 'message': 'El usuario no tiene correo registrado.'}, status=400)
+        messages.error(request, f"El usuario {usuario.username} no tiene correo registrado.")
+        return redirect('editar_usuario', user_id=usuario.id)
+
+    # Rate-limit per user to avoid duplicated emails (double click / retries).
+    lock_key = f"pwreset_lock:user:{usuario.pk}"
+    if not cache.add(lock_key, "1", timeout=20):
+        message = "Ya se envio un enlace recientemente. Espera unos segundos e intenta nuevamente."
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'ok': False, 'message': message}, status=429)
+        messages.warning(request, message)
+        return redirect('editar_usuario', user_id=usuario.id)
+
+    uid = urlsafe_base64_encode(force_bytes(usuario.pk))
+    token = default_token_generator.make_token(usuario)
+    protocol = 'https' if request.is_secure() else 'http'
+    domain = request.get_host()
+    reset_path = reverse('password_reset_confirm', kwargs={'uidb64': uid, 'token': token})
+
+    context = {
+        'user': usuario,
+        'protocol': protocol,
+        'domain': domain,
+        'uid': uid,
+        'token': token,
+    }
+
+    subject = render_to_string('registration/password_reset_subject.txt', context).strip().replace('\n', '')
+    body = render_to_string('registration/password_reset_email.html', context)
+
+    try:
+        send_mail(subject, body, None, [email], fail_silently=False)
+    except Exception:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'ok': False, 'message': 'No se pudo enviar el correo de restablecimiento.'}, status=500)
+        messages.error(request, "No se pudo enviar el correo de restablecimiento.")
+        return redirect('editar_usuario', user_id=usuario.id)
+
+    registrar_bitacora(request, "EDITAR", "Usuarios", f"Envio enlace de restablecimiento a {usuario.username} ({email}) {reset_path}")
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'ok': True, 'email': email, 'username': usuario.username})
+    messages.success(request, f"Se envio un correo de restablecimiento a {email}.")
+
+    return redirect('editar_usuario', user_id=usuario.id)
 
 
 # ACTIVAR / DESACTIVAR
@@ -463,3 +528,36 @@ def eliminar_cargo(request, cargo_id):
     registrar_bitacora(request, "ELIMINAR", "Cargos", f"Eliminó el cargo {nombre}")
     messages.success(request, f"Cargo {nombre} eliminado correctamente.")
     return redirect('lista_cargos')
+
+
+class ForcedPasswordChangeView(PasswordChangeView):
+    template_name = "registration/password_change_form.html"
+    success_url = reverse_lazy("home")
+
+    def _is_ajax(self):
+        return self.request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+    def get(self, request, *args, **kwargs):
+        if self._is_ajax():
+            form = self.get_form()
+            html = render_to_string('registration/_password_change_form_inner.html', {'form': form}, request=request)
+            return HttpResponse(html)
+        return super().get(request, *args, **kwargs)
+
+    def form_invalid(self, form):
+        if self._is_ajax():
+            html = render_to_string('registration/_password_change_form_inner.html', {'form': form}, request=self.request)
+            return HttpResponse(html, status=400)
+        return super().form_invalid(form)
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        perfil, _ = PerfilUsuario.objects.get_or_create(user=self.request.user)
+        if perfil.must_change_password:
+            perfil.must_change_password = False
+            perfil.save(update_fields=['must_change_password'])
+            registrar_bitacora(self.request, "EDITAR", "Autenticacion", f"{self.request.user.username} cambio su contrasena inicial")
+        if self._is_ajax():
+            return JsonResponse({'ok': True})
+        messages.success(self.request, "Contrasena actualizada correctamente.")
+        return response

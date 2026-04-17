@@ -342,8 +342,7 @@ class UserForm(forms.ModelForm):
             if not cleaned_data.get('is_superuser'):
                 self.add_error('is_superuser', 'No puedes quitarte el rol de superusuario desde tu propia cuenta.')
 
-        if not self.instance.pk and not cleaned_data.get('password'):
-            self.add_error('password', 'La contraseña es obligatoria al crear un usuario.')
+        # Password is generated on create (default = username). Admin can reset later via email.
 
         area_usuario = cleaned_data.get('area_usuario')
         cargo = cleaned_data.get('cargo')
@@ -355,9 +354,14 @@ class UserForm(forms.ModelForm):
     def save(self, commit=True):
         user = super().save(commit=False)
 
-        if self.cleaned_data['password']:
-            user.set_password(self.cleaned_data['password'])
+        creating = user.pk is None
+        raw_password = (self.cleaned_data.get('password') or '').strip()
+
+        if raw_password:
+            user.set_password(raw_password)
             self.password_changed = True
+        elif creating:
+            user.set_password(user.username)
 
         if commit:
             user.save()
@@ -366,6 +370,8 @@ class UserForm(forms.ModelForm):
             perfil.area_usuario = self.cleaned_data.get('area_usuario')
             perfil.area = ''
             perfil.cargo = self.cleaned_data.get('cargo')
+            if creating and not raw_password:
+                perfil.must_change_password = True
             perfil.save()
 
         return user

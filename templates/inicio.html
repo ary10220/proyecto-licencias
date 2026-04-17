@@ -123,6 +123,13 @@
         width: 38px;
     }
 
+    .icon-variant-blue { background: #e8f1ff; color: #0d6efd; }
+    .icon-variant-green { background: #e8f7ef; color: #198754; }
+    .icon-variant-teal { background: #e6fbff; color: #0aa2c0; }
+    .icon-variant-slate { background: #eef2f7; color: #3b4a5a; }
+    .icon-variant-purple { background: #f2edff; color: #6f42c1; }
+    .icon-variant-red { background: #fdecee; color: #dc3545; }
+
     .section-title {
         color: #252b36;
         font-size: 1.05rem;
@@ -228,7 +235,7 @@
                         <div class="metric-value">{{ total_licencias }}</div>
                         <div class="metric-note">Activos registrados</div>
                     </div>
-                    <span class="metric-icon"><i class="fa-solid fa-server"></i></span>
+                    <span class="metric-icon icon-variant-slate"><i class="fa-solid fa-server"></i></span>
                 </div>
             </div>
         </div>
@@ -240,7 +247,7 @@
                         <div class="metric-value">{{ licencias_asignadas }}</div>
                         <div class="metric-note">En uso actualmente</div>
                     </div>
-                    <span class="metric-icon"><i class="fa-solid fa-user-check"></i></span>
+                    <span class="metric-icon icon-variant-green"><i class="fa-solid fa-user-check"></i></span>
                 </div>
             </div>
         </div>
@@ -252,7 +259,7 @@
                         <div class="metric-value">{{ licencias_disponibles }}</div>
                         <div class="metric-note">Listas para asignar</div>
                     </div>
-                    <span class="metric-icon"><i class="fa-regular fa-circle-check"></i></span>
+                    <span class="metric-icon icon-variant-teal"><i class="fa-regular fa-circle-check"></i></span>
                 </div>
             </div>
         </div>
@@ -264,7 +271,7 @@
                         <div class="metric-value">{{ licencias_por_vencer }}</div>
                         <div class="metric-note">Proximos 30 dias</div>
                     </div>
-                    <span class="metric-icon"><i class="fa-solid fa-triangle-exclamation"></i></span>
+                    <span class="metric-icon icon-variant-red"><i class="fa-solid fa-triangle-exclamation"></i></span>
                 </div>
             </div>
         </div>
@@ -279,7 +286,7 @@
                         <div class="metric-value">{{ empleados_activos }}</div>
                         <div class="metric-note">Identidades activas</div>
                     </div>
-                    <span class="metric-icon"><i class="fa-solid fa-id-badge"></i></span>
+                    <span class="metric-icon icon-variant-purple"><i class="fa-solid fa-id-badge"></i></span>
                 </div>
             </div>
         </div>
@@ -294,7 +301,7 @@
                         <div class="metric-value">{{ empresas_registradas }}</div>
                         <div class="metric-note">Razones sociales</div>
                     </div>
-                    <span class="metric-icon"><i class="fa-solid fa-building"></i></span>
+                    <span class="metric-icon icon-variant-blue"><i class="fa-solid fa-building"></i></span>
                 </div>
             </div>
         </div>
@@ -309,7 +316,7 @@
     {% if perms.licencias.view_licencia %}
         <div class="col-xl-3 col-md-6">
             <a href="{% url 'dashboard_general' %}" class="module-card">
-                <span class="module-icon"><i class="fa-solid fa-chart-pie"></i></span>
+                <span class="module-icon icon-variant-blue"><i class="fa-solid fa-chart-pie"></i></span>
                 <span class="module-title">Dashboard</span>
                 <span class="module-copy">Consulta KPIs, stock, vencimientos y el inventario completo de licencias.</span>
             </a>
@@ -318,7 +325,7 @@
     {% if perms.empleados.view_empleado %}
         <div class="col-xl-3 col-md-6">
             <a href="{% url 'lista_empleados' %}" class="module-card">
-                <span class="module-icon"><i class="fa-solid fa-users"></i></span>
+                <span class="module-icon icon-variant-green"><i class="fa-solid fa-users"></i></span>
                 <span class="module-title">Empleados</span>
                 <span class="module-copy">Administra identidades, estados operativos y asignaciones vinculadas.</span>
             </a>
@@ -327,7 +334,7 @@
     {% if perms.licencias.view_empresa or perms.licencias.view_tenant or perms.licencias.view_proveedor or perms.licencias.view_tipolicencia %}
         <div class="col-xl-3 col-md-6">
             <a href="{% url 'configuracion' %}" class="module-card">
-                <span class="module-icon"><i class="fa-solid fa-gears"></i></span>
+                <span class="module-icon icon-variant-slate"><i class="fa-solid fa-gears"></i></span>
                 <span class="module-title">Configuracion</span>
                 <span class="module-copy">Mantiene empresas, tenants, proveedores y catalogos base de la plataforma.</span>
             </a>
@@ -336,7 +343,7 @@
     {% if perms.auth.view_user or perms.auth.view_group %}
         <div class="col-xl-3 col-md-6">
             <a href="{% if perms.auth.view_user %}{% url 'lista_usuarios' %}{% else %}{% url 'lista_roles' %}{% endif %}" class="module-card">
-                <span class="module-icon"><i class="fa-solid fa-user-gear"></i></span>
+                <span class="module-icon icon-variant-purple"><i class="fa-solid fa-user-gear"></i></span>
                 <span class="module-title">Usuarios y roles</span>
                 <span class="module-copy">Controla accesos, perfiles, permisos y responsabilidades del sistema.</span>
             </a>
@@ -353,7 +360,7 @@
 
     {% for asignacion in ultimas_asignaciones %}
         <div class="activity-row">
-            <span class="activity-dot"><i class="fa-solid fa-user-check"></i></span>
+            <span class="activity-dot icon-variant-teal"><i class="fa-solid fa-user-check"></i></span>
             <div>
                 <div class="fw-bold">{{ asignacion.empleado.nombre_completo }}</div>
                 <div class="text-muted small">{{ asignacion.licencia.tipo.nombre }} asignada el {{ asignacion.fecha_asignacion|date:"d/m/Y" }}</div>

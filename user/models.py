@@ -33,6 +33,7 @@ class PerfilUsuario(models.Model):
     area_usuario = models.ForeignKey(AreaUsuario, on_delete=models.SET_NULL, null=True, blank=True, related_name='perfiles')
     cargo = models.ForeignKey(Cargo, on_delete=models.SET_NULL, null=True, blank=True)
     foto = models.FileField(upload_to='perfiles/', blank=True, null=True)
+    must_change_password = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = "Perfil de usuario"
