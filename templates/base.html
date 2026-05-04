@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Gestion de Licencias{% endblock %}</title>
-
+ 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
-
+ 
     <style>
         :root {
             --color-principal: #df6e12;
@@ -21,13 +21,13 @@
             --text-muted: #697382;
             --line-soft: #e5e8ee;
         }
-
+ 
         body {
             background-color: #f4f6f9;
             color: var(--text-main);
             font-size: 0.9rem;
         }
-
+ 
         .sidebar {
             background: linear-gradient(180deg, #f07d1b 0%, #d76510 45%, #a94409 100%);
             border-right: 1px solid rgba(255, 255, 255, 0.2);
@@ -43,7 +43,7 @@
             width: var(--sidebar-width);
             z-index: 1000;
         }
-
+ 
         .sidebar-brand {
             align-items: center;
             border-bottom: 1px solid rgba(255, 255, 255, 0.22);
@@ -56,12 +56,12 @@
             padding: 6px 8px 18px;
             text-decoration: none;
         }
-
+ 
         .sidebar-brand:hover {
             background: rgba(255, 255, 255, 0.1);
             color: #ffffff;
         }
-
+ 
         .brand-icon {
             align-items: center;
             background: rgba(255, 255, 255, 0.18);
@@ -74,7 +74,7 @@
             justify-content: center;
             width: 42px;
         }
-
+ 
         .brand-title {
             color: #ffffff;
             display: block;
@@ -82,7 +82,7 @@
             font-weight: 800;
             line-height: 1.1;
         }
-
+ 
         .brand-subtitle {
             color: rgba(255, 255, 255, 0.72);
             display: block;
@@ -91,9 +91,9 @@
             margin-top: 3px;
             text-transform: uppercase;
         }
-
+ 
         .sidebar-section { margin-top: 12px; }
-
+ 
         .sidebar-section-title {
             color: rgba(255, 255, 255, 0.68);
             display: block;
@@ -103,13 +103,13 @@
             padding: 0 10px 7px;
             text-transform: uppercase;
         }
-
+ 
         .sidebar-nav {
             display: flex;
             flex-direction: column;
             gap: 4px;
         }
-
+ 
         .sidebar a {
             align-items: center;
             border-radius: 8px;
@@ -123,42 +123,35 @@
             text-decoration: none;
             transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
         }
-
+ 
         .sidebar a i {
             color: rgba(255, 255, 255, 0.76);
             flex: 0 0 18px;
             text-align: center;
             transition: color 0.18s ease;
         }
-
+ 
         .sidebar a:hover {
             background-color: rgba(255, 255, 255, 0.14);
             color: #ffffff;
         }
-
+ 
         .sidebar a:hover i { color: #ffffff; }
-
+ 
         .sidebar a.active {
             background: #ffffff;
             box-shadow: 0 10px 18px rgba(92, 36, 4, 0.18);
             color: var(--color-principal-dark);
             font-weight: 800;
         }
-
+ 
         .sidebar a.active i { color: var(--color-principal-dark); }
-
-        .tenant-list {
-            overflow-y: auto;
-            padding-right: 2px;
-        }
-
-        .tenant-link { font-size: 0.82rem !important; }
-
+ 
         .sidebar-spacer {
             flex: 1 1 auto;
             min-height: 16px;
         }
-
+ 
         .sidebar-footer {
             border-top: 1px solid rgba(255, 255, 255, 0.22);
             display: flex;
@@ -166,9 +159,9 @@
             gap: 6px;
             padding-top: 12px;
         }
-
+ 
         .logout-form { margin: 0; }
-
+ 
         .logout-button {
             align-items: center;
             background: rgba(255, 255, 255, 0.1);
@@ -184,18 +177,18 @@
             text-align: left;
             width: 100%;
         }
-
+ 
         .logout-button:hover {
             background: #ffffff;
             border-color: #ffffff;
             color: var(--color-principal-dark);
         }
-
+ 
         .main-content {
             margin-left: var(--sidebar-width);
             padding: 30px;
         }
-
+ 
         .card { border: none; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
         .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 0.75em; font-weight: 600; }
         .bg-disponible { background-color: #d1e7dd; color: #0f5132; }
@@ -223,44 +216,38 @@
                 <span class="brand-subtitle">Control TI</span>
             </div>
         </a>
-
+ 
         <div class="sidebar-section">
             <span class="sidebar-section-title">Principal</span>
             <nav class="sidebar-nav">
                 <a href="{% url 'home' %}" class="{% if request.resolver_match.url_name == 'home' or request.resolver_match.url_name == 'inicio' %}active{% endif %}">
                     <i class="fa-solid fa-house"></i> <span>Inicio</span>
                 </a>
-
+ 
                 {% if perms.licencias.view_licencia %}
-                <a href="{% url 'dashboard_general' %}" class="{% if request.resolver_match.url_name == 'dashboard_general' %}active{% endif %}">
+                <a href="{% url 'dashboard_general' %}" class="{% if request.resolver_match.url_name == 'dashboard_general' or request.resolver_match.url_name == 'dashboard_tenant' %}active{% endif %}">
                     <i class="fa-solid fa-chart-pie"></i> <span>Dashboard</span>
                 </a>
                 {% endif %}
-
+ 
                 {% if perms.empleados.view_empleado %}
                 <a href="{% url 'lista_empleados' %}" class="{% if request.resolver_match.url_name == 'lista_empleados' %}active{% endif %}">
                     <i class="fa-solid fa-users"></i> <span>Empleados</span>
                 </a>
                 {% endif %}
-
-                {% if perms.empleados.view_gerenciadivision or perms.empleados.view_gerenciaarea or perms.empleados.view_unidad %}
-                <a href="{% url 'organizacion' %}" class="{% if request.resolver_match.url_name == 'organizacion' %}active{% endif %}">
-                    <i class="fa-solid fa-sitemap"></i> <span>Areas y Divisiones</span>
-                </a>
-                {% endif %}
-
-                {% if perms.licencias.view_tenant or perms.licencias.view_empresa or perms.licencias.view_proveedor or perms.licencias.view_tipolicencia %}
+ 
+                {% if perms.licencias.view_tenant or perms.licencias.view_empresa or perms.licencias.view_proveedor or perms.licencias.view_tipolicencia or perms.empleados.view_gerenciadivision %}
                 <a href="{% url 'configuracion' %}" class="{% if request.resolver_match.url_name == 'configuracion' %}active{% endif %}">
-                    <i class="fa-solid fa-gears"></i> <span>Configuracion</span>
+                    <i class="fa-solid fa-gears"></i> <span>Parametrización Global</span>
                 </a>
                 {% endif %}
-
+ 
                 {% if perms.bitacora.view_bitacora %}
                 <a href="{% url 'lista_bitacora' %}" class="{% if request.resolver_match.url_name == 'lista_bitacora' %}active{% endif %}">
                     <i class="fa-solid fa-clipboard-list"></i> <span>Bitacora</span>
                 </a>
                 {% endif %}
-
+ 
                 {% if perms.auth.view_user or perms.auth.view_group or perms.empleados.view_cargo or perms.user.view_areausuario %}
                 <a href="{% if perms.auth.view_user %}{% url 'lista_usuarios' %}{% elif perms.auth.view_group %}{% url 'lista_roles' %}{% elif perms.empleados.view_cargo %}{% url 'lista_cargos' %}{% else %}{% url 'lista_areas' %}{% endif %}" class="{% if request.resolver_match.url_name == 'lista_usuarios' or request.resolver_match.url_name == 'crear_usuario' or request.resolver_match.url_name == 'editar_usuario' or request.resolver_match.url_name == 'lista_roles' or request.resolver_match.url_name == 'crear_rol' or request.resolver_match.url_name == 'detalle_rol' or request.resolver_match.url_name == 'editar_rol' or request.resolver_match.url_name == 'lista_areas' or request.resolver_match.url_name == 'crear_area' or request.resolver_match.url_name == 'editar_area' or request.resolver_match.url_name == 'lista_cargos' or request.resolver_match.url_name == 'crear_cargo' or request.resolver_match.url_name == 'editar_cargo' %}active{% endif %}">
                     <i class="fa-solid fa-user-gear"></i> <span>Usuarios</span>
@@ -268,22 +255,9 @@
                 {% endif %}
             </nav>
         </div>
-
-        {% if tenants %}
-        <div class="sidebar-section tenant-list">
-            <span class="sidebar-section-title">Tenants</span>
-            <nav class="sidebar-nav">
-                {% for tenant in tenants %}
-                <a href="{% url 'dashboard_tenant' tenant.id %}" class="tenant-link {% if tenant_seleccionado.id == tenant.id %}active{% endif %}">
-                    <i class="fa-solid fa-building"></i> <span>{{ tenant.nombre }}</span>
-                </a>
-                {% endfor %}
-            </nav>
-        </div>
-        {% endif %}
-
+ 
         <div class="sidebar-spacer"></div>
-
+ 
         <div class="sidebar-footer">
             <a href="{% url 'mi_perfil' %}" class="{% if request.resolver_match.url_name == 'mi_perfil' %}active{% endif %}">
                 <i class="fa-solid fa-user-circle"></i> <span>Mi Perfil</span>
@@ -296,7 +270,7 @@
             </form>
         </div>
     </div>
-
+ 
     <div class="main-content">
         {% if messages %}
             {% for message in messages %}
@@ -306,15 +280,15 @@
                 </div>
             {% endfor %}
         {% endif %}
-
+ 
         {% block content %}{% endblock %}
     </div>
-
+ 
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
+ 
     <script>
         $(document).ready(function() {
             $('.modal').on('shown.bs.modal', function () {

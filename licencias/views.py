@@ -3,29 +3,25 @@ import pandas as pd
 import openpyxl
 from openpyxl.styles import Font, PatternFill
 from datetime import timedelta
-
-from django.shortcuts import render, get_object_or_404, redirect
+ 
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.contrib.auth import login
 from axes.utils import reset
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.core.cache import cache
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-
-
-
+ 
 from empleados.models import Empleado, GerenciaDivision, GerenciaArea, Unidad
 from .models import Licencia, Asignacion, Tenant, Empresa, Proveedor, TipoLicencia
 from .forms import (
-    EmpleadoForm, GerenciaDivisionForm, GerenciaAreaForm, UnidadForm, 
+    EmpleadoForm, GerenciaDivisionForm, GerenciaAreaForm, UnidadForm,
     TenantForm, EmpresaForm, ProveedorForm, TipoLicenciaForm, LicenciaForm
 )
-
 
 def exigir_permiso(request, permiso):
     if not request.user.has_perm(permiso):
@@ -443,77 +439,6 @@ def reactivar_empleado(request, empleado_id):
     messages.success(request, f"Identidad operativa restablecida: {empleado.nombre_completo}.")
     return redirect('lista_empleados')
 
-
-# ==========================================
-# MÓDULO DE ESTRUCTURA ORGANIZACIONAL
-# ==========================================
-
-@login_required
-def organizacion(request):
-    """
-    Controlador del catálogo de estructura organizacional.
-    Gestiona la visualización jerárquica y el alta de Divisiones, Áreas y Unidades.
-    """
-    # Optimización de consultas jerárquicas (Prevención de N+1 Queries)
-    if request.method == 'POST':
-        permisos_creacion = {
-            'division': 'empleados.add_gerenciadivision',
-            'area': 'empleados.add_gerenciaarea',
-            'unidad': 'empleados.add_unidad',
-        }
-        exigir_permiso(request, permisos_creacion.get(request.POST.get('tipo_formulario'), 'empleados.view_gerenciaarea'))
-    else:
-        exigir_algun_permiso(request, [
-            'empleados.view_gerenciadivision',
-            'empleados.view_gerenciaarea',
-            'empleados.view_unidad',
-        ])
-
-    divisiones = GerenciaDivision.objects.all().select_related('empresa').order_by('empresa__nombre', 'nombre')
-    areas = GerenciaArea.objects.all().select_related('empresa', 'division').order_by('empresa__nombre', 'nombre')
-    unidades = Unidad.objects.all().select_related('area').order_by('area__nombre', 'nombre')
-
-    form_division = GerenciaDivisionForm()
-    form_area = GerenciaAreaForm()
-    form_unidad = UnidadForm()
-
-    if request.method == 'POST':
-        # Enrutamiento de peticiones POST basado en el identificador del payload
-        tipo = request.POST.get('tipo_formulario') 
-
-        if tipo == 'division':
-            form_division = GerenciaDivisionForm(request.POST)
-            if form_division.is_valid():
-                form_division.save()
-                messages.success(request, "Entidad organizacional (División) registrada.")
-                return redirect('organizacion')
-
-        elif tipo == 'area':
-            form_area = GerenciaAreaForm(request.POST)
-            if form_area.is_valid():
-                form_area.save()
-                messages.success(request, "Entidad organizacional (Área) registrada.")
-                return redirect('organizacion')
-
-        elif tipo == 'unidad':
-            form_unidad = UnidadForm(request.POST)
-            if form_unidad.is_valid():
-                form_unidad.save()
-                messages.success(request, "Entidad organizacional (Unidad) registrada.")
-                return redirect('organizacion')
-
-    context = {
-        'divisiones': divisiones,
-        'areas': areas,
-        'unidades': unidades,
-        'form_division': form_division,
-        'form_area': form_area,
-        'form_unidad': form_unidad,
-        'titulo': 'Estructura Organizacional'
-    }
-    return render(request, 'organizacion.html', context)
-
-
 # ==========================================
 # ENDPOINTS ASÍNCRONOS (AJAX / CASCADAS)
 # ==========================================
@@ -560,21 +485,25 @@ def cargar_empresas(request):
 
 
 # ==========================================
-# MÓDULO DE CONFIGURACIÓN GLOBAL (CATÁLOGOS)
+# MÓDULO DE CONFIGURACIÓN GLOBAL UNIFICADO
 # ==========================================
 
 @login_required
 def configuracion(request):
     """
-    Panel de administración de catálogos paramétricos.
-    Gestiona altas de Tenants, Empresas, Proveedores y SKUs de Licencias.
+    Panel de administración de catálogos paramétricos unificado.
+    Gestiona altas de Tenants, Empresas, Proveedores, SKUs de Licencias, Divisiones, Áreas y Unidades.
     """
+    # 1. UNIFICACIÓN DE PERMISOS
     if request.method == 'POST':
         permisos_creacion = {
             'tenant': 'licencias.add_tenant',
             'empresa': 'licencias.add_empresa',
             'proveedor': 'licencias.add_proveedor',
             'tipo_licencia': 'licencias.add_tipolicencia',
+            'division': 'empleados.add_gerenciadivision',
+            'area': 'empleados.add_gerenciaarea',
+            'unidad': 'empleados.add_unidad',
         }
         exigir_permiso(request, permisos_creacion.get(request.POST.get('tipo_formulario'), 'licencias.view_empresa'))
     else:
@@ -583,18 +512,30 @@ def configuracion(request):
             'licencias.view_empresa',
             'licencias.view_proveedor',
             'licencias.view_tipolicencia',
+            'empleados.view_gerenciadivision',
+            'empleados.view_gerenciaarea',
+            'empleados.view_unidad',
         ])
 
+    # 2. UNIFICACIÓN DE CONSULTAS (PREVENCIÓN N+1)
     tenants = Tenant.objects.all().order_by('nombre')
     empresas = Empresa.objects.all().select_related('tenant').order_by('tenant__nombre', 'nombre')
     proveedores = Proveedor.objects.all().order_by('nombre')
     tipos_licencia = TipoLicencia.objects.all().order_by('fabricante', 'nombre')
+    divisiones = GerenciaDivision.objects.all().select_related('empresa').order_by('empresa__nombre', 'nombre')
+    areas = GerenciaArea.objects.all().select_related('empresa', 'division').order_by('empresa__nombre', 'nombre')
+    unidades = Unidad.objects.all().select_related('area').order_by('area__nombre', 'nombre')
 
+    # 3. UNIFICACIÓN DE FORMULARIOS
     form_tenant = TenantForm()
     form_empresa = EmpresaForm()
     form_proveedor = ProveedorForm()
     form_tipo = TipoLicenciaForm()
+    form_division = GerenciaDivisionForm()
+    form_area = GerenciaAreaForm()
+    form_unidad = UnidadForm()
 
+    # 4. PROCESAMIENTO DE TODOS LOS MÉTODOS POST
     if request.method == 'POST':
         tipo = request.POST.get('tipo_formulario') 
 
@@ -626,19 +567,46 @@ def configuracion(request):
                 messages.success(request, "SKU de licencia ingresado al catálogo.")
                 return redirect('configuracion')
 
+        elif tipo == 'division':
+            form_division = GerenciaDivisionForm(request.POST)
+            if form_division.is_valid():
+                form_division.save()
+                messages.success(request, "Entidad organizacional (División) registrada.")
+                return redirect('configuracion')
+
+        elif tipo == 'area':
+            form_area = GerenciaAreaForm(request.POST)
+            if form_area.is_valid():
+                form_area.save()
+                messages.success(request, "Entidad organizacional (Área) registrada.")
+                return redirect('configuracion')
+
+        elif tipo == 'unidad':
+            form_unidad = UnidadForm(request.POST)
+            if form_unidad.is_valid():
+                form_unidad.save()
+                messages.success(request, "Entidad organizacional (Unidad) registrada.")
+                return redirect('configuracion')
+
+    # 5. DICCIONARIO DE CONTEXTO FINAL
     context = {
         'tenants': tenants,
         'empresas': empresas,
         'proveedores': proveedores,
         'tipos_licencia': tipos_licencia,
+        'divisiones': divisiones,
+        'areas': areas,
+        'unidades': unidades,
         'form_tenant': form_tenant,
         'form_empresa': form_empresa,
         'form_proveedor': form_proveedor,
         'form_tipo': form_tipo,
+        'form_division': form_division,
+        'form_area': form_area,
+        'form_unidad': form_unidad,
         'titulo': 'Parametrización Global'
     }
     return render(request, 'configuracion.html', context)
-
 
 # ==========================================
 # CONTROLADORES DE EDICIÓN DE CATÁLOGOS
@@ -678,7 +646,7 @@ def editar_division(request, pk):
         if form.is_valid():
             form.save()
             messages.success(request, "Estructura divisional actualizada.")
-            return redirect('organizacion')
+            return redirect('configuracion')
     else:
         form = GerenciaDivisionForm(instance=division)
     return render(request, 'editar_catalogo.html', {'form': form, 'titulo': f'Editar División: {division.codigo}'})
@@ -693,7 +661,7 @@ def editar_area(request, pk):
         if form.is_valid():
             form.save()
             messages.success(request, "Metadatos del área operativa actualizados.")
-            return redirect('organizacion')
+            return redirect('configuracion')
     else:
         form = GerenciaAreaForm(instance=area)
     return render(request, 'editar_catalogo.html', {'form': form, 'titulo': f'Editar Área: {area.codigo}'})
@@ -708,7 +676,7 @@ def editar_unidad(request, pk):
         if form.is_valid():
             form.save()
             messages.success(request, "Parámetros de la unidad modificados.")
-            return redirect('organizacion')
+            return redirect('configuracion')
     else:
         form = UnidadForm(instance=unidad)
     return render(request, 'editar_catalogo.html', {'form': form, 'titulo': f'Editar Unidad: {unidad.nombre}'})
@@ -788,21 +756,21 @@ def eliminar_division(request, pk):
     exigir_permiso(request, 'empleados.delete_gerenciadivision')
     get_object_or_404(GerenciaDivision, pk=pk).delete()
     messages.success(request, "Entidad divisional purgada del sistema.")
-    return redirect('organizacion')
+    return redirect('configuracion')
 
 @login_required
 def eliminar_area(request, pk):
     exigir_permiso(request, 'empleados.delete_gerenciaarea')
     get_object_or_404(GerenciaArea, pk=pk).delete()
     messages.success(request, "Área operativa purgada del sistema.")
-    return redirect('organizacion')
+    return redirect('configuracion')
 
 @login_required
 def eliminar_unidad(request, pk):
     exigir_permiso(request, 'empleados.delete_unidad')
     get_object_or_404(Unidad, pk=pk).delete()
     messages.success(request, "Unidad purgada del sistema.")
-    return redirect('organizacion')
+    return redirect('configuracion')
 
 @login_required
 def eliminar_tenant(request, pk):

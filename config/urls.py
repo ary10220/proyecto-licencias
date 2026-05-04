@@ -67,17 +67,12 @@ urlpatterns = [
     path('empleado/<int:empleado_id>/baja/', views.baja_empleado, name='baja_empleado'),
     path('empleado/<int:empleado_id>/reactivar/', views.reactivar_empleado, name='reactivar_empleado'),
 
-    # Módulo de Organización (Estructura Jerárquica)
-    path('organizacion/', views.organizacion, name='organizacion'),
-    path('organizacion/division/<int:pk>/editar/', views.editar_division, name='editar_division'),
-    path('organizacion/division/<int:pk>/eliminar/', views.eliminar_division, name='eliminar_division'),
-    path('organizacion/area/<int:pk>/editar/', views.editar_area, name='editar_area'),
-    path('organizacion/area/<int:pk>/eliminar/', views.eliminar_area, name='eliminar_area'),
-    path('organizacion/unidad/<int:pk>/editar/', views.editar_unidad, name='editar_unidad'),
-    path('organizacion/unidad/<int:pk>/eliminar/', views.eliminar_unidad, name='eliminar_unidad'),
-
+    # ==========================================
     # Módulo de Configuración (Catálogos y Paramétricas)
+    # ==========================================
     path('configuracion/', views.configuracion, name='configuracion'),
+
+    # -- Tenants, Empresas, Proveedores y Licencias --
     path('configuracion/tenant/<int:pk>/editar/', views.editar_tenant, name='editar_tenant'),
     path('configuracion/tenant/<int:pk>/eliminar/', views.eliminar_tenant, name='eliminar_tenant'),
     path('configuracion/empresa/<int:pk>/editar/', views.editar_empresa, name='editar_empresa'),
@@ -86,6 +81,14 @@ urlpatterns = [
     path('configuracion/proveedor/<int:pk>/eliminar/', views.eliminar_proveedor, name='eliminar_proveedor'),
     path('configuracion/software/<int:pk>/editar/', views.editar_tipo_licencia, name='editar_tipo_licencia'),
     path('configuracion/software/<int:pk>/eliminar/', views.eliminar_tipo_licencia, name='eliminar_tipo_licencia'),
+
+    # -- Divisiones, Áreas y Unidades (Migradas de Organización) --
+    path('configuracion/division/<int:pk>/editar/', views.editar_division, name='editar_division'),
+    path('configuracion/division/<int:pk>/eliminar/', views.eliminar_division, name='eliminar_division'),
+    path('configuracion/area/<int:pk>/editar/', views.editar_area, name='editar_area'),
+    path('configuracion/area/<int:pk>/eliminar/', views.eliminar_area, name='eliminar_area'),
+    path('configuracion/unidad/<int:pk>/editar/', views.editar_unidad, name='editar_unidad'),
+    path('configuracion/unidad/<int:pk>/eliminar/', views.eliminar_unidad, name='eliminar_unidad'),
     
     path('bitacora/', include('bitacora.urls')),
     path('user/', include('user.urls')),
