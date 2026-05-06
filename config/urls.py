@@ -20,7 +20,7 @@ from django.contrib.auth import views as auth_views
 from django.conf import settings
 from django.conf.urls.static import static
 from licencias import views
-from user.views import ForcedPasswordChangeView
+from user.interfaces.views.password import ForcedPasswordChangeView
 
 urlpatterns = [
     # Administración de Django
@@ -31,7 +31,12 @@ urlpatterns = [
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
 
     # Recuperación de contraseña
-    path('reset_password/', auth_views.PasswordResetView.as_view(template_name="registration/password_reset_form.html"), name="reset_password"),
+    path('reset_password/', auth_views.PasswordResetView.as_view(
+    template_name="registration/password_reset_form.html",
+    email_template_name="registration/password_reset_email.txt",      # Respaldo de texto
+    html_email_template_name="registration/password_reset_email.html", # El diseño naranja
+    subject_template_name="registration/password_reset_subject.txt"    # El asunto
+    ), name="reset_password"),
     path('reset_password_sent/', auth_views.PasswordResetDoneView.as_view(template_name="registration/password_reset_done.html"), name="password_reset_done"),
     path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(template_name="registration/password_reset_confirm.html"), name="password_reset_confirm"),
     path('reset_password_complete/', auth_views.PasswordResetCompleteView.as_view(template_name="registration/password_reset_complete.html"), name="password_reset_complete"),
@@ -58,6 +63,7 @@ urlpatterns = [
     path('licencia/<int:licencia_id>/liberar/', views.liberar_licencia, name='liberar_licencia'),
     # para token
     path('desbloqueo-seguro/', views.validar_token_bloqueo, name='validar_token_bloqueo'),
+    path('solicitar-token/', views.enviar_token_bloqueo, name='enviar_token_bloqueo'),
 
     # Módulo de Empleados
     path('empleados/', views.lista_empleados, name='lista_empleados'),
@@ -65,17 +71,12 @@ urlpatterns = [
     path('empleado/<int:empleado_id>/baja/', views.baja_empleado, name='baja_empleado'),
     path('empleado/<int:empleado_id>/reactivar/', views.reactivar_empleado, name='reactivar_empleado'),
 
-    # Módulo de Organización (Estructura Jerárquica)
-    path('organizacion/', views.organizacion, name='organizacion'),
-    path('organizacion/division/<int:pk>/editar/', views.editar_division, name='editar_division'),
-    path('organizacion/division/<int:pk>/eliminar/', views.eliminar_division, name='eliminar_division'),
-    path('organizacion/area/<int:pk>/editar/', views.editar_area, name='editar_area'),
-    path('organizacion/area/<int:pk>/eliminar/', views.eliminar_area, name='eliminar_area'),
-    path('organizacion/unidad/<int:pk>/editar/', views.editar_unidad, name='editar_unidad'),
-    path('organizacion/unidad/<int:pk>/eliminar/', views.eliminar_unidad, name='eliminar_unidad'),
-
+    # ==========================================
     # Módulo de Configuración (Catálogos y Paramétricas)
+    # ==========================================
     path('configuracion/', views.configuracion, name='configuracion'),
+
+    # -- Tenants, Empresas, Proveedores y Licencias --
     path('configuracion/tenant/<int:pk>/editar/', views.editar_tenant, name='editar_tenant'),
     path('configuracion/tenant/<int:pk>/eliminar/', views.eliminar_tenant, name='eliminar_tenant'),
     path('configuracion/empresa/<int:pk>/editar/', views.editar_empresa, name='editar_empresa'),
@@ -84,9 +85,17 @@ urlpatterns = [
     path('configuracion/proveedor/<int:pk>/eliminar/', views.eliminar_proveedor, name='eliminar_proveedor'),
     path('configuracion/software/<int:pk>/editar/', views.editar_tipo_licencia, name='editar_tipo_licencia'),
     path('configuracion/software/<int:pk>/eliminar/', views.eliminar_tipo_licencia, name='eliminar_tipo_licencia'),
+
+    # -- Divisiones, Áreas y Unidades (Migradas de Organización) --
+    path('configuracion/division/<int:pk>/editar/', views.editar_division, name='editar_division'),
+    path('configuracion/division/<int:pk>/eliminar/', views.eliminar_division, name='eliminar_division'),
+    path('configuracion/area/<int:pk>/editar/', views.editar_area, name='editar_area'),
+    path('configuracion/area/<int:pk>/eliminar/', views.eliminar_area, name='eliminar_area'),
+    path('configuracion/unidad/<int:pk>/editar/', views.editar_unidad, name='editar_unidad'),
+    path('configuracion/unidad/<int:pk>/eliminar/', views.eliminar_unidad, name='eliminar_unidad'),
     
-    path('bitacora/', include('bitacora.urls')),
-    path('user/', include('user.urls')),
+    path('bitacora/', include('bitacora.interfaces.urls')),
+    path('user/', include('user.interfaces.urls')),
 
     # Endpoints de API / AJAX
     path('ajax/cargar-empresas/', views.cargar_empresas, name='ajax_cargar_empresas'),

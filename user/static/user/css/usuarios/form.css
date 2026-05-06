@@ -1,0 +1,68 @@
+.user-form-title {
+        color: var(--color-principal-dark);
+        font-weight: 800;
+    }
+
+    .user-form-title i {
+        color: var(--color-principal);
+    }
+
+    .permission-card {
+        background: #fffaf6;
+        border: 1px solid #f0dfd0;
+        border-radius: 12px;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .roles-grid {
+        display: grid;
+        gap: 0.75rem;
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    }
+
+    .role-card {
+        align-items: flex-start;
+        background: #ffffff;
+        border: 1px solid #eee1d6;
+        border-radius: 14px;
+        cursor: pointer;
+        display: flex;
+        gap: 0.7rem;
+        padding: 0.9rem;
+        transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+    }
+
+    .role-card:hover {
+        border-color: var(--color-principal);
+        box-shadow: 0 0.45rem 1rem rgba(223, 110, 18, 0.12);
+        transform: translateY(-1px);
+    }
+
+    .role-card input:checked + .role-card-body .role-name {
+        color: var(--color-principal-dark);
+    }
+
+    .role-name {
+        font-weight: 800;
+        line-height: 1.1;
+    }
+
+    .role-description {
+        color: #6c757d;
+        font-size: 0.82rem;
+        margin-top: 0.25rem;
+    }
+
+    .btn-outline-brand {
+        border-color: var(--color-principal);
+        color: var(--color-principal-dark);
+        font-weight: 800;
+    }
+
+    .btn-outline-brand:hover {
+        background: var(--color-principal);
+        border-color: var(--color-principal);
+        color: #ffffff;
+    }

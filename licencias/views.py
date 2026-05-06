@@ -3,29 +3,49 @@ import pandas as pd
 import openpyxl
 from openpyxl.styles import Font, PatternFill
 from datetime import timedelta
-
-from django.shortcuts import render, get_object_or_404, redirect
+import random
+ 
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.contrib.auth import login
 from axes.utils import reset
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.core.cache import cache
+from django.core.mail import send_mail
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-
-
-
+ 
 from empleados.models import Empleado, GerenciaDivision, GerenciaArea, Unidad
 from .models import Licencia, Asignacion, Tenant, Empresa, Proveedor, TipoLicencia
 from .forms import (
-    EmpleadoForm, GerenciaDivisionForm, GerenciaAreaForm, UnidadForm, 
+    EmpleadoForm, GerenciaDivisionForm, GerenciaAreaForm, UnidadForm,
     TenantForm, EmpresaForm, ProveedorForm, TipoLicenciaForm, LicenciaForm
 )
-
+from bitacora.actions import (
+    log_asignacion_licencia,
+    log_baja_empleado,
+    log_creacion_licencias,
+    log_crear_empleado,
+    log_division_crear,
+    log_area_crear,
+    log_unidad_crear,
+    log_empresa_crear,
+    log_proveedor_crear,
+    log_tenant_crear,
+    log_tipo_licencia_crear,
+    log_editar_licencia,
+    log_editar_empleado,
+    log_eliminar_licencia,
+    log_eliminar_licencias_masivo,
+    log_exportar_excel,
+    log_liberar_licencia,
+    log_reactivar_empleado,
+    log_sincronizar_m365,
+)
 
 def exigir_permiso(request, permiso):
     if not request.user.has_perm(permiso):
@@ -47,6 +67,10 @@ def exportar_excel(request, tenant_id=None):
     Implementa OpenPyXL para el formateo directo del buffer de memoria sin escritura en disco.
     """
     exigir_permiso(request, 'licencias.view_licencia')
+    tenant_label = None
+    if tenant_id:
+        tenant_label = Tenant.objects.filter(pk=tenant_id).values_list('nombre', flat=True).first()
+    log_exportar_excel(request, tenant_label=tenant_label)
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Reporte Completo"
@@ -156,7 +180,8 @@ def validar_token_bloqueo(request):
 
         if token_real and token_ingresado == token_real:
             user = User.objects.get(username=username)
-            reset(username=username) # Limpia el bloqueo de Axes
+            # Limpia el bloqueo de Axes (username + ip). Nota: la función `reset` usa `ip`, no `ip_address`.
+            reset(username=username, ip=request.META.get('REMOTE_ADDR'))
             
             # LOGIN AUTOMÁTICO
             login(request, user, backend='django.contrib.auth.backends.ModelBackend')
@@ -170,6 +195,51 @@ def validar_token_bloqueo(request):
             messages.error(request, "Código incorrecto o expirado.")
 
     return render(request, 'registration/desbloqueo_token.html')
+
+
+def enviar_token_bloqueo(request):
+    """
+    Envia (bajo demanda) un token de desbloqueo al correo del usuario bloqueado por Axes.
+    Se usa desde la pantalla /desbloqueo-seguro/ para evitar spam y correos duplicados.
+    """
+    username = request.session.get('usuario_bloqueado_nombre')
+    if not username:
+        return redirect('login')
+
+    if request.method != 'POST':
+        return redirect('validar_token_bloqueo')
+
+    user = User.objects.filter(username=username).first()
+    email = (getattr(user, 'email', '') or '').strip() if user else ''
+    if not user or not email:
+        messages.error(request, "No se pudo enviar el código porque el usuario no tiene correo registrado.")
+        return redirect('validar_token_bloqueo')
+
+    # Rate limit: evita dobles clicks / refreshs que disparan multiples correos.
+    lock_key = f"unlock_token_lock:{username}"
+    if not cache.add(lock_key, "1", timeout=20):
+        messages.warning(request, "Ya se envió un código recientemente. Espera unos segundos e intenta nuevamente.")
+        return redirect('validar_token_bloqueo')
+
+    token = str(random.randint(100000, 999999))
+    cache.set(f"token_desbloqueo_{username}", token, timeout=300)  # 5 minutos
+
+    subject = "Acceso protegido - Código de desbloqueo"
+    message = (
+        f"Hola {user.username},\n\n"
+        "Tu cuenta fue bloqueada tras 3 intentos fallidos de inicio de sesión.\n"
+        f"Tu código de desbloqueo es: {token}\n\n"
+        "Este código es válido por 5 minutos."
+    )
+
+    try:
+        send_mail(subject, message, getattr(settings, 'DEFAULT_FROM_EMAIL', None), [email], fail_silently=False)
+    except Exception:
+        messages.error(request, "No se pudo enviar el código de desbloqueo. Intenta nuevamente.")
+        return redirect('validar_token_bloqueo')
+
+    messages.success(request, f"Se envió un código de acceso al correo {email}.")
+    return redirect('validar_token_bloqueo')
 # ==========================================
 # MÓDULO PRINCIPAL (DASHBOARD Y KPIS)
 # ==========================================
@@ -310,6 +380,7 @@ def asignar_licencia(request, licencia_id):
             empleado=empleado,
             activo=True
         )
+        log_asignacion_licencia(request, licencia, empleado)
         messages.success(request, f"Transacción exitosa: Licencia asignada a {empleado.nombre_completo}.")
         
     return redirect(request.META.get('HTTP_REFERER', 'dashboard_general'))
@@ -326,6 +397,10 @@ def liberar_licencia(request, licencia_id):
     asignaciones_activas = licencia.asignaciones.filter(activo=True)
     
     if asignaciones_activas.exists():
+        empleados_afectados = [
+            getattr(asig.empleado, 'nombre_completo', str(asig.empleado))
+            for asig in asignaciones_activas.select_related('empleado')
+        ]
         count = 0
         for asignacion in asignaciones_activas:
             asignacion.activo = False
@@ -333,7 +408,9 @@ def liberar_licencia(request, licencia_id):
                 asignacion.fecha_retiro = timezone.now()
             asignacion.save() 
             count += 1
-            
+
+        log_liberar_licencia(request, licencia, empleados=empleados_afectados, cantidad=count)
+
         messages.success(request, f"Activo revocado. Se consolidaron {count} registros en la bitácora de auditoría.")
     else:
         messages.warning(request, "El activo no presentaba asignaciones activas.")
@@ -357,7 +434,8 @@ def lista_empleados(request):
     if request.method == 'POST':
         form = EmpleadoForm(request.POST)
         if form.is_valid():
-            form.save()
+            empleado_creado = form.save()
+            log_crear_empleado(request, empleado_creado)
             messages.success(request, "Registro de identidad completado con éxito.")
             return redirect('lista_empleados')
         else:
@@ -382,7 +460,8 @@ def editar_empleado(request, empleado_id):
     if request.method == 'POST':
         form = EmpleadoForm(request.POST, instance=empleado)
         if form.is_valid():
-            form.save()
+            empleado_actualizado = form.save()
+            log_editar_empleado(request, empleado_actualizado)
             messages.success(request, f"Metadata de {empleado.nombre_completo} actualizada correctamente.")
             return redirect('lista_empleados')
     else:
@@ -429,6 +508,7 @@ def baja_empleado(request, empleado_id):
         mensaje += f" Se liberaron {licencias_liberadas} activos vinculados."
         
     messages.success(request, mensaje)
+    log_baja_empleado(request, empleado, licencias_liberadas=licencias_liberadas)
     return redirect('lista_empleados')
 
 
@@ -440,93 +520,27 @@ def reactivar_empleado(request, empleado_id):
     empleado.activo = True
     empleado.save()
     
+    log_reactivar_empleado(request, empleado)
     messages.success(request, f"Identidad operativa restablecida: {empleado.nombre_completo}.")
     return redirect('lista_empleados')
-
-
-# ==========================================
-# MÓDULO DE ESTRUCTURA ORGANIZACIONAL
-# ==========================================
-
-@login_required
-def organizacion(request):
-    """
-    Controlador del catálogo de estructura organizacional.
-    Gestiona la visualización jerárquica y el alta de Divisiones, Áreas y Unidades.
-    """
-    # Optimización de consultas jerárquicas (Prevención de N+1 Queries)
-    if request.method == 'POST':
-        permisos_creacion = {
-            'division': 'empleados.add_gerenciadivision',
-            'area': 'empleados.add_gerenciaarea',
-            'unidad': 'empleados.add_unidad',
-        }
-        exigir_permiso(request, permisos_creacion.get(request.POST.get('tipo_formulario'), 'empleados.view_gerenciaarea'))
-    else:
-        exigir_algun_permiso(request, [
-            'empleados.view_gerenciadivision',
-            'empleados.view_gerenciaarea',
-            'empleados.view_unidad',
-        ])
-
-    divisiones = GerenciaDivision.objects.all().select_related('empresa').order_by('empresa__nombre', 'nombre')
-    areas = GerenciaArea.objects.all().select_related('empresa', 'division').order_by('empresa__nombre', 'nombre')
-    unidades = Unidad.objects.all().select_related('area').order_by('area__nombre', 'nombre')
-
-    form_division = GerenciaDivisionForm()
-    form_area = GerenciaAreaForm()
-    form_unidad = UnidadForm()
-
-    if request.method == 'POST':
-        # Enrutamiento de peticiones POST basado en el identificador del payload
-        tipo = request.POST.get('tipo_formulario') 
-
-        if tipo == 'division':
-            form_division = GerenciaDivisionForm(request.POST)
-            if form_division.is_valid():
-                form_division.save()
-                messages.success(request, "Entidad organizacional (División) registrada.")
-                return redirect('organizacion')
-
-        elif tipo == 'area':
-            form_area = GerenciaAreaForm(request.POST)
-            if form_area.is_valid():
-                form_area.save()
-                messages.success(request, "Entidad organizacional (Área) registrada.")
-                return redirect('organizacion')
-
-        elif tipo == 'unidad':
-            form_unidad = UnidadForm(request.POST)
-            if form_unidad.is_valid():
-                form_unidad.save()
-                messages.success(request, "Entidad organizacional (Unidad) registrada.")
-                return redirect('organizacion')
-
-    context = {
-        'divisiones': divisiones,
-        'areas': areas,
-        'unidades': unidades,
-        'form_division': form_division,
-        'form_area': form_area,
-        'form_unidad': form_unidad,
-        'titulo': 'Estructura Organizacional'
-    }
-    return render(request, 'organizacion.html', context)
-
 
 # ==========================================
 # ENDPOINTS ASÍNCRONOS (AJAX / CASCADAS)
 # ==========================================
 
+@login_required
 def cargar_unidades(request):
     """Endpoint API para listado dinámico de Unidades filtradas por Área."""
+    exigir_permiso(request, 'empleados.view_unidad')
     area_id = request.GET.get('area_id')
     unidades = Unidad.objects.filter(area_id=area_id).order_by('nombre') if area_id else Unidad.objects.none()
     return JsonResponse(list(unidades.values('id', 'nombre')), safe=False)
 
 
+@login_required
 def cargar_areas(request):
     """Endpoint API para listado dinámico de Áreas formateadas para Select2."""
+    exigir_permiso(request, 'empleados.view_gerenciaarea')
     empresa_id = request.GET.get('empresa_id')
     areas_list = []
     
@@ -539,8 +553,10 @@ def cargar_areas(request):
     return JsonResponse(areas_list, safe=False)
 
 
+@login_required
 def cargar_divisiones(request):
     """Endpoint API para listado dinámico de Divisiones filtradas por Empresa."""
+    exigir_permiso(request, 'empleados.view_gerenciadivision')
     empresa_id = request.GET.get('empresa_id')
     divisiones_list = []
     
@@ -552,29 +568,35 @@ def cargar_divisiones(request):
     return JsonResponse(divisiones_list, safe=False)
 
 
+@login_required
 def cargar_empresas(request):
     """Endpoint API para despliegue en cascada: Tenant -> Empresa."""
+    exigir_permiso(request, 'licencias.view_empresa')
     tenant_id = request.GET.get('tenant_id')
     empresas = Empresa.objects.filter(tenant_id=tenant_id).order_by('nombre') if tenant_id else Empresa.objects.none()
     return JsonResponse(list(empresas.values('id', 'nombre')), safe=False)
 
 
 # ==========================================
-# MÓDULO DE CONFIGURACIÓN GLOBAL (CATÁLOGOS)
+# MÓDULO DE CONFIGURACIÓN GLOBAL UNIFICADO
 # ==========================================
 
 @login_required
 def configuracion(request):
     """
-    Panel de administración de catálogos paramétricos.
-    Gestiona altas de Tenants, Empresas, Proveedores y SKUs de Licencias.
+    Panel de administración de catálogos paramétricos unificado.
+    Gestiona altas de Tenants, Empresas, Proveedores, SKUs de Licencias, Divisiones, Áreas y Unidades.
     """
+    # 1. UNIFICACIÓN DE PERMISOS
     if request.method == 'POST':
         permisos_creacion = {
             'tenant': 'licencias.add_tenant',
             'empresa': 'licencias.add_empresa',
             'proveedor': 'licencias.add_proveedor',
             'tipo_licencia': 'licencias.add_tipolicencia',
+            'division': 'empleados.add_gerenciadivision',
+            'area': 'empleados.add_gerenciaarea',
+            'unidad': 'empleados.add_unidad',
         }
         exigir_permiso(request, permisos_creacion.get(request.POST.get('tipo_formulario'), 'licencias.view_empresa'))
     else:
@@ -583,62 +605,108 @@ def configuracion(request):
             'licencias.view_empresa',
             'licencias.view_proveedor',
             'licencias.view_tipolicencia',
+            'empleados.view_gerenciadivision',
+            'empleados.view_gerenciaarea',
+            'empleados.view_unidad',
         ])
 
+    # 2. UNIFICACIÓN DE CONSULTAS (PREVENCIÓN N+1)
     tenants = Tenant.objects.all().order_by('nombre')
     empresas = Empresa.objects.all().select_related('tenant').order_by('tenant__nombre', 'nombre')
     proveedores = Proveedor.objects.all().order_by('nombre')
     tipos_licencia = TipoLicencia.objects.all().order_by('fabricante', 'nombre')
+    divisiones = GerenciaDivision.objects.all().select_related('empresa').order_by('empresa__nombre', 'nombre')
+    areas = GerenciaArea.objects.all().select_related('empresa', 'division').order_by('empresa__nombre', 'nombre')
+    unidades = Unidad.objects.all().select_related('area').order_by('area__nombre', 'nombre')
 
+    # 3. UNIFICACIÓN DE FORMULARIOS
     form_tenant = TenantForm()
     form_empresa = EmpresaForm()
     form_proveedor = ProveedorForm()
     form_tipo = TipoLicenciaForm()
+    form_division = GerenciaDivisionForm()
+    form_area = GerenciaAreaForm()
+    form_unidad = UnidadForm()
 
+    # 4. PROCESAMIENTO DE TODOS LOS MÉTODOS POST
     if request.method == 'POST':
         tipo = request.POST.get('tipo_formulario') 
 
         if tipo == 'tenant':
             form_tenant = TenantForm(request.POST)
             if form_tenant.is_valid():
-                form_tenant.save()
+                tenant = form_tenant.save()
+                log_tenant_crear(request, tenant)
                 messages.success(request, "Grupo corporativo (Tenant) aprovisionado.")
                 return redirect('configuracion')
 
         elif tipo == 'empresa':
             form_empresa = EmpresaForm(request.POST)
             if form_empresa.is_valid():
-                form_empresa.save()
+                empresa = form_empresa.save()
+                log_empresa_crear(request, empresa)
                 messages.success(request, "Razón social aprovisionada.")
                 return redirect('configuracion')
 
         elif tipo == 'proveedor':
             form_proveedor = ProveedorForm(request.POST)
             if form_proveedor.is_valid():
-                form_proveedor.save()
+                proveedor = form_proveedor.save()
+                log_proveedor_crear(request, proveedor)
                 messages.success(request, "Socio comercial (Proveedor) registrado.")
                 return redirect('configuracion')
 
         elif tipo == 'tipo_licencia':
             form_tipo = TipoLicenciaForm(request.POST)
             if form_tipo.is_valid():
-                form_tipo.save()
+                tipo_lic = form_tipo.save()
+                log_tipo_licencia_crear(request, tipo_lic)
                 messages.success(request, "SKU de licencia ingresado al catálogo.")
                 return redirect('configuracion')
 
+        elif tipo == 'division':
+            form_division = GerenciaDivisionForm(request.POST)
+            if form_division.is_valid():
+                division = form_division.save()
+                log_division_crear(request, division)
+                messages.success(request, "Entidad organizacional (División) registrada.")
+                return redirect('configuracion')
+
+        elif tipo == 'area':
+            form_area = GerenciaAreaForm(request.POST)
+            if form_area.is_valid():
+                area = form_area.save()
+                log_area_crear(request, area)
+                messages.success(request, "Entidad organizacional (Área) registrada.")
+                return redirect('configuracion')
+
+        elif tipo == 'unidad':
+            form_unidad = UnidadForm(request.POST)
+            if form_unidad.is_valid():
+                unidad = form_unidad.save()
+                log_unidad_crear(request, unidad)
+                messages.success(request, "Entidad organizacional (Unidad) registrada.")
+                return redirect('configuracion')
+
+    # 5. DICCIONARIO DE CONTEXTO FINAL
     context = {
         'tenants': tenants,
         'empresas': empresas,
         'proveedores': proveedores,
         'tipos_licencia': tipos_licencia,
+        'divisiones': divisiones,
+        'areas': areas,
+        'unidades': unidades,
         'form_tenant': form_tenant,
         'form_empresa': form_empresa,
         'form_proveedor': form_proveedor,
         'form_tipo': form_tipo,
+        'form_division': form_division,
+        'form_area': form_area,
+        'form_unidad': form_unidad,
         'titulo': 'Parametrización Global'
     }
     return render(request, 'configuracion.html', context)
-
 
 # ==========================================
 # CONTROLADORES DE EDICIÓN DE CATÁLOGOS
@@ -654,6 +722,7 @@ def editar_licencia(request, licencia_id):
         form = LicenciaForm(request.POST, instance=licencia)
         if form.is_valid():
             form.save()
+            log_editar_licencia(request, licencia)
             messages.success(request, f"Parámetros del activo {licencia.tipo.nombre} actualizados.")
             return redirect('dashboard_general') 
         else:
@@ -678,7 +747,7 @@ def editar_division(request, pk):
         if form.is_valid():
             form.save()
             messages.success(request, "Estructura divisional actualizada.")
-            return redirect('organizacion')
+            return redirect('configuracion')
     else:
         form = GerenciaDivisionForm(instance=division)
     return render(request, 'editar_catalogo.html', {'form': form, 'titulo': f'Editar División: {division.codigo}'})
@@ -693,7 +762,7 @@ def editar_area(request, pk):
         if form.is_valid():
             form.save()
             messages.success(request, "Metadatos del área operativa actualizados.")
-            return redirect('organizacion')
+            return redirect('configuracion')
     else:
         form = GerenciaAreaForm(instance=area)
     return render(request, 'editar_catalogo.html', {'form': form, 'titulo': f'Editar Área: {area.codigo}'})
@@ -708,7 +777,7 @@ def editar_unidad(request, pk):
         if form.is_valid():
             form.save()
             messages.success(request, "Parámetros de la unidad modificados.")
-            return redirect('organizacion')
+            return redirect('configuracion')
     else:
         form = UnidadForm(instance=unidad)
     return render(request, 'editar_catalogo.html', {'form': form, 'titulo': f'Editar Unidad: {unidad.nombre}'})
@@ -788,21 +857,21 @@ def eliminar_division(request, pk):
     exigir_permiso(request, 'empleados.delete_gerenciadivision')
     get_object_or_404(GerenciaDivision, pk=pk).delete()
     messages.success(request, "Entidad divisional purgada del sistema.")
-    return redirect('organizacion')
+    return redirect('configuracion')
 
 @login_required
 def eliminar_area(request, pk):
     exigir_permiso(request, 'empleados.delete_gerenciaarea')
     get_object_or_404(GerenciaArea, pk=pk).delete()
     messages.success(request, "Área operativa purgada del sistema.")
-    return redirect('organizacion')
+    return redirect('configuracion')
 
 @login_required
 def eliminar_unidad(request, pk):
     exigir_permiso(request, 'empleados.delete_unidad')
     get_object_or_404(Unidad, pk=pk).delete()
     messages.success(request, "Unidad purgada del sistema.")
-    return redirect('organizacion')
+    return redirect('configuracion')
 
 @login_required
 def eliminar_tenant(request, pk):
@@ -838,8 +907,11 @@ def eliminar_licencia(request, licencia_id):
     licencia = get_object_or_404(Licencia, id=licencia_id)
     exigir_permiso(request, 'licencias.delete_licencia')
     nombre_licencia = licencia.tipo.nombre
+    licencia_label = str(licencia)
+    licencia_pk = licencia.pk
     licencia.delete()
     
+    log_eliminar_licencia(request, licencia_label, licencia_id=licencia_pk)
     messages.success(request, f"El activo {nombre_licencia} ha sido eliminado permanentemente del inventario.")
     return redirect('dashboard_general')
 
@@ -880,6 +952,7 @@ def crear_licencia(request):
             
             # 3. Ejecución de Bulk Create (Transacción optimizada)
             Licencia.objects.bulk_create(nuevas_licencias)
+            log_creacion_licencias(request, licencia_base, cantidad=cantidad)
             
             if cantidad > 1:
                 messages.success(request, f"Aprovisionamiento masivo exitoso: {cantidad} instancias de '{licencia_base.tipo.nombre}' registradas.")
@@ -905,6 +978,7 @@ def sincronizar_m365(request):
     Procesa múltiples hojas de cálculo vía DataFrames y ejecuta actualización
     transaccional garantizando el principio ACID en la base de datos.
     """
+    exigir_permiso(request, 'licencias.change_licencia')
     if request.method == 'POST' and request.FILES.get('archivo_excel'):
         excel_file = request.FILES['archivo_excel']
         
@@ -1058,6 +1132,11 @@ def sincronizar_m365(request):
                 messages.warning(request, msg)
             else:
                 messages.success(request, msg)
+
+            log_sincronizar_m365(
+                request,
+                resumen=f"{creados} altas, {actualizados} validadas, {asignadas} asignaciones, {liberadas} revocadas, sin stock={sin_stock}.",
+            )
                 
         except Exception as e:
             messages.error(request, f"Error crítico en Pipeline de Datos. Traceback: {str(e)}")
@@ -1080,6 +1159,8 @@ def eliminar_licencias_masivo(request):
             if ids:
                 # Magia de Django: Buscamos todas las licencias que estén en esa lista y las borramos de golpe
                 cantidad, _ = Licencia.objects.filter(id__in=ids).delete()
+                if cantidad:
+                    log_eliminar_licencias_masivo(request, cantidad)
                 messages.success(request, f"¡Limpieza completada! Se eliminaron {cantidad} licencias permanentemente.")
             else:
                 messages.warning(request, "No se seleccionó ninguna licencia para borrar.")

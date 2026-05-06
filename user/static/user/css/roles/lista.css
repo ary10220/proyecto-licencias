@@ -1,0 +1,20 @@
+.roles-title {
+        color: var(--color-principal-dark);
+        font-size: 1.55rem;
+        font-weight: 800;
+    }
+
+    .roles-title i {
+        color: var(--color-principal);
+    }
+
+    .role-count-badge {
+        background: #fff3e7;
+        border: 1px solid #f2cfad;
+        border-radius: 999px;
+        color: var(--color-principal-dark);
+        display: inline-flex;
+        font-size: 0.8rem;
+        font-weight: 700;
+        padding: 0.35rem 0.7rem;
+    }

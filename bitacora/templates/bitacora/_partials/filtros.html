@@ -1,0 +1,56 @@
+<form method="get" id="filtroForm" class="mb-2 filter-panel">
+    <div class="row g-2 align-items-end">
+        {% if request.user.is_superuser %}
+        <div class="col-lg-3 col-md-6">
+            <label class="form-label small text-muted">Usuario</label>
+            <select name="usuario" class="form-select">
+                <option value="">Todos</option>
+                {% for u in usuarios %}
+                    {% if u %}
+                        <option value="{{ u }}" {% if filtros.usuario == u %}selected{% endif %}>
+                            {{ u }}
+                        </option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+
+        <div class="col-lg-3 col-md-6">
+            <label class="form-label small text-muted">Acción</label>
+            <select name="accion" class="form-select">
+                <option value="">Todas</option>
+                <option value="CREAR" {% if filtros.accion == "CREAR" %}selected{% endif %}>Crear</option>
+                <option value="EDITAR" {% if filtros.accion == "EDITAR" %}selected{% endif %}>Editar</option>
+                <option value="ELIMINAR" {% if filtros.accion == "ELIMINAR" %}selected{% endif %}>Eliminar</option>
+                <option value="ASIGNAR" {% if filtros.accion == "ASIGNAR" %}selected{% endif %}>Asignar</option>
+                <option value="LIBERAR" {% if filtros.accion == "LIBERAR" %}selected{% endif %}>Liberar</option>
+                <option value="BAJA" {% if filtros.accion == "BAJA" %}selected{% endif %}>Baja</option>
+                <option value="REACTIVAR" {% if filtros.accion == "REACTIVAR" %}selected{% endif %}>Reactivar</option>
+                <option value="SINCRONIZAR" {% if filtros.accion == "SINCRONIZAR" %}selected{% endif %}>Sincronizar</option>
+                <option value="EXPORTAR" {% if filtros.accion == "EXPORTAR" %}selected{% endif %}>Exportar</option>
+                <option value="LOGIN" {% if filtros.accion == "LOGIN" %}selected{% endif %}>Login</option>
+                <option value="LOGOUT" {% if filtros.accion == "LOGOUT" %}selected{% endif %}>Logout</option>
+            </select>
+        </div>
+
+        <div class="col-lg-4 col-md-8">
+            <label class="form-label small text-muted">Rango de fechas</label>
+            <div class="d-flex gap-2">
+                <input type="date" name="fecha_inicio" class="form-control" value="{{ filtros.fecha_inicio }}">
+                <input type="date" name="fecha_fin" class="form-control" value="{{ filtros.fecha_fin }}">
+            </div>
+        </div>
+
+        <div class="col-lg-2 col-md-4 d-flex">
+            <a href="{% url 'lista_bitacora' %}" id="limpiarFiltros" class="btn btn-outline-secondary w-100">
+                <i class="fa fa-eraser me-1"></i> Limpiar
+            </a>
+        </div>
+    </div>
+
+    <span id="filterStatus" class="filter-status">
+        <i class="fa-solid fa-spinner fa-spin"></i> Aplicando filtros...
+    </span>
+</form>
+

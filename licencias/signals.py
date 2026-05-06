@@ -1,26 +1,49 @@
 import random
-from django.dispatch import receiver
-from axes.signals import user_locked_out
-from django.core.mail import send_mail
-from django.core.cache import cache
+
+from django.conf import settings
 from django.contrib.auth.models import User
+from django.core.cache import cache
+from django.core.mail import send_mail
+from django.dispatch import receiver
+
+from axes.signals import user_locked_out
+
 
 @receiver(user_locked_out)
-def enviar_token_desbloqueo(sender, request, username, **kwargs):
+def preparar_desbloqueo(sender, request, username, **kwargs):
+    """
+    Cuando Axes bloquea el acceso (3 intentos fallidos), guardamos el username en
+    sesión para habilitar la pantalla de desbloqueo.
+
+    Nota: NO enviamos correo aquí para evitar spam/duplicados; el envío se hace
+    bajo demanda desde /solicitar-token/ (botón en la pantalla de desbloqueo).
+    """
     user = User.objects.filter(username=username).first()
-    
-    if user and user.email:
-        # 1. Generar token de 6 dígitos
-        token = str(random.randint(100000, 999999))
-        
-        # 2. Guardarlo en cache por 10 minutos
-        cache.set(f'token_desbloqueo_{username}', token, timeout=600)
-        
-        # 3. Guardar el username en la sesión para la vista
-        request.session['usuario_bloqueado_nombre'] = username
-        
-        # 4. Enviar el correo (Usando tu Gmail configurado)
-        asunto = '⚠️ Acceso Protegido - Código de Desbloqueo'
-        mensaje = f"Hola {user.username},\n\nTu cuenta ha sido bloqueada tras 3 intentos. Usa este código para entrar directamente: {token}"
-        
-        send_mail(asunto, mensaje, None, [user.email], fail_silently=False)
+    if not user:
+        return
+
+    request.session['usuario_bloqueado_nombre'] = username
+
+    # Envío automático (una sola vez) al bloquear, con rate-limit para evitar duplicados.
+    # Mantenemos el botón "Solicitar código" como reenvío bajo demanda.
+    ip = request.META.get('REMOTE_ADDR') or ''
+    lock_key = f"unlock_autosend_lock:{username}:{ip}"
+    if not cache.add(lock_key, "1", timeout=60):
+        return
+
+    email = (user.email or '').strip()
+    if not email:
+        return
+
+    token = str(random.randint(100000, 999999))
+    cache.set(f"token_desbloqueo_{username}", token, timeout=300)  # 5 minutos
+
+    subject = "Acceso protegido - Código de desbloqueo"
+    message = (
+        f"Hola {user.username},\n\n"
+        "Tu cuenta fue bloqueada tras 3 intentos fallidos de inicio de sesión.\n"
+        f"Tu código de desbloqueo es: {token}\n\n"
+        "Este código es válido por 5 minutos."
+    )
+
+    send_mail(subject, message, getattr(settings, 'DEFAULT_FROM_EMAIL', None), [email], fail_silently=False)

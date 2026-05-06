@@ -1,0 +1,45 @@
+.role-form-title {
+        color: var(--color-principal-dark);
+        font-weight: 800;
+    }
+
+    .role-form-title i {
+        color: var(--color-principal);
+    }
+
+    .permission-help {
+        background: #fffaf6;
+        border: 1px solid #f0dfd0;
+        border-radius: 12px;
+        color: #6c4b31;
+        padding: 0.85rem 1rem;
+    }
+
+    .module-card {
+        border: 1px solid #ead8c8;
+        border-radius: 14px;
+        overflow: hidden;
+    }
+
+    .module-card-header {
+        background: #fff7ef;
+        border-bottom: 1px solid #ead8c8;
+        padding: 0.9rem 1rem;
+    }
+
+    .permission-grid {
+        display: grid;
+        gap: 0.65rem;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        padding: 1rem;
+    }
+
+    .permission-option {
+        align-items: center;
+        background: #ffffff;
+        border: 1px solid #eee1d6;
+        border-radius: 12px;
+        display: flex;
+        gap: 0.55rem;
+        padding: 0.65rem 0.75rem;
+    }

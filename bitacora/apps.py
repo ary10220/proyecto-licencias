@@ -5,4 +5,5 @@ class BitacoraConfig(AppConfig):
     name = 'bitacora'
 
     def ready(self):
-        import bitacora.signals
+        # Register auth signals (login/logout) for system bitácora.
+        import bitacora.interfaces.signals  # noqa: F401

@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+
+
+{% load static %}
+{% block title %}Usuarios - Gestión de Licencias{% endblock %}
+
+{% block content %}
+
+
+<link rel="stylesheet" href="{% static 'user/css/usuarios/lista.css' %}">
+
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="users-title mb-0">
+        <i class="fa-solid fa-users-gear me-2"></i>{{ titulo }}
+    </h4>
+
+    <div class="d-flex gap-2">
+        {% if perms.auth.view_group %}
+            <a href="{% url 'lista_roles' %}" class="btn btn-outline-secondary shadow-sm">
+                <i class="fa-solid fa-user-lock me-2"></i>Roles
+            </a>
+        {% endif %}
+        {% if perms.empleados.view_cargo %}
+            <a href="{% url 'lista_cargos' %}" class="btn btn-outline-secondary shadow-sm">
+                <i class="fa-solid fa-id-badge me-2"></i>Cargos
+            </a>
+        {% endif %}
+        {% if perms.auth.add_user %}
+            <a href="{% url 'crear_usuario' %}" class="btn btn-primary shadow-sm">
+                <i class="fa-solid fa-user-plus me-2"></i>Nuevo Usuario
+            </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card p-3 shadow-sm border-0">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle text-center mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>ID</th>
+                    <th>Usuario</th>
+                    <th>Nombre</th>
+                    <th>Email</th>
+                    <th>Área / Cargo</th>
+                    <th>Roles</th>
+                    <th>Estado</th>
+                    <th>Admin</th>
+                    <th class="text-center">Acciones</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for u in usuarios %}
+                <tr>
+                    <td class="fw-bold text-muted">{{ u.id }}</td>
+                    <td class="text-start">
+                        <strong>{{ u.username }}</strong>
+                        {% if u.is_superuser %}
+                            <span class="badge bg-dark ms-1">Superuser</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {{ u.first_name|default:"-" }} {{ u.last_name|default:"" }}
+                    </td>
+                    <td>{{ u.email|default:"-" }}</td>
+                    <td>
+                        <div>{{ u.perfil.get_area_display|default:"Sin área" }}</div>
+                        <small class="text-muted">{{ u.perfil.cargo|default:"Sin cargo" }}</small>
+                    </td>
+                    <td>
+                        {% for group in u.groups.all %}
+                            <span class="role-chip">{{ group.name }}</span>
+                        {% empty %}
+                            <span class="text-muted">Sin roles</span>
+                        {% endfor %}
+                    </td>
+                    <td>
+                        {% if u.is_active %}
+                            <span class="badge bg-success">Activo</span>
+                        {% else %}
+                            <span class="badge bg-danger">Inactivo</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if u.is_staff %}
+                            <span class="badge bg-primary">Sí</span>
+                        {% else %}
+                            <span class="badge bg-secondary">No</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="d-flex justify-content-center gap-1">
+                            {% if perms.auth.change_user %}
+                                <a href="{% url 'editar_usuario' u.id %}" class="btn btn-sm btn-outline-primary" title="Editar usuario">
+                                    <i class="fa-solid fa-pen"></i>
+                                </a>
+                                {% if u.id != request.user.id %}
+                                    <button type="button" class="btn btn-sm {% if u.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}" data-url="{% url 'toggle_usuario' u.id %}" data-nombre="{{ u.username }}" data-activo="{% if u.is_active %}1{% else %}0{% endif %}" onclick="confirmarToggleUsuario(this)" title="Activar o desactivar usuario">
+                                        {% if u.is_active %}
+                                            <i class="fa-solid fa-user-slash"></i>
+                                        {% else %}
+                                            <i class="fa-solid fa-user-check"></i>
+                                        {% endif %}
+                                    </button>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted small">Sin permisos</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="text-center text-muted py-4">
+                        <i class="fa-solid fa-circle-info me-2"></i>No hay usuarios registrados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script src="{% static 'user/js/usuarios/lista.js' %}"></script>
+
+{% endblock %}
