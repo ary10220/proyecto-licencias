@@ -203,69 +203,76 @@ def exportar_excel(request, tenant_id=None):
 
 def validar_token_bloqueo(request):
     """
-    Pantalla de desbloqueo tras 3 intentos fallidos.
+    Pantalla de desbloqueo tras intentos fallidos.
 
-    Si el signal `preparar_desbloqueo` dejo el flag `enviar_token_pendiente`
-    en sesion (caso normal: el browser acaba de seguir el redirect tras el
-    lockout), aqui se dispara el envio automatico del token en contexto de
-    vista normal (donde send_mail funciona igual que en el reenvio manual).
+    Token y dedup viven en `request.session` (no en cache global) para
+    funcionar consistente entre workers WSGI. El envio automatico se dispara
+    en GET cuando el signal `preparar_desbloqueo` dejo el flag
+    `enviar_token_pendiente` en sesion.
     """
-    from .services import enviar_token_desbloqueo
+    from .services import (
+        enviar_token_desbloqueo,
+        validar_token_desbloqueo,
+        limpiar_token_desbloqueo,
+    )
 
     username = request.session.get('usuario_bloqueado_nombre')
     if not username:
         return redirect('login')
 
-    # Auto-envio diferido desde el signal: solo en GET y solo si el flag
-    # esta presente. Se ejecuta una sola vez (limpia el flag si tuvo exito).
+    # --- Auto-envio diferido desde el signal user_locked_out ---
     if request.method == 'GET' and request.session.get('enviar_token_pendiente'):
         user = User.objects.filter(username=username).first()
         if user:
-            ok, info = enviar_token_desbloqueo(user=user, source="autosend")
+            ok, info = enviar_token_desbloqueo(
+                request=request, user=user, source="autosend"
+            )
             if ok:
                 request.session.pop('enviar_token_pendiente', None)
                 request.session.modified = True
                 messages.info(request, info)
             else:
-                # Si fallo, dejamos el flag para que el siguiente refresh
-                # reintente, y avisamos al usuario que puede reenviar.
                 messages.warning(
                     request,
                     f"{info} Pulsa 'Reenviar codigo' para intentarlo nuevamente.",
                 )
 
+    # --- Validacion de codigo ingresado ---
     if request.method == 'POST':
-        token_ingresado = request.POST.get('token')
-        token_real = cache.get(f'token_desbloqueo_{username}')
+        token_ingresado = (request.POST.get('token') or '').strip()
 
-        if token_real and token_ingresado == token_real:
-            user = User.objects.get(username=username)
-            # Limpia el bloqueo de Axes (username + ip). Nota: la función `reset` usa `ip`, no `ip_address`.
-            reset(username=username, ip=request.META.get('REMOTE_ADDR'))
+        if validar_token_desbloqueo(request=request, token_ingresado=token_ingresado):
+            user = User.objects.filter(username=username).first()
+            if not user:
+                messages.error(request, "Usuario no encontrado.")
+                return redirect('login')
 
-            # LOGIN AUTOMÁTICO
+            # Limpia el bloqueo de Axes (username + ip).
+            try:
+                reset(username=username, ip=request.META.get('REMOTE_ADDR'))
+            except Exception:
+                # No interrumpir el login si la limpieza de axes falla.
+                pass
+
             login(request, user, backend='django.contrib.auth.backends.ModelBackend')
 
-            cache.delete(f'token_desbloqueo_{username}')
+            limpiar_token_desbloqueo(request)
             request.session.pop('usuario_bloqueado_nombre', None)
             request.session.pop('enviar_token_pendiente', None)
+            request.session.modified = True
 
-            messages.success(request, "Acceso concedido mediante token de seguridad.")
+            messages.success(request, "Acceso concedido mediante codigo de seguridad.")
             return redirect('dashboard_general')
-        else:
-            messages.error(request, "Código incorrecto o expirado.")
+
+        messages.error(request, "Codigo incorrecto o expirado.")
 
     return render(request, 'registration/desbloqueo_token.html')
 
 
 def enviar_token_bloqueo(request):
     """
-    Envia (bajo demanda) un token de desbloqueo al correo del usuario bloqueado por Axes.
-    Se usa desde la pantalla /desbloqueo-seguro/ para evitar spam y correos duplicados.
-
-    La logica de envio vive en `licencias.services.desbloqueo`. Esta vista
-    solo orquesta: valida sesion, llama al service y traduce el resultado a
-    `messages` para el usuario.
+    Reenvio manual de token desde la pantalla /desbloqueo-seguro/.
+    Solo POST. Delega al service.
     """
     from .services import enviar_token_desbloqueo
 
@@ -278,15 +285,13 @@ def enviar_token_bloqueo(request):
 
     user = User.objects.filter(username=username).first()
     if not user:
-        messages.error(request, "No se pudo enviar el código: usuario no encontrado.")
+        messages.error(request, "No se pudo enviar el codigo: usuario no encontrado.")
         return redirect('validar_token_bloqueo')
 
-    ok, info = enviar_token_desbloqueo(user=user, source="manual")
+    ok, info = enviar_token_desbloqueo(request=request, user=user, source="manual")
     if ok:
         messages.success(request, info)
     else:
-        # info ya viene formateado por el service ("No se pudo enviar...",
-        # "Se envio recientemente...", etc.).
         messages.warning(request, info)
     return redirect('validar_token_bloqueo')
 # ==========================================
