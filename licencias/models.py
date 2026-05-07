@@ -16,7 +16,7 @@ class Proveedor(models.Model):
     nombre = models.CharField(max_length=100, unique=True)
     contacto = models.CharField(max_length=100, blank=True, null=True, help_text="Nombre del contacto comercial o email")
     telefono = models.CharField(max_length=50, blank=True, null=True)
-
+    activo = models.BooleanField(default=True, verbose_name="Estado Activo")
     class Meta:
         verbose_name_plural = "Proveedores"
 
@@ -28,6 +28,7 @@ class Empresa(models.Model):
     """Razón social específica vinculada a un Tenant."""
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='empresas')
     nombre = models.CharField(max_length=100)
+    activo = models.BooleanField(default=True, verbose_name="Estado Activo")
     
     def __str__(self):
         return f"{self.nombre} ({self.tenant.nombre})"
@@ -37,6 +38,7 @@ class TipoLicencia(models.Model):
     """Catálogo de SKUs y tipos de licencias de software."""
     nombre = models.CharField(max_length=50)
     fabricante = models.CharField(max_length=100, default='Microsoft')
+    activo = models.BooleanField(default=True, verbose_name="Estado Activo")
     
     def __str__(self):
         return self.nombre
@@ -54,6 +56,7 @@ class Licencia(models.Model):
     fecha_compra = models.DateField()
     fecha_activacion = models.DateField(null=True, blank=True)
     fecha_vencimiento = models.DateField()
+    activo = models.BooleanField(default=True, verbose_name="Estado Activo")
 
     def __str__(self):
         empresa_nombre = self.empresa.nombre if self.empresa else self.tenant.nombre

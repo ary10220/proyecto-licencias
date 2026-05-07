@@ -51,14 +51,41 @@
                 </thead>
                 <tbody>
                     {% for empresa in empresas %}
-                    <tr>
+                    <tr {% if not empresa.activo %}class="table-light text-muted" style="opacity: 0.7;"{% endif %}>
                         <td><span class="badge bg-secondary">{{ empresa.tenant.nombre }}</span></td>
                         <td><strong>{{ empresa.nombre }}</strong></td>
                         <td class="text-end">
-                            <a href="{% url 'editar_empresa' empresa.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar Empresa">
-                                <i class="fa-solid fa-pen"></i>
-                            </a>
-                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" data-url="{% url 'eliminar_empresa' empresa.id %}" data-nombre="{{ empresa.nombre }}" onclick="confirmarEliminacion(this, 'la empresa')" title="Eliminar Empresa"><i class="fa-solid fa-trash"></i></button>
+                            
+                            {% if empresa.id %}
+                                <a href="{% url 'editar_empresa' empresa.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar Empresa">
+                                    <i class="fa-solid fa-pen"></i>
+                                </a>
+                                
+                                {% if empresa.activo %}
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-success py-0 px-2 ms-1 btn-inhabilitar"
+                                            data-url="{% url 'eliminar_empresa' empresa.id %}"
+                                            data-nombre="{{ empresa.nombre|escapejs }}"
+                                            data-tipo="la empresa"
+                                            data-accion="desactivar"
+                                            title="Inhabilitar Empresa">
+                                        <i class="fa-solid fa-circle-check"></i>
+                                    </button>
+                                {% else %}
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-danger py-0 px-2 ms-1 btn-inhabilitar"
+                                            data-url="{% url 'eliminar_empresa' empresa.id %}"
+                                            data-nombre="{{ empresa.nombre|escapejs }}"
+                                            data-tipo="la empresa"
+                                            data-accion="activar"
+                                            title="Empresa Inhabilitada (Click para cambiar)">
+                                        <i class="fa-solid fa-circle-xmark"></i>
+                                    </button>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted small">Dato incompleto</span>
+                            {% endif %}
+
                         </td>
                     </tr>
                     {% empty %}
@@ -92,10 +119,12 @@
                         <td><span class="font-monospace fw-bold">{{ div.codigo }}</span></td>
                         <td>{{ div.nombre }}</td>
                         <td class="text-end">
-                            <a href="{% url 'editar_division' div.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar">
-                                <i class="fa-solid fa-pen"></i>
-                            </a>
-                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" data-url="{% url 'eliminar_division' div.id %}" data-nombre="{{ div.codigo }}" onclick="confirmarEliminacion(this, 'la división')" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                            {% if div.id %}
+                                <a href="{% url 'editar_division' div.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar">
+                                    <i class="fa-solid fa-pen"></i>
+                                </a>
+                                <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" data-url="{% url 'eliminar_division' div.id %}" data-nombre="{{ div.codigo }}" onclick="confirmarEliminacion(this, 'la división')" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}
@@ -131,10 +160,12 @@
                         <td><span class="font-monospace fw-bold">{{ area.codigo|default:"S/C" }}</span></td>
                         <td>{{ area.nombre }}</td>
                         <td class="text-end">
-                            <a href="{% url 'editar_area' area.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar">
-                                <i class="fa-solid fa-pen"></i>
-                            </a>
-                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" data-url="{% url 'eliminar_area' area.id %}" data-nombre="{{ area.nombre }}" onclick="confirmarEliminacion(this, 'el área')" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                            {% if area.id %}
+                                <a href="{% url 'editar_area' area.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar">
+                                    <i class="fa-solid fa-pen"></i>
+                                </a>
+                                <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" data-url="{% url 'eliminar_area' area.id %}" data-nombre="{{ area.nombre }}" onclick="confirmarEliminacion(this, 'el área')" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}
@@ -166,10 +197,12 @@
                         <td><span class="badge bg-light text-dark border">{{ uni.area.codigo|default:"S/C" }}</span> - {{ uni.area.nombre }}</td>
                         <td><strong>{{ uni.nombre }}</strong></td>
                         <td class="text-end">
-                            <a href="{% url 'editar_unidad' uni.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar">
-                                <i class="fa-solid fa-pen"></i>
-                            </a>
-                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" data-url="{% url 'eliminar_unidad' uni.id %}" data-nombre="{{ uni.nombre }}" onclick="confirmarEliminacion(this, 'la unidad')" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                            {% if uni.id %}
+                                <a href="{% url 'editar_unidad' uni.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar">
+                                    <i class="fa-solid fa-pen"></i>
+                                </a>
+                                <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" data-url="{% url 'eliminar_unidad' uni.id %}" data-nombre="{{ uni.nombre }}" onclick="confirmarEliminacion(this, 'la unidad')" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}
@@ -199,10 +232,12 @@
                     <tr>
                         <td><strong>{{ tenant.nombre }}</strong></td>
                         <td class="text-end">
-                            <a href="{% url 'editar_tenant' tenant.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar Grupo">
-                                <i class="fa-solid fa-pen"></i>
-                            </a>
-                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" data-url="{% url 'eliminar_tenant' tenant.id %}" data-nombre="{{ tenant.nombre }}" onclick="confirmarEliminacion(this, 'el grupo')" title="Eliminar Grupo"><i class="fa-solid fa-trash"></i></button>
+                            {% if tenant.id %}
+                                <a href="{% url 'editar_tenant' tenant.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar Grupo">
+                                    <i class="fa-solid fa-pen"></i>
+                                </a>
+                                <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" data-url="{% url 'eliminar_tenant' tenant.id %}" data-nombre="{{ tenant.nombre }}" onclick="confirmarEliminacion(this, 'el grupo')" title="Eliminar Grupo"><i class="fa-solid fa-trash"></i></button>
+                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}
@@ -231,15 +266,38 @@
                 </thead>
                 <tbody>
                     {% for prov in proveedores %}
-                    <tr>
+                    <tr {% if not prov.activo %}class="table-light text-muted" style="opacity: 0.7;"{% endif %}>
                         <td><strong>{{ prov.nombre }}</strong></td>
                         <td>{{ prov.contacto|default:"-" }}</td>
                         <td>{{ prov.telefono|default:"-" }}</td>
                         <td class="text-end">
-                            <a href="{% url 'editar_proveedor' prov.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar Proveedor">
-                                <i class="fa-solid fa-pen"></i>
-                            </a>
-                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" data-url="{% url 'eliminar_proveedor' prov.id %}" data-nombre="{{ prov.nombre }}" onclick="confirmarEliminacion(this, 'el proveedor')" title="Eliminar Proveedor"><i class="fa-solid fa-trash"></i></button>
+                            {% if prov.id %}
+                                <a href="{% url 'editar_proveedor' prov.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar Proveedor">
+                                    <i class="fa-solid fa-pen"></i>
+                                </a>
+                                
+                                {% if prov.activo %}
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-success py-0 px-2 ms-1 btn-inhabilitar"
+                                            data-url="{% url 'eliminar_proveedor' prov.id %}"
+                                            data-nombre="{{ prov.nombre|escapejs }}"
+                                            data-tipo="el proveedor"
+                                            data-accion="desactivar"
+                                            title="Inhabilitar Proveedor">
+                                        <i class="fa-solid fa-circle-check"></i>
+                                    </button>
+                                {% else %}
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-danger py-0 px-2 ms-1 btn-inhabilitar"
+                                            data-url="{% url 'eliminar_proveedor' prov.id %}"
+                                            data-nombre="{{ prov.nombre|escapejs }}"
+                                            data-tipo="el proveedor"
+                                            data-accion="activar"
+                                            title="Proveedor Inhabilitado (Click para cambiar)">
+                                        <i class="fa-solid fa-circle-xmark"></i>
+                                    </button>
+                                {% endif %}
+                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}
@@ -267,14 +325,37 @@
                 </thead>
                 <tbody>
                     {% for tipo in tipos_licencia %}
-                    <tr>
+                    <tr {% if not tipo.activo %}class="table-light text-muted" style="opacity: 0.7;"{% endif %}>
                         <td><span class="badge bg-dark">{{ tipo.fabricante }}</span></td>
                         <td><strong>{{ tipo.nombre }}</strong></td>
                         <td class="text-end">
-                            <a href="{% url 'editar_tipo_licencia' tipo.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar Licencia">
-                                <i class="fa-solid fa-pen"></i>
-                            </a>
-                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" data-url="{% url 'eliminar_tipo_licencia' tipo.id %}" data-nombre="{{ tipo.nombre }}" onclick="confirmarEliminacion(this, 'este tipo de licencia')" title="Eliminar Licencia"><i class="fa-solid fa-trash"></i></button>
+                            {% if tipo.id %}
+                                <a href="{% url 'editar_tipo_licencia' tipo.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar Licencia">
+                                    <i class="fa-solid fa-pen"></i>
+                                </a>
+                                
+                                {% if tipo.activo %}
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-success py-0 px-2 ms-1 btn-inhabilitar"
+                                            data-url="{% url 'eliminar_tipo_licencia' tipo.id %}"
+                                            data-nombre="{{ tipo.nombre|escapejs }}"
+                                            data-tipo="este tipo de licencia"
+                                            data-accion="desactivar"
+                                            title="Inhabilitar Licencia">
+                                        <i class="fa-solid fa-circle-check"></i>
+                                    </button>
+                                {% else %}
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-danger py-0 px-2 ms-1 btn-inhabilitar"
+                                            data-url="{% url 'eliminar_tipo_licencia' tipo.id %}"
+                                            data-nombre="{{ tipo.nombre|escapejs }}"
+                                            data-tipo="este tipo de licencia"
+                                            data-accion="activar"
+                                            title="Licencia Inhabilitada (Click para cambiar)">
+                                        <i class="fa-solid fa-circle-xmark"></i>
+                                    </button>
+                                {% endif %}
+                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}
@@ -408,7 +489,48 @@
     </div>
  
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
     <script>
+        // ESCUCHADOR GLOBAL NATIVO
+        document.addEventListener('click', function (event) {
+            var boton = event.target.closest('.btn-inhabilitar');
+            
+            if (boton) {
+                event.preventDefault();
+                
+                var urlDestino = boton.getAttribute('data-url');
+                var nombreItem = boton.getAttribute('data-nombre');
+                var tipoTexto = boton.getAttribute('data-tipo');
+                var accion = boton.getAttribute('data-accion'); // ¡Leemos la acción!
+
+                // Personalizamos los textos según el estado actual
+                var tituloAlerta = accion === 'desactivar' ? '¿Desactivar registro?' : '¿Modificar estado?';
+                var textoAlerta = accion === 'desactivar' 
+                    ? "Vas a cambiar el estado de " + tipoTexto + ": " + nombreItem + " a INACTIVO."
+                    : "Vas a interactuar con el estado de " + tipoTexto + ": " + nombreItem + ".";
+                var colorBoton = accion === 'desactivar' ? '#dc3545' : '#198754';
+                var textoConfirmar = accion === 'desactivar' ? 'Sí, deshabilitar' : 'Sí, cambiar';
+
+                Swal.fire({
+                    title: tituloAlerta,
+                    text: textoAlerta,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: colorBoton,
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: textoConfirmar,
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = urlDestino;
+                    }
+                });
+            }
+        });
+
+        // Dejamos aquí abajo la inicialización de tus modales (esta sí usa jQuery y ya te funcionaba)
         $(document).ready(function(){
             $('.modal').on('shown.bs.modal', function () {
                 $(this).find('.select2-busqueda').select2({
@@ -418,45 +540,15 @@
                     placeholder: "Buscar y seleccionar..."
                 });
             });
- 
-            // Reabrir modal si hubo errores de validación
-            var errorEmpresa = "{% if form_empresa.errors %}si{% else %}no{% endif %}";
-            if (errorEmpresa === "si") { $('#modalEmpresa').modal('show'); }
- 
-            var errorDivision = "{% if form_division.errors %}si{% else %}no{% endif %}";
-            if (errorDivision === "si") { $('#modalDivision').modal('show'); }
- 
-            var errorArea = "{% if form_area.errors %}si{% else %}no{% endif %}";
-            if (errorArea === "si") { $('#modalArea').modal('show'); }
- 
-            var errorUnidad = "{% if form_unidad.errors %}si{% else %}no{% endif %}";
-            if (errorUnidad === "si") { $('#modalUnidad').modal('show'); }
- 
-            var errorTenant = "{% if form_tenant.errors %}si{% else %}no{% endif %}";
-            if (errorTenant === "si") { $('#modalTenant').modal('show'); }
- 
-            var errorProveedor = "{% if form_proveedor.errors %}si{% else %}no{% endif %}";
-            if (errorProveedor === "si") { $('#modalProveedor').modal('show'); }
- 
-            var errorTipo = "{% if form_tipo.errors %}si{% else %}no{% endif %}";
-            if (errorTipo === "si") { $('#modalTipoLicencia').modal('show'); }
- 
-            window.confirmarEliminacion = function(boton, tipoTexto) {
-                var urlDestino = boton.getAttribute('data-url');
-                var nombreItem = boton.getAttribute('data-nombre');
-                Swal.fire({
-                    title: '¿Estás seguro?',
-                    text: "Vas a eliminar permanentemente " + tipoTexto + ": " + nombreItem + ". Esta acción no se puede deshacer.",
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#dc3545',
-                    cancelButtonColor: '#6c757d',
-                    confirmButtonText: 'Sí, eliminar',
-                    cancelButtonText: 'Cancelar',
-                    showLoaderOnConfirm: true,
-                    preConfirm: () => { window.location.href = urlDestino; return new Promise(() => {}); }
-                });
-            };
+
+            // Control de reapertura de ventanas por errores en Django
+            if ("{% if form_empresa.errors %}si{% else %}no{% endif %}" === "si") { $('#modalEmpresa').modal('show'); }
+            if ("{% if form_division.errors %}si{% else %}no{% endif %}" === "si") { $('#modalDivision').modal('show'); }
+            if ("{% if form_area.errors %}si{% else %}no{% endif %}" === "si") { $('#modalArea').modal('show'); }
+            if ("{% if form_unidad.errors %}si{% else %}no{% endif %}" === "si") { $('#modalUnidad').modal('show'); }
+            if ("{% if form_tenant.errors %}si{% else %}no{% endif %}" === "si") { $('#modalTenant').modal('show'); }
+            if ("{% if form_proveedor.errors %}si{% else %}no{% endif %}" === "si") { $('#modalProveedor').modal('show'); }
+            if ("{% if form_tipo.errors %}si{% else %}no{% endif %}" === "si") { $('#modalTipoLicencia').modal('show'); }
         });
     </script>
 {% endblock %}

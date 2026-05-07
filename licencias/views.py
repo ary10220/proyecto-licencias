@@ -213,11 +213,11 @@ def dashboard(request, tenant_id=None):
     
     if tenant_id:
         tenant_seleccionado = get_object_or_404(Tenant, pk=tenant_id)
-        licencias = Licencia.objects.filter(tenant=tenant_seleccionado).select_related('tipo', 'empresa', 'proveedor', 'tenant')
+        licencias = Licencia.objects.filter(tenant=tenant_seleccionado, activo=True).select_related('tipo', 'empresa', 'proveedor', 'tenant')
         titulo = f"Licencias de {tenant_seleccionado.nombre}"
     else:
         tenant_seleccionado = None
-        licencias = Licencia.objects.all().select_related('tipo', 'empresa', 'proveedor', 'tenant')
+        licencias = Licencia.objects.filter(activo=True).select_related('tipo', 'empresa', 'proveedor', 'tenant')
         titulo = "Todas las Licencias"
 
     empleados = Empleado.objects.filter(activo=True).order_by('nombre_completo')
@@ -517,11 +517,11 @@ def configuracion(request):
             'empleados.view_unidad',
         ])
 
-    # 2. UNIFICACIÓN DE CONSULTAS (PREVENCIÓN N+1)
+    # 2. UNIFICACIÓN DE CONSULTAS (Filtramos solo los que estén activos)
     tenants = Tenant.objects.all().order_by('nombre')
-    empresas = Empresa.objects.all().select_related('tenant').order_by('tenant__nombre', 'nombre')
-    proveedores = Proveedor.objects.all().order_by('nombre')
-    tipos_licencia = TipoLicencia.objects.all().order_by('fabricante', 'nombre')
+    empresas = Empresa.objects.filter(id__isnull=False).select_related('tenant').order_by('tenant__nombre', 'nombre')
+    proveedores = Proveedor.objects.filter(id__isnull=False).order_by('nombre')
+    tipos_licencia = TipoLicencia.objects.filter(id__isnull=False).order_by('fabricante', 'nombre')
     divisiones = GerenciaDivision.objects.all().select_related('empresa').order_by('empresa__nombre', 'nombre')
     areas = GerenciaArea.objects.all().select_related('empresa', 'division').order_by('empresa__nombre', 'nombre')
     unidades = Unidad.objects.all().select_related('area').order_by('area__nombre', 'nombre')
@@ -782,33 +782,75 @@ def eliminar_tenant(request, pk):
 @login_required
 def eliminar_empresa(request, pk):
     exigir_permiso(request, 'licencias.delete_empresa')
-    get_object_or_404(Empresa, pk=pk).delete()
-    messages.success(request, "Razón social purgada del catálogo.")
+    empresa = get_object_or_404(Empresa, pk=pk)
+    
+    # LÓGICA DE INTERRUPTOR (Toggle)
+    if empresa.activo:
+        empresa.activo = False
+        mensaje = f"La empresa '{empresa.nombre}' ha sido INHABILITADA correctamente."
+    else:
+        empresa.activo = True
+        mensaje = f"La empresa '{empresa.nombre}' ha sido ACTIVADA y está operativa nuevamente."
+        
+    empresa.save()
+    
+    messages.success(request, mensaje)
     return redirect('configuracion')
 
 @login_required
 def eliminar_proveedor(request, pk):
     exigir_permiso(request, 'licencias.delete_proveedor')
-    get_object_or_404(Proveedor, pk=pk).delete()
-    messages.success(request, "Proveedor retirado del catálogo.")
+    proveedor = get_object_or_404(Proveedor, pk=pk)
+    
+    if proveedor.activo:
+        proveedor.activo = False
+        mensaje = f"El proveedor '{proveedor.nombre}' ha sido INHABILITADO correctamente."
+    else:
+        proveedor.activo = True
+        mensaje = f"El proveedor '{proveedor.nombre}' ha sido ACTIVADO y está operativo nuevamente."
+        
+    proveedor.save()
+    messages.success(request, mensaje)
     return redirect('configuracion')
 
 @login_required
 def eliminar_tipo_licencia(request, pk):
     exigir_permiso(request, 'licencias.delete_tipolicencia')
-    get_object_or_404(TipoLicencia, pk=pk).delete()
-    messages.success(request, "SKU de software retirado del catálogo global.")
+    tipo = get_object_or_404(TipoLicencia, pk=pk)
+    
+    # 🔄 LÓGICA DE INTERRUPTOR (Toggle)
+    if tipo.activo:
+        tipo.activo = False
+        mensaje = f"El SKU de software '{tipo.nombre}' ha sido INHABILITADO del catálogo."
+    else:
+        tipo.activo = True
+        mensaje = f"El SKU de software '{tipo.nombre}' ha sido ACTIVADO y está operativo nuevamente."
+        
+    tipo.save()
+    
+    messages.success(request, mensaje)
     return redirect('configuracion')
 
 @login_required
 def eliminar_licencia(request, licencia_id):
-    """Destrucción física del registro de activo de software y sus dependencias."""
-    licencia = get_object_or_404(Licencia, id=licencia_id)
+    """Inhabilitación lógica del registro de activo de software."""
     exigir_permiso(request, 'licencias.delete_licencia')
+    licencia = get_object_or_404(Licencia, id=licencia_id)
     nombre_licencia = licencia.tipo.nombre
-    licencia.delete()
     
-    messages.success(request, f"El activo {nombre_licencia} ha sido eliminado permanentemente del inventario.")
+    # Cambio de eliminación física a lógica
+    licencia.activo = False
+    licencia.save()
+    
+    # Regra de negocio: Si la licencia se inhabilita, liberamos de inmediato al usuario que la use
+    asignaciones_activas = licencia.asignaciones.filter(activo=True)
+    for asignacion in asignaciones_activas:
+        asignacion.activo = False
+        asignacion.fecha_retiro = timezone.now()
+        asignacion.observaciones = "Revocación por inhabilitación del activo de software."
+        asignacion.save()
+        
+    messages.success(request, f"El activo {nombre_licencia} ha sido marcado como INACTIVO y retirado del inventario operativo.")
     return redirect('dashboard_general')
 
 
