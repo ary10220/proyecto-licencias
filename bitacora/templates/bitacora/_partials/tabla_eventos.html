@@ -46,12 +46,12 @@
 
                         <td>
                             <span class="badge bg-light text-dark border">
-                                {{ registro.modulo }}
+                                {{ registro.modulo_label|default:registro.modulo }}
                             </span>
                         </td>
 
-                        <td class="text-center description-cell" title="{{ registro.descripcion }}">
-                            {{ registro.descripcion }}
+                        <td class="text-center description-cell" title="{{ registro.descripcion_label|default:registro.descripcion }}">
+                            {{ registro.descripcion_label|default:registro.descripcion }}
                         </td>
 
                         <td>

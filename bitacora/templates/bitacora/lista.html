@@ -4,13 +4,14 @@
 {% block content %}
 <link rel="stylesheet" href="{% static 'bitacora/css/lista.css' %}">
 
-<div class="card audit-card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0 bitacora-title">
-            <i class="fa-solid fa-clipboard-list me-2"></i> Bitácora del Sistema
-        </h5>
-    </div>
+<div class="page-header mb-3">
+    <h2 class="page-title">
+        <span class="page-title-icon"><i class="fa-solid fa-clipboard-list"></i></span>
+        <span class="page-title-text">Bitacora del Sistema</span>
+    </h2>
+</div>
 
+<div class="card audit-card">
     <div class="card-body audit-card-body">
         <div class="table-responsive audit-workspace">
             {% include 'bitacora/_partials/filtros.html' %}
@@ -21,4 +22,3 @@
 
 <script src="{% static 'bitacora/js/lista.js' %}"></script>
 {% endblock %}
-

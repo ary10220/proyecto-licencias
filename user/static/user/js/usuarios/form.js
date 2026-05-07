@@ -8,30 +8,42 @@ document.addEventListener("DOMContentLoaded", function () {
     var controls = Array.prototype.slice
       .call(form.querySelectorAll("input, select, textarea"))
       .filter(function (control) {
-        return control.name !== "csrfmiddlewaretoken";
+        return (
+          control.name &&
+          control.name !== "csrfmiddlewaretoken" &&
+          control.type !== "submit" &&
+          control.type !== "button"
+        );
       });
+
+    var serializeControl = function (control) {
+      if (control.type === "checkbox" || control.type === "radio") {
+        return control.checked ? "1" : "0";
+      }
+      return control.value || "";
+    };
 
     var snapshot = function () {
       return controls
         .map(function (control) {
-          if (control.type === "checkbox" || control.type === "radio") {
-            return control.name + ":" + String(control.checked);
-          }
-          return control.name + ":" + String(control.value);
+          return [control.name, control.value, serializeControl(control)].join("::");
         })
-        .join("|");
+        .sort()
+        .join("||");
     };
 
-    var initialState = snapshot();
+    var initialSnapshot = snapshot();
 
-    var toggleSave = function () {
-      saveButton.disabled = snapshot() === initialState;
+    var syncSaveButton = function () {
+      saveButton.disabled = snapshot() === initialSnapshot;
     };
 
     controls.forEach(function (control) {
-      control.addEventListener("input", toggleSave);
-      control.addEventListener("change", toggleSave);
+      control.addEventListener("input", syncSaveButton);
+      control.addEventListener("change", syncSaveButton);
     });
+
+    syncSaveButton();
 
     form.addEventListener("submit", function () {
       saveButton.disabled = true;
@@ -62,7 +74,7 @@ document.addEventListener("DOMContentLoaded", function () {
           return;
         }
         Swal.fire({
-          title: "Restablecer contraseña?",
+          title: "Restablecer contrase??a?",
           text: "Se enviara un correo con un enlace de recuperacion al usuario.",
           icon: "warning",
           showCancelButton: true,

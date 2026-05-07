@@ -21,6 +21,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from licencias import views
 from user.interfaces.views.password import ForcedPasswordChangeView
+from config.error_handlers import custom_permission_denied
 
 urlpatterns = [
     # Administración de Django
@@ -105,3 +106,6 @@ urlpatterns = [
     
     
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+
+handler403 = custom_permission_denied

@@ -3,10 +3,10 @@
 {% block title %}Dashboard - {{ titulo }}{% endblock %}
  
 {% block content %}
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 style="color: #333; font-weight: bold;">{{ titulo }}</h3>
+    <div class="page-header mb-3">
+        <h2 class="page-title"><span class="page-title-icon"><i class="fa-solid fa-chart-pie"></i></span><span class="page-title-text">{{ titulo }}</span></h2>
         
-        <div class="d-flex align-items-center">
+        <div class="page-actions">
             {% csrf_token %}
             <button class="btn btn-sm btn-danger shadow-sm d-none me-3" id="btnBorrarMasivo" onclick="confirmarBorradoMasivo()">
                 <i class="fa-solid fa-trash-can me-1"></i> Borrar Seleccionadas (<span id="contadorSeleccionados">0</span>)
@@ -39,7 +39,7 @@
     </div>
  
     <!-- KPIs -->
-    <div class="row mb-3">
+    <div class="row mb-3 g-3">
         <div class="col-md-3" onclick="filtrarAlerta('todas')" style="cursor: pointer;">
             <div class="card text-white bg-secondary h-100 shadow-sm border-0 hover-scale">
                 <div class="card-body d-flex justify-content-between align-items-center p-3">
@@ -98,7 +98,7 @@
         </div>
     </div>
  
-    <div class="card p-3 shadow-sm border-0">
+    <div class="card p-3 shadow-sm border-0 content-card">
         
         <!-- BARRA DE FILTROS: ahora con 4 columnas incluyendo Tenant -->
         <div class="row mb-3">
@@ -228,7 +228,7 @@
                                 <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 ms-1" data-bs-toggle="modal" data-bs-target="#modalHistorial{{ licencia.id }}" title="Ver Historial">
                                     <i class="fa-solid fa-eye"></i>
                                 </button>
-                                {% include 'partials/modal_historial.html' %}
+                                {% include 'licencias/_partials/modal_historial.html' %}
                                 
                                 {% if licencia.usuario_activo %}
                                     <button type="button" 
@@ -243,7 +243,7 @@
                                     <button type="button" class="btn btn-sm btn-outline-success py-0 px-2 ms-1" data-bs-toggle="modal" data-bs-target="#modalAsignar{{ licencia.id }}" title="Asignar Licencia">
                                         <i class="fa-solid fa-user-plus"></i>
                                     </button>
-                                    {% include 'partials/modal_asignar.html' %}
+                                    {% include 'licencias/_partials/modal_asignar.html' %}
                                 {% endif %}
                             </div>
                         </td>

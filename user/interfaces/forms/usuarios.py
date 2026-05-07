@@ -101,8 +101,27 @@ class UserForm(forms.ModelForm):
         return username
 
     def clean(self):
+        """
+        Validaciones del formulario.
+
+        DECISION DE DISENO:
+        Los privilegios de cuenta (is_active, is_staff, is_superuser) son
+        INDEPENDIENTES de los roles (groups). Un usuario puede ser superuser
+        sin tener ningun rol asignado (es asi como `python manage.py
+        createsuperuser` crea el primer admin del sistema). NO se debe agregar
+        aqui ninguna regla del tipo "para ser superuser hay que tener al menos
+        un rol", porque rompe el modelo de permisos nativo de Django y dejaria
+        al sistema sin forma de crear superusers en un fresh deploy.
+
+        Las unicas restricciones validadas son:
+        - El usuario logueado no puede dejar de ser superuser ni desactivarse
+          a si mismo (proteccion contra lockout accidental).
+        - Si se eligen area y cargo a la vez, deben ser consistentes.
+        """
         cleaned_data = super().clean()
 
+        # Proteccion contra auto-lockout: el usuario logueado no puede quitarse
+        # los flags criticos de su propia cuenta.
         if self.instance.pk and self.current_user and self.instance.pk == self.current_user.pk:
             if not cleaned_data.get('is_active'):
                 self.add_error('is_active', 'No puedes desactivar tu propio usuario.')
@@ -111,6 +130,7 @@ class UserForm(forms.ModelForm):
             if not cleaned_data.get('is_superuser'):
                 self.add_error('is_superuser', 'No puedes quitarte el rol de superusuario desde tu propia cuenta.')
 
+        # Coherencia opcional: si elige area Y cargo, deben coincidir.
         area_usuario = cleaned_data.get('area_usuario')
         cargo = cleaned_data.get('cargo')
         if area_usuario and cargo and cargo.area_usuario and cargo.area_usuario != area_usuario:

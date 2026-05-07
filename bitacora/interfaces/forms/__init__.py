@@ -1,2 +1,9 @@
-from .filtros import BitacoraFiltroForm  # noqa: F401
+"""
+Paquete de formularios (capa interfaces) del modulo `bitacora`.
+"""
 
+from .filtros import BitacoraFiltroForm
+
+__all__ = [
+    "BitacoraFiltroForm",
+]

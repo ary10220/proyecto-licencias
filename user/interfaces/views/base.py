@@ -63,20 +63,71 @@ def permiso_requerido(permiso, fallback='mi_perfil'):
     return decorator
 
 
+ACCION_LABELS = {
+    'view': 'Ver',
+    'add': 'Crear',
+    'change': 'Editar',
+    'delete': 'Eliminar',
+}
+
+MODELO_LABELS = {
+    'user': 'Usuario',
+    'group': 'Rol',
+    'permission': 'Permiso',
+    'areausuario': 'Area de usuario',
+    'perfilusuario': 'Perfil de usuario',
+    'cargo': 'Cargo',
+    'empleado': 'Empleado',
+    'gerenciaarea': 'Gerencia de Area',
+    'gerenciadivision': 'Gerencia de Division',
+    'unidad': 'Unidad',
+    'licencia': 'Licencia',
+    'asignacion': 'Asignacion',
+    'empresa': 'Empresa',
+    'proveedor': 'Proveedor',
+    'tenant': 'Tenant',
+    'tipolicencia': 'Tipo de licencia',
+    'bitacora': 'Bitacora',
+}
+
+
+def etiqueta_permiso(permiso):
+    codename = permiso.codename or ''
+    if '_' in codename:
+        accion, modelo = codename.split('_', 1)
+    else:
+        accion, modelo = '', codename
+
+    accion_label = ACCION_LABELS.get(accion)
+    modelo_label = MODELO_LABELS.get(modelo, modelo.replace('_', ' ').strip().title())
+
+    if accion_label:
+        return f'{accion_label} {modelo_label}'
+    return modelo_label
+
+
 def obtener_permisos_por_modulo(form):
     permisos_seleccionados = set(str(pk) for pk in form['permissions'].value() or [])
     grupos = []
 
     for grupo in ROLE_PERMISSION_GROUPS:
-        filtros = Q(pk__in=[])
+        permisos_por_codigo = {}
         for codigo in grupo['permisos']:
             app_label, codename = codigo.split('.', 1)
-            filtros |= Q(content_type__app_label=app_label, codename=codename)
-        permisos = Permission.objects.filter(filtros).select_related('content_type').order_by('content_type__model', 'codename')
+            permiso = Permission.objects.filter(
+                content_type__app_label=app_label,
+                codename=codename,
+            ).select_related('content_type').first()
+            if not permiso:
+                continue
+            permiso.display_label = etiqueta_permiso(permiso)
+            permisos_por_codigo[codigo] = permiso
+
         grupos.append({
             'titulo': grupo['titulo'],
             'descripcion': grupo['descripcion'],
-            'permisos': permisos,
+            'menu_help': grupo.get('menu_help', ''),
+            'permisos': [permisos_por_codigo[codigo] for codigo in grupo['permisos'] if codigo in permisos_por_codigo],
             'seleccionados': permisos_seleccionados,
         })
 

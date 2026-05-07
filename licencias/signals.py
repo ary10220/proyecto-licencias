@@ -1,49 +1,56 @@
-import random
+"""
+Signals del modulo licencias.
 
-from django.conf import settings
+Conecta el evento `user_locked_out` de django-axes para preparar el flujo
+de desbloqueo cuando un usuario alcanza el limite de intentos fallidos.
+
+DECISION DE DISENO:
+El envio del correo NO se hace aqui. El signal de Axes corre con
+`signal.send_robust()` que silencia excepciones, y ademas el contexto del
+request en ese momento es inestable (Axes intercepta antes de finalizar
+el response). En lugar de eso, marcamos un flag en sesion y delegamos el
+envio a la vista `validar_token_bloqueo`, que corre en el contexto normal
+de un GET (el mismo donde el reenvio manual funciona sin problema).
+"""
+
+from __future__ import annotations
+
+import logging
+
 from django.contrib.auth.models import User
-from django.core.cache import cache
-from django.core.mail import send_mail
 from django.dispatch import receiver
 
 from axes.signals import user_locked_out
 
 
+logger = logging.getLogger(__name__)
+
+
 @receiver(user_locked_out)
 def preparar_desbloqueo(sender, request, username, **kwargs):
     """
-    Cuando Axes bloquea el acceso (3 intentos fallidos), guardamos el username en
-    sesión para habilitar la pantalla de desbloqueo.
+    Se dispara cuando Axes bloquea al usuario tras 3 intentos fallidos.
 
-    Nota: NO enviamos correo aquí para evitar spam/duplicados; el envío se hace
-    bajo demanda desde /solicitar-token/ (botón en la pantalla de desbloqueo).
+    Solo deja en sesion los marcadores necesarios para que la pantalla
+    `/desbloqueo-seguro/` (vista `validar_token_bloqueo`) sepa para quien
+    enviar el token apenas el browser siga el redirect.
     """
+    if request is None:
+        logger.warning("[axes_lockout] signal disparado sin request, no se puede marcar sesion (%s).", username)
+        return
+
     user = User.objects.filter(username=username).first()
     if not user:
+        logger.warning("[axes_lockout] usuario inexistente: %s", username)
         return
 
-    request.session['usuario_bloqueado_nombre'] = username
+    request.session["usuario_bloqueado_nombre"] = username
+    # Flag que la vista de desbloqueo leera para hacer el envio automatico
+    # en su propio contexto (donde send_mail funciona sin problema).
+    request.session["enviar_token_pendiente"] = True
+    request.session.modified = True
 
-    # Envío automático (una sola vez) al bloquear, con rate-limit para evitar duplicados.
-    # Mantenemos el botón "Solicitar código" como reenvío bajo demanda.
-    ip = request.META.get('REMOTE_ADDR') or ''
-    lock_key = f"unlock_autosend_lock:{username}:{ip}"
-    if not cache.add(lock_key, "1", timeout=60):
-        return
-
-    email = (user.email or '').strip()
-    if not email:
-        return
-
-    token = str(random.randint(100000, 999999))
-    cache.set(f"token_desbloqueo_{username}", token, timeout=300)  # 5 minutos
-
-    subject = "Acceso protegido - Código de desbloqueo"
-    message = (
-        f"Hola {user.username},\n\n"
-        "Tu cuenta fue bloqueada tras 3 intentos fallidos de inicio de sesión.\n"
-        f"Tu código de desbloqueo es: {token}\n\n"
-        "Este código es válido por 5 minutos."
+    logger.info(
+        "[axes_lockout] usuario %s bloqueado; marcado para envio automatico de token.",
+        username,
     )
-
-    send_mail(subject, message, getattr(settings, 'DEFAULT_FROM_EMAIL', None), [email], fail_silently=False)

@@ -4,81 +4,167 @@
 
 {% block content %}
 <style>
-    .sidebar {
-        display: none !important;
-    }
+    .sidebar,
+    .mobile-topbar,
+    .sidebar-backdrop { display: none !important; }
+
     .main-content {
-        margin-left: 0 !important;
-        padding: 0 !important;
-        width: 100% !important;
+        align-items: center;
+        background:
+            radial-gradient(circle at top left, rgba(255, 206, 160, 0.28), transparent 34%),
+            linear-gradient(180deg, #fbf7f1 0%, #f6f1eb 100%);
         display: flex;
         justify-content: center;
-        align-items: center;
-        min-height: 100vh;
-        background-color: #f4f6f9;
+        margin-left: 0 !important;
+        min-height: 100dvh;
+        padding: 24px 16px !important;
+        width: 100% !important;
+    }
+
+    .auth-shell { width: min(100%, 470px); }
+    .auth-card {
+        background: #fffdf9;
+        border: 1px solid rgba(220, 197, 177, 0.72);
+        border-radius: 18px;
+        box-shadow: 0 24px 54px rgba(85, 42, 10, 0.14);
+        overflow: hidden;
+    }
+
+    .auth-card-header {
+        background: linear-gradient(135deg, #ef7d1f 0%, #d76510 62%, #a94b0b 100%);
+        color: #ffffff;
+        padding: 24px 20px 20px;
+        text-align: center;
+    }
+
+    .auth-card-body {
+        background: #fffaf5;
+        padding: 22px 22px 20px;
+    }
+
+    .auth-card-footer {
+        background: #ffffff;
+        border-top: 1px solid rgba(220, 197, 177, 0.48);
+        padding: 16px 20px 20px;
+        text-align: center;
+    }
+
+    .auth-primary {
+        background: linear-gradient(135deg, #df6e12 0%, #b9550c 100%);
+        border: none;
+        border-radius: 10px;
+        color: #ffffff;
+        font-weight: 800;
+        min-height: 48px;
+    }
+
+    .auth-secondary {
+        border-radius: 10px;
+        font-weight: 700;
+        min-height: 44px;
+    }
+
+    .auth-code-label {
+        color: #252b36;
+        display: block;
+        font-size: 0.84rem;
+        font-weight: 800;
+        margin-bottom: 0.5rem;
+    }
+
+    .auth-code-input {
+        border: 2px solid rgba(223, 110, 18, 0.5);
+        border-radius: 12px;
+        font-size: 1.35rem;
+        font-weight: 800;
+        letter-spacing: 0.55rem;
+        min-height: 58px;
+        padding: 0.85rem 1rem;
+        text-align: center;
+        width: 100%;
+    }
+
+    .auth-code-input:focus {
+        border-color: #df6e12;
+        box-shadow: 0 0 0 0.24rem rgba(223, 110, 18, 0.16);
+        outline: none;
+    }
+
+    .auth-link {
+        color: #6c7480;
+        font-weight: 700;
+        text-decoration: none;
+    }
+
+    .auth-link:hover { color: #df6e12; }
+
+    @media (max-width: 575.98px) {
+        .main-content { padding: 14px !important; }
+        .auth-card-header,
+        .auth-card-body,
+        .auth-card-footer { padding-left: 18px; padding-right: 18px; }
+        .auth-code-input {
+            font-size: 1.12rem;
+            letter-spacing: 0.32rem;
+            min-height: 52px;
+            padding-left: 0.7rem;
+            padding-right: 0.7rem;
+        }
     }
 </style>
-<div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
-    <div class="card shadow-lg border-0" style="max-width: 450px; width: 100%; border-radius: 15px; overflow: hidden;">
-        <div class="card-header text-center py-4" style="background-color: #f39c12; color: white;">
+<div class="auth-shell">
+    <div class="auth-card">
+        <div class="auth-card-header">
             <i class="fas fa-user-shield fa-3x mb-3"></i>
-            <h2 class="h4 mb-0">Acceso Protegido</h2>
+            <h2 class="h4 mb-0">Acceso protegido</h2>
         </div>
 
-        <div class="card-body p-4" style="background-color: #faf8f5;">
+        <div class="auth-card-body">
             <div class="text-center mb-4">
-                <p class="text-muted">
-                    Has superado los 3 intentos fallidos. Por seguridad, enviamos un <strong>código de acceso</strong> a tu correo registrado.
+                <p class="text-muted mb-2">
+                    Has superado los 3 intentos fallidos. Enviamos un <strong>codigo de acceso</strong> a tu correo registrado.
                 </p>
-                <p class="small text-muted mb-0">
-                    Si no te llega en unos minutos, puedes solicitarlo nuevamente aquí.
-                </p>
+                <p class="small text-muted mb-0">Si no te llega en unos minutos, puedes solicitarlo nuevamente aqui.</p>
             </div>
 
             <div class="text-center mb-4">
                 <form method="POST" action="{% url 'enviar_token_bloqueo' %}">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-outline-warning btn-sm fw-bold">
-                        <i class="fas fa-paper-plane"></i> Reenviar código al correo
+                    <button type="submit" class="btn btn-outline-warning auth-secondary px-3">
+                        <i class="fas fa-paper-plane me-1"></i> Reenviar codigo al correo
                     </button>
                 </form>
             </div>
 
-            <hr style="border-top: 2px dashed #f39c12; opacity: 0.3;">
+            <hr style="border-top: 2px dashed #f39c12; opacity: 0.25;">
 
             <form method="POST" action="{% url 'validar_token_bloqueo' %}">
                 {% csrf_token %}
-
-                <div class="form-group mb-4">
-                    <label for="token" class="form-label fw-bold text-dark">Código de Verificación</label>
+                <div class="mb-4">
+                    <label for="token" class="auth-code-label">Codigo de verificacion</label>
                     <input
                         type="text"
                         name="token"
                         id="token"
-                        class="form-control form-control-lg text-center"
-                        placeholder="· · · · · ·"
+                        class="auth-code-input"
+                        placeholder="000000"
                         maxlength="6"
+                        inputmode="numeric"
+                        autocomplete="one-time-code"
                         required
-                        style="letter-spacing: 10px; font-size: 1.5rem; border: 2px solid #f39c12; border-radius: 10px;"
                     >
-                    <small class="form-text text-center text-info mt-2">
-                        Revisa tu bandeja de entrada (y la carpeta de spam).
+                    <small class="form-text d-block text-center text-muted mt-2">
+                        Revisa tu bandeja de entrada y la carpeta de spam.
                     </small>
                 </div>
 
-                <button
-                    type="submit"
-                    class="btn btn-lg btn-block shadow-sm w-100"
-                    style="background-color: #e67e22; color: white; border-radius: 10px; font-weight: bold;"
-                >
-                    Verificar e Ingresar
-                </button>
+                <button type="submit" class="btn auth-primary w-100">Verificar e ingresar</button>
             </form>
 
             {% if messages %}
                 <div class="mt-3">
                     {% for message in messages %}
-                        <div class="alert alert-{{ message.tags }} text-center py-2" role="alert">
+                        <div class="alert alert-{{ message.tags }} text-center py-2 mb-2" role="alert">
                             {{ message }}
                         </div>
                     {% endfor %}
@@ -86,22 +172,11 @@
             {% endif %}
         </div>
 
-        <div class="card-footer bg-white border-0 text-center pb-4">
-            <a href="{% url 'login' %}" class="text-decoration-none text-muted small">
-                <i class="fas fa-arrow-left"></i> Volver al inicio de sesión
+        <div class="auth-card-footer">
+            <a href="{% url 'login' %}" class="auth-link small">
+                <i class="fas fa-arrow-left me-1"></i> Volver al inicio de sesion
             </a>
         </div>
     </div>
 </div>
-
-<style>
-    .btn-block:hover {
-        background-color: #d35400 !important;
-        transition: 0.3s;
-    }
-    .form-control:focus {
-        box-shadow: 0 0 10px rgba(243, 156, 18, 0.3);
-        border-color: #e67e22;
-    }
-</style>
 {% endblock %}

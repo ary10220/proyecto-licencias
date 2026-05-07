@@ -25,12 +25,13 @@ def lista_roles(request):
 @login_required
 @permiso_requerido('auth.add_group')
 def crear_rol(request):
+    return_to = request.POST.get('return_to') or request.GET.get('return_to') or reverse('lista_roles')
     if request.method == 'POST':
         form = GroupForm(request.POST)
         if form.is_valid():
             rol = uc_crear_rol(request, form)
             messages.success(request, f"Rol {rol.name} creado correctamente. Puedes revisar o ajustar sus permisos.")
-            return redirect('lista_roles')
+            return redirect(return_to)
     else:
         form = GroupForm()
 
@@ -40,6 +41,7 @@ def crear_rol(request):
         'tenants': repo.list_tenants(),
         'titulo': 'Crear Rol',
         'modo': 'crear',
+        'return_to': return_to,
     }
     return render(request, 'user/roles/form.html', context)
 
@@ -49,13 +51,14 @@ def crear_rol(request):
 @permiso_requerido('auth.change_group')
 def editar_rol(request, group_id):
     rol = get_object_or_404(Group, id=group_id)
+    return_to = request.POST.get('return_to') or request.GET.get('return_to') or reverse('lista_roles')
 
     if request.method == 'POST':
         form = GroupForm(request.POST, instance=rol)
         if form.is_valid():
             rol = uc_editar_rol(request, form)
             messages.success(request, f"Rol {rol.name} actualizado correctamente.")
-            return redirect('lista_roles')
+            return redirect(return_to)
     else:
         form = GroupForm(instance=rol)
 
@@ -66,6 +69,7 @@ def editar_rol(request, group_id):
         'tenants': repo.list_tenants(),
         'titulo': f'Editar Rol: {rol.name}',
         'modo': 'editar',
+        'return_to': return_to,
     }
     return render(request, 'user/roles/form.html', context)
 

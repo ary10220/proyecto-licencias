@@ -3,45 +3,98 @@
 {% block title %}Configuración General - {{ titulo }}{% endblock %}
  
 {% block content %}
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 style="color: #333; font-weight: bold;"><i class="fa-solid fa-gears me-2"></i> {{ titulo }}</h3>
+<style>
+    .config-shell {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .config-tabs .nav-link {
+        color: #7d674f !important;
+        font-weight: 800;
+    }
+
+    .config-tabs .nav-link.active {
+        color: #2f5d68 !important;
+    }
+
+    .config-surface {
+        background: linear-gradient(180deg, #fff8f2 0%, #fffdf9 100%);
+    }
+
+    .config-pane-header {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        justify-content: space-between;
+    }
+
+    .config-table-wrap {
+        border: 1px solid rgba(220, 197, 177, 0.35);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .config-table-wrap table {
+        margin-bottom: 0;
+    }
+
+    .config-badge {
+        background: #edf5f7;
+        color: #2f5d68;
+    }
+
+    .config-modal .modal-header {
+        background: linear-gradient(180deg, #ef882d 0%, #df6e12 100%);
+        color: #ffffff;
+    }
+
+    .config-modal .modal-body {
+        background: #fff8f2;
+    }
+</style>
+<div class="config-shell">
+    <div class="page-header mb-4">
+        <h2 class="page-title"><span class="page-title-icon"><i class="fa-solid fa-gears"></i></span><span class="page-title-text">{{ titulo }}</span></h2>
     </div>
  
-    <ul class="nav nav-tabs fw-bold" id="configTabs" role="tablist">
+    <ul class="nav nav-tabs fw-bold config-tabs" id="configTabs" role="tablist">
         <li class="nav-item" role="presentation">
-            <button class="nav-link active text-primary" data-bs-toggle="tab" data-bs-target="#tab-empresas" type="button" role="tab">Empresas</button>
+            <button class="nav-link {% if active_tab == 'empresas' %}active{% endif %} text-primary" data-bs-toggle="tab" data-bs-target="#tab-empresas" type="button" role="tab">Empresas</button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link text-primary" data-bs-toggle="tab" data-bs-target="#tab-divisiones" type="button" role="tab">Divisiones</button>
+            <button class="nav-link {% if active_tab == 'divisiones' %}active{% endif %} text-primary" data-bs-toggle="tab" data-bs-target="#tab-divisiones" type="button" role="tab">Divisiones</button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link text-primary" data-bs-toggle="tab" data-bs-target="#tab-areas" type="button" role="tab">Áreas</button>
+            <button class="nav-link {% if active_tab == 'areas' %}active{% endif %} text-primary" data-bs-toggle="tab" data-bs-target="#tab-areas" type="button" role="tab">Áreas</button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link text-primary" data-bs-toggle="tab" data-bs-target="#tab-unidades" type="button" role="tab">Unidades</button>
+            <button class="nav-link {% if active_tab == 'unidades' %}active{% endif %} text-primary" data-bs-toggle="tab" data-bs-target="#tab-unidades" type="button" role="tab">Unidades</button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link text-primary" data-bs-toggle="tab" data-bs-target="#tab-tenants" type="button" role="tab">Grupos Corporativos (Tenant)</button>
+            <button class="nav-link {% if active_tab == 'tenants' %}active{% endif %} text-primary" data-bs-toggle="tab" data-bs-target="#tab-tenants" type="button" role="tab">Grupos Corporativos (Tenant)</button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link text-primary" data-bs-toggle="tab" data-bs-target="#tab-proveedores" type="button" role="tab">Proveedores</button>
+            <button class="nav-link {% if active_tab == 'proveedores' %}active{% endif %} text-primary" data-bs-toggle="tab" data-bs-target="#tab-proveedores" type="button" role="tab">Proveedores</button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link text-primary" data-bs-toggle="tab" data-bs-target="#tab-tipos" type="button" role="tab">Tipos de Licencia</button>
+            <button class="nav-link {% if active_tab == 'tipos' %}active{% endif %} text-primary" data-bs-toggle="tab" data-bs-target="#tab-tipos" type="button" role="tab">Tipos de Licencia</button>
         </li>
     </ul>
  
-    <div class="tab-content bg-white border border-top-0 p-4 shadow-sm rounded-bottom" id="configTabsContent">
+    <div class="tab-content bg-white border border-top-0 p-4 shadow-sm rounded-bottom content-card config-surface" id="configTabsContent">
  
         <!-- 1. EMPRESAS -->
-        <div class="tab-pane fade show active" id="tab-empresas" role="tabpanel">
-            <div class="d-flex justify-content-between mb-3">
+        <div class="tab-pane fade {% if active_tab == 'empresas' %}show active{% endif %}" id="tab-empresas" role="tabpanel">
+            <div class="config-pane-header mb-3">
                 <h5 class="text-secondary">Lista de Empresas</h5>
                 <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalEmpresa">
                     <i class="fa-solid fa-plus me-1"></i> Nueva Empresa
                 </button>
             </div>
-            <table class="table table-hover align-middle table-sm">
+            <div class="table-responsive config-table-wrap"><table class="table table-hover align-middle table-sm">
                 <thead class="table-light">
                     <tr>
                         <th>Grupo Corporativo</th>
@@ -52,31 +105,31 @@
                 <tbody>
                     {% for empresa in empresas %}
                     <tr>
-                        <td><span class="badge bg-secondary">{{ empresa.tenant.nombre }}</span></td>
+                        <td><span class="badge config-badge">{{ empresa.tenant.nombre }}</span></td>
                         <td><strong>{{ empresa.nombre }}</strong></td>
                         <td class="text-end">
-                            <a href="{% url 'editar_empresa' empresa.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar Empresa">
+                            <a href="{% url 'editar_empresa' empresa.id %}?tab=empresas" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar Empresa">
                                 <i class="fa-solid fa-pen"></i>
                             </a>
-                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" data-url="{% url 'eliminar_empresa' empresa.id %}" data-nombre="{{ empresa.nombre }}" onclick="confirmarEliminacion(this, 'la empresa')" title="Eliminar Empresa"><i class="fa-solid fa-trash"></i></button>
+                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" data-url="{% url 'eliminar_empresa' empresa.id %}?tab=empresas" data-nombre="{{ empresa.nombre }}" onclick="confirmarEliminacion(this, 'la empresa')" title="Eliminar Empresa"><i class="fa-solid fa-trash"></i></button>
                         </td>
                     </tr>
                     {% empty %}
                     <tr><td colspan="3" class="text-center py-4 text-muted">No hay empresas registradas.</td></tr>
                     {% endfor %}
                 </tbody>
-            </table>
+            </table></div>
         </div>
  
         <!-- 2. DIVISIONES -->
-        <div class="tab-pane fade" id="tab-divisiones" role="tabpanel">
-            <div class="d-flex justify-content-between mb-3">
+        <div class="tab-pane fade {% if active_tab == 'divisiones' %}show active{% endif %}" id="tab-divisiones" role="tabpanel">
+            <div class="config-pane-header mb-3">
                 <h5 class="text-secondary">Lista de Divisiones</h5>
                 <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalDivision">
                     <i class="fa-solid fa-plus me-1"></i> Nueva División
                 </button>
             </div>
-            <table class="table table-hover align-middle table-sm">
+            <div class="table-responsive config-table-wrap"><table class="table table-hover align-middle table-sm">
                 <thead class="table-light">
                     <tr>
                         <th>Empresa</th>
@@ -88,32 +141,32 @@
                 <tbody>
                     {% for div in divisiones %}
                     <tr>
-                        <td><span class="badge bg-secondary">{{ div.empresa.nombre }}</span></td>
+                        <td><span class="badge config-badge">{{ div.empresa.nombre }}</span></td>
                         <td><span class="font-monospace fw-bold">{{ div.codigo }}</span></td>
                         <td>{{ div.nombre }}</td>
                         <td class="text-end">
-                            <a href="{% url 'editar_division' div.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar">
+                            <a href="{% url 'editar_division' div.id %}?tab=divisiones" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar">
                                 <i class="fa-solid fa-pen"></i>
                             </a>
-                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" data-url="{% url 'eliminar_division' div.id %}" data-nombre="{{ div.codigo }}" onclick="confirmarEliminacion(this, 'la división')" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" data-url="{% url 'eliminar_division' div.id %}?tab=divisiones" data-nombre="{{ div.codigo }}" onclick="confirmarEliminacion(this, 'la división')" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
                         </td>
                     </tr>
                     {% empty %}
                     <tr><td colspan="4" class="text-center py-4 text-muted">No hay divisiones registradas.</td></tr>
                     {% endfor %}
                 </tbody>
-            </table>
+            </table></div>
         </div>
  
         <!-- 3. ÁREAS -->
-        <div class="tab-pane fade" id="tab-areas" role="tabpanel">
-            <div class="d-flex justify-content-between mb-3">
+        <div class="tab-pane fade {% if active_tab == 'areas' %}show active{% endif %}" id="tab-areas" role="tabpanel">
+            <div class="config-pane-header mb-3">
                 <h5 class="text-secondary">Lista de Áreas</h5>
                 <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalArea">
                     <i class="fa-solid fa-plus me-1"></i> Nueva Área
                 </button>
             </div>
-            <table class="table table-hover align-middle table-sm">
+            <div class="table-responsive config-table-wrap"><table class="table table-hover align-middle table-sm">
                 <thead class="table-light">
                     <tr>
                         <th>Empresa</th>
@@ -126,33 +179,33 @@
                 <tbody>
                     {% for area in areas %}
                     <tr>
-                        <td><span class="badge bg-secondary">{{ area.empresa.nombre }}</span></td>
+                        <td><span class="badge config-badge">{{ area.empresa.nombre }}</span></td>
                         <td>{{ area.division.codigo|default:"-" }}</td>
                         <td><span class="font-monospace fw-bold">{{ area.codigo|default:"S/C" }}</span></td>
                         <td>{{ area.nombre }}</td>
                         <td class="text-end">
-                            <a href="{% url 'editar_area' area.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar">
+                            <a href="{% url 'editar_area' area.id %}?tab=areas" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar">
                                 <i class="fa-solid fa-pen"></i>
                             </a>
-                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" data-url="{% url 'eliminar_area' area.id %}" data-nombre="{{ area.nombre }}" onclick="confirmarEliminacion(this, 'el área')" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" data-url="{% url 'eliminar_area' area.id %}?tab=areas" data-nombre="{{ area.nombre }}" onclick="confirmarEliminacion(this, 'el área')" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
                         </td>
                     </tr>
                     {% empty %}
                     <tr><td colspan="5" class="text-center py-4 text-muted">No hay áreas registradas.</td></tr>
                     {% endfor %}
                 </tbody>
-            </table>
+            </table></div>
         </div>
  
         <!-- 4. UNIDADES -->
-        <div class="tab-pane fade" id="tab-unidades" role="tabpanel">
-            <div class="d-flex justify-content-between mb-3">
+        <div class="tab-pane fade {% if active_tab == 'unidades' %}show active{% endif %}" id="tab-unidades" role="tabpanel">
+            <div class="config-pane-header mb-3">
                 <h5 class="text-secondary">Lista de Unidades</h5>
                 <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalUnidad">
                     <i class="fa-solid fa-plus me-1"></i> Nueva Unidad
                 </button>
             </div>
-            <table class="table table-hover align-middle table-sm">
+            <div class="table-responsive config-table-wrap"><table class="table table-hover align-middle table-sm">
                 <thead class="table-light">
                     <tr>
                         <th>Área Padre</th>
@@ -166,28 +219,28 @@
                         <td><span class="badge bg-light text-dark border">{{ uni.area.codigo|default:"S/C" }}</span> - {{ uni.area.nombre }}</td>
                         <td><strong>{{ uni.nombre }}</strong></td>
                         <td class="text-end">
-                            <a href="{% url 'editar_unidad' uni.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar">
+                            <a href="{% url 'editar_unidad' uni.id %}?tab=unidades" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar">
                                 <i class="fa-solid fa-pen"></i>
                             </a>
-                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" data-url="{% url 'eliminar_unidad' uni.id %}" data-nombre="{{ uni.nombre }}" onclick="confirmarEliminacion(this, 'la unidad')" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" data-url="{% url 'eliminar_unidad' uni.id %}?tab=unidades" data-nombre="{{ uni.nombre }}" onclick="confirmarEliminacion(this, 'la unidad')" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
                         </td>
                     </tr>
                     {% empty %}
                     <tr><td colspan="3" class="text-center py-4 text-muted">No hay unidades registradas.</td></tr>
                     {% endfor %}
                 </tbody>
-            </table>
+            </table></div>
         </div>
  
         <!-- 5. TENANTS -->
-        <div class="tab-pane fade" id="tab-tenants" role="tabpanel">
-            <div class="d-flex justify-content-between mb-3">
+        <div class="tab-pane fade {% if active_tab == 'tenants' %}show active{% endif %}" id="tab-tenants" role="tabpanel">
+            <div class="config-pane-header mb-3">
                 <h5 class="text-secondary">Grupos Corporativos</h5>
                 <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalTenant">
                     <i class="fa-solid fa-plus me-1"></i> Nuevo Grupo
                 </button>
             </div>
-            <table class="table table-hover align-middle table-sm">
+            <div class="table-responsive config-table-wrap"><table class="table table-hover align-middle table-sm">
                 <thead class="table-light">
                     <tr>
                         <th>Nombre del Grupo</th>
@@ -199,28 +252,28 @@
                     <tr>
                         <td><strong>{{ tenant.nombre }}</strong></td>
                         <td class="text-end">
-                            <a href="{% url 'editar_tenant' tenant.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar Grupo">
+                            <a href="{% url 'editar_tenant' tenant.id %}?tab=tenants" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar Grupo">
                                 <i class="fa-solid fa-pen"></i>
                             </a>
-                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" data-url="{% url 'eliminar_tenant' tenant.id %}" data-nombre="{{ tenant.nombre }}" onclick="confirmarEliminacion(this, 'el grupo')" title="Eliminar Grupo"><i class="fa-solid fa-trash"></i></button>
+                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" data-url="{% url 'eliminar_tenant' tenant.id %}?tab=tenants" data-nombre="{{ tenant.nombre }}" onclick="confirmarEliminacion(this, 'el grupo')" title="Eliminar Grupo"><i class="fa-solid fa-trash"></i></button>
                         </td>
                     </tr>
                     {% empty %}
                     <tr><td colspan="2" class="text-center py-4 text-muted">No hay grupos registrados.</td></tr>
                     {% endfor %}
                 </tbody>
-            </table>
+            </table></div>
         </div>
  
         <!-- 6. PROVEEDORES -->
-        <div class="tab-pane fade" id="tab-proveedores" role="tabpanel">
-            <div class="d-flex justify-content-between mb-3">
+        <div class="tab-pane fade {% if active_tab == 'proveedores' %}show active{% endif %}" id="tab-proveedores" role="tabpanel">
+            <div class="config-pane-header mb-3">
                 <h5 class="text-secondary">Lista de Proveedores</h5>
                 <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalProveedor">
                     <i class="fa-solid fa-plus me-1"></i> Nuevo Proveedor
                 </button>
             </div>
-            <table class="table table-hover align-middle table-sm">
+            <div class="table-responsive config-table-wrap"><table class="table table-hover align-middle table-sm">
                 <thead class="table-light">
                     <tr>
                         <th>Proveedor</th>
@@ -236,28 +289,28 @@
                         <td>{{ prov.contacto|default:"-" }}</td>
                         <td>{{ prov.telefono|default:"-" }}</td>
                         <td class="text-end">
-                            <a href="{% url 'editar_proveedor' prov.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar Proveedor">
+                            <a href="{% url 'editar_proveedor' prov.id %}?tab=proveedores" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar Proveedor">
                                 <i class="fa-solid fa-pen"></i>
                             </a>
-                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" data-url="{% url 'eliminar_proveedor' prov.id %}" data-nombre="{{ prov.nombre }}" onclick="confirmarEliminacion(this, 'el proveedor')" title="Eliminar Proveedor"><i class="fa-solid fa-trash"></i></button>
+                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" data-url="{% url 'eliminar_proveedor' prov.id %}?tab=proveedores" data-nombre="{{ prov.nombre }}" onclick="confirmarEliminacion(this, 'el proveedor')" title="Eliminar Proveedor"><i class="fa-solid fa-trash"></i></button>
                         </td>
                     </tr>
                     {% empty %}
                     <tr><td colspan="4" class="text-center py-4 text-muted">No hay proveedores registrados.</td></tr>
                     {% endfor %}
                 </tbody>
-            </table>
+            </table></div>
         </div>
  
         <!-- 7. TIPOS DE LICENCIA -->
-        <div class="tab-pane fade" id="tab-tipos" role="tabpanel">
-            <div class="d-flex justify-content-between mb-3">
+        <div class="tab-pane fade {% if active_tab == 'tipos' %}show active{% endif %}" id="tab-tipos" role="tabpanel">
+            <div class="config-pane-header mb-3">
                 <h5 class="text-secondary">Catálogo de Tipos de Licencia</h5>
                 <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalTipoLicencia">
                     <i class="fa-solid fa-plus me-1"></i> Nueva Licencia
                 </button>
             </div>
-            <table class="table table-hover align-middle table-sm">
+            <div class="table-responsive config-table-wrap"><table class="table table-hover align-middle table-sm">
                 <thead class="table-light">
                     <tr>
                         <th>Fabricante</th>
@@ -268,20 +321,20 @@
                 <tbody>
                     {% for tipo in tipos_licencia %}
                     <tr>
-                        <td><span class="badge bg-dark">{{ tipo.fabricante }}</span></td>
+                        <td><span class="badge config-badge">{{ tipo.fabricante }}</span></td>
                         <td><strong>{{ tipo.nombre }}</strong></td>
                         <td class="text-end">
-                            <a href="{% url 'editar_tipo_licencia' tipo.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar Licencia">
+                            <a href="{% url 'editar_tipo_licencia' tipo.id %}?tab=tipos" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar Licencia">
                                 <i class="fa-solid fa-pen"></i>
                             </a>
-                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" data-url="{% url 'eliminar_tipo_licencia' tipo.id %}" data-nombre="{{ tipo.nombre }}" onclick="confirmarEliminacion(this, 'este tipo de licencia')" title="Eliminar Licencia"><i class="fa-solid fa-trash"></i></button>
+                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" data-url="{% url 'eliminar_tipo_licencia' tipo.id %}?tab=tipos" data-nombre="{{ tipo.nombre }}" onclick="confirmarEliminacion(this, 'este tipo de licencia')" title="Eliminar Licencia"><i class="fa-solid fa-trash"></i></button>
                         </td>
                     </tr>
                     {% empty %}
                     <tr><td colspan="3" class="text-center py-4 text-muted">No hay tipos de licencia registrados.</td></tr>
                     {% endfor %}
                 </tbody>
-            </table>
+            </table></div>
         </div>
  
     </div>
@@ -289,11 +342,12 @@
     <!-- ==================== MODALES ==================== -->
  
     <!-- MODAL: NUEVA EMPRESA -->
-    <div class="modal fade" id="modalEmpresa" tabindex="-1" aria-hidden="true">
+    <div class="modal fade config-modal" id="modalEmpresa" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <form method="POST" action="{% url 'configuracion' %}" class="modal-content border-0 shadow">
                 {% csrf_token %}
                 <input type="hidden" name="tipo_formulario" value="empresa">
+                <input type="hidden" name="active_tab" value="empresas">
                 <div class="modal-header bg-primary text-white"><h5 class="modal-title">Registrar Nueva Empresa</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body bg-light">
                     {% for field in form_empresa %}
@@ -306,11 +360,12 @@
     </div>
  
     <!-- MODAL: NUEVA DIVISIÓN -->
-    <div class="modal fade" id="modalDivision" tabindex="-1" aria-hidden="true">
+    <div class="modal fade config-modal" id="modalDivision" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <form method="POST" action="{% url 'configuracion' %}" class="modal-content border-0 shadow">
                 {% csrf_token %}
                 <input type="hidden" name="tipo_formulario" value="division">
+                <input type="hidden" name="active_tab" value="divisiones">
                 <div class="modal-header bg-primary text-white"><h5 class="modal-title">Crear Nueva División</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body bg-light">
                     {% for field in form_division %}
@@ -323,11 +378,12 @@
     </div>
  
     <!-- MODAL: NUEVA ÁREA -->
-    <div class="modal fade" id="modalArea" tabindex="-1" aria-hidden="true">
+    <div class="modal fade config-modal" id="modalArea" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <form method="POST" action="{% url 'configuracion' %}" class="modal-content border-0 shadow">
                 {% csrf_token %}
                 <input type="hidden" name="tipo_formulario" value="area">
+                <input type="hidden" name="active_tab" value="areas">
                 <div class="modal-header bg-primary text-white"><h5 class="modal-title">Crear Nueva Área</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body bg-light">
                     {% for field in form_area %}
@@ -340,11 +396,12 @@
     </div>
  
     <!-- MODAL: NUEVA UNIDAD -->
-    <div class="modal fade" id="modalUnidad" tabindex="-1" aria-hidden="true">
+    <div class="modal fade config-modal" id="modalUnidad" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <form method="POST" action="{% url 'configuracion' %}" class="modal-content border-0 shadow">
                 {% csrf_token %}
                 <input type="hidden" name="tipo_formulario" value="unidad">
+                <input type="hidden" name="active_tab" value="unidades">
                 <div class="modal-header bg-primary text-white"><h5 class="modal-title">Crear Nueva Unidad</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body bg-light">
                     {% for field in form_unidad %}
@@ -357,11 +414,12 @@
     </div>
  
     <!-- MODAL: NUEVO TENANT -->
-    <div class="modal fade" id="modalTenant" tabindex="-1" aria-hidden="true">
+    <div class="modal fade config-modal" id="modalTenant" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <form method="POST" action="{% url 'configuracion' %}" class="modal-content border-0 shadow">
                 {% csrf_token %}
                 <input type="hidden" name="tipo_formulario" value="tenant">
+                <input type="hidden" name="active_tab" value="tenants">
                 <div class="modal-header bg-primary text-white"><h5 class="modal-title">Registrar Nuevo Grupo</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body bg-light">
                     {% for field in form_tenant %}
@@ -374,10 +432,11 @@
     </div>
  
     <!-- MODAL: NUEVO PROVEEDOR -->
-    <div class="modal fade" id="modalProveedor" tabindex="-1" aria-hidden="true">
+    <div class="modal fade config-modal" id="modalProveedor" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <form method="POST" action="{% url 'configuracion' %}" class="modal-content border-0 shadow">
                 {% csrf_token %}
+                <input type="hidden" name="active_tab" value="proveedores">
                 <input type="hidden" name="tipo_formulario" value="proveedor">
                 <div class="modal-header bg-primary text-white"><h5 class="modal-title">Registrar Nuevo Proveedor</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body bg-light">
@@ -391,11 +450,12 @@
     </div>
  
     <!-- MODAL: TIPO DE LICENCIA -->
-    <div class="modal fade" id="modalTipoLicencia" tabindex="-1" aria-hidden="true">
+    <div class="modal fade config-modal" id="modalTipoLicencia" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <form method="POST" action="{% url 'configuracion' %}" class="modal-content border-0 shadow">
                 {% csrf_token %}
                 <input type="hidden" name="tipo_formulario" value="tipo_licencia">
+                <input type="hidden" name="active_tab" value="tipos">
                 <div class="modal-header bg-primary text-white"><h5 class="modal-title">Registrar Tipo de Licencia</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body bg-light">
                     {% for field in form_tipo %}
@@ -410,6 +470,22 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         $(document).ready(function(){
+            const activeTab = '{{ active_tab|default:"empresas" }}';
+            const trigger = document.querySelector('[data-bs-target="#tab-' + activeTab + '"]');
+            if (trigger && window.bootstrap) {
+                bootstrap.Tab.getOrCreateInstance(trigger).show();
+            }
+
+            document.querySelectorAll('#configTabs [data-bs-toggle="tab"]').forEach((button) => {
+                button.addEventListener('shown.bs.tab', function (event) {
+                    const target = event.target.getAttribute('data-bs-target') || '';
+                    const tab = target.replace('#tab-', '');
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('tab', tab);
+                    window.history.replaceState({}, '', url);
+                });
+            });
+
             $('.modal').on('shown.bs.modal', function () {
                 $(this).find('.select2-busqueda').select2({
                     theme: 'bootstrap-5',

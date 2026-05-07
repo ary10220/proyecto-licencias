@@ -1,8 +1,9 @@
 from django.urls import path
 
-from .views.bitacora import lista_bitacora
+from . import views
 
 urlpatterns = [
-    path("", lista_bitacora, name="lista_bitacora"),
+    path("", views.lista_bitacora, name="lista_bitacora"),
+    path("evento/<int:evento_id>/", views.detalle_evento, name="detalle_bitacora"),
+    path("api/opciones-filtros/", views.opciones_filtros, name="bitacora_opciones_filtros"),
 ]
-

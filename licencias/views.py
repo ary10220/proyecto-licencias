@@ -10,6 +10,7 @@ from django.utils import timezone
 from django.contrib.auth import login
 from axes.utils import reset
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.contrib import messages
 from django.core.cache import cache
 from django.core.mail import send_mail
@@ -45,6 +46,20 @@ from bitacora.actions import (
     log_liberar_licencia,
     log_reactivar_empleado,
     log_sincronizar_m365,
+    log_division_editar,
+    log_division_eliminar,
+    log_area_editar,
+    log_area_eliminar,
+    log_unidad_editar,
+    log_unidad_eliminar,
+    log_tenant_editar,
+    log_tenant_eliminar,
+    log_empresa_editar,
+    log_empresa_eliminar,
+    log_proveedor_editar,
+    log_proveedor_eliminar,
+    log_tipo_licencia_editar,
+    log_tipo_licencia_eliminar,
 )
 
 def exigir_permiso(request, permiso):
@@ -55,6 +70,24 @@ def exigir_permiso(request, permiso):
 def exigir_algun_permiso(request, permisos):
     if not any(request.user.has_perm(permiso) for permiso in permisos):
         raise PermissionDenied
+
+CONFIG_TAB_BY_TYPE = {
+    'empresa': 'empresas',
+    'division': 'divisiones',
+    'area': 'areas',
+    'unidad': 'unidades',
+    'tenant': 'tenants',
+    'proveedor': 'proveedores',
+    'tipo_licencia': 'tipos',
+}
+
+
+def _config_tab_from_request(request, default='empresas'):
+    return request.POST.get('active_tab') or request.GET.get('tab') or default
+
+
+def _redirect_config_tab(tab_name):
+    return redirect(f"{reverse('configuracion')}?tab={tab_name}")
 
 # ==========================================
 # MÓDULO DE EXPORTACIÓN Y REPORTES
@@ -169,10 +202,37 @@ def exportar_excel(request, tenant_id=None):
 # ==========================================
 
 def validar_token_bloqueo(request):
+    """
+    Pantalla de desbloqueo tras 3 intentos fallidos.
+
+    Si el signal `preparar_desbloqueo` dejo el flag `enviar_token_pendiente`
+    en sesion (caso normal: el browser acaba de seguir el redirect tras el
+    lockout), aqui se dispara el envio automatico del token en contexto de
+    vista normal (donde send_mail funciona igual que en el reenvio manual).
+    """
+    from .services import enviar_token_desbloqueo
+
     username = request.session.get('usuario_bloqueado_nombre')
-    
     if not username:
         return redirect('login')
+
+    # Auto-envio diferido desde el signal: solo en GET y solo si el flag
+    # esta presente. Se ejecuta una sola vez (limpia el flag si tuvo exito).
+    if request.method == 'GET' and request.session.get('enviar_token_pendiente'):
+        user = User.objects.filter(username=username).first()
+        if user:
+            ok, info = enviar_token_desbloqueo(user=user, source="autosend")
+            if ok:
+                request.session.pop('enviar_token_pendiente', None)
+                request.session.modified = True
+                messages.info(request, info)
+            else:
+                # Si fallo, dejamos el flag para que el siguiente refresh
+                # reintente, y avisamos al usuario que puede reenviar.
+                messages.warning(
+                    request,
+                    f"{info} Pulsa 'Reenviar codigo' para intentarlo nuevamente.",
+                )
 
     if request.method == 'POST':
         token_ingresado = request.POST.get('token')
@@ -182,13 +242,14 @@ def validar_token_bloqueo(request):
             user = User.objects.get(username=username)
             # Limpia el bloqueo de Axes (username + ip). Nota: la función `reset` usa `ip`, no `ip_address`.
             reset(username=username, ip=request.META.get('REMOTE_ADDR'))
-            
+
             # LOGIN AUTOMÁTICO
             login(request, user, backend='django.contrib.auth.backends.ModelBackend')
-            
+
             cache.delete(f'token_desbloqueo_{username}')
-            del request.session['usuario_bloqueado_nombre']
-            
+            request.session.pop('usuario_bloqueado_nombre', None)
+            request.session.pop('enviar_token_pendiente', None)
+
             messages.success(request, "Acceso concedido mediante token de seguridad.")
             return redirect('dashboard_general')
         else:
@@ -201,7 +262,13 @@ def enviar_token_bloqueo(request):
     """
     Envia (bajo demanda) un token de desbloqueo al correo del usuario bloqueado por Axes.
     Se usa desde la pantalla /desbloqueo-seguro/ para evitar spam y correos duplicados.
+
+    La logica de envio vive en `licencias.services.desbloqueo`. Esta vista
+    solo orquesta: valida sesion, llama al service y traduce el resultado a
+    `messages` para el usuario.
     """
+    from .services import enviar_token_desbloqueo
+
     username = request.session.get('usuario_bloqueado_nombre')
     if not username:
         return redirect('login')
@@ -210,35 +277,17 @@ def enviar_token_bloqueo(request):
         return redirect('validar_token_bloqueo')
 
     user = User.objects.filter(username=username).first()
-    email = (getattr(user, 'email', '') or '').strip() if user else ''
-    if not user or not email:
-        messages.error(request, "No se pudo enviar el código porque el usuario no tiene correo registrado.")
+    if not user:
+        messages.error(request, "No se pudo enviar el código: usuario no encontrado.")
         return redirect('validar_token_bloqueo')
 
-    # Rate limit: evita dobles clicks / refreshs que disparan multiples correos.
-    lock_key = f"unlock_token_lock:{username}"
-    if not cache.add(lock_key, "1", timeout=20):
-        messages.warning(request, "Ya se envió un código recientemente. Espera unos segundos e intenta nuevamente.")
-        return redirect('validar_token_bloqueo')
-
-    token = str(random.randint(100000, 999999))
-    cache.set(f"token_desbloqueo_{username}", token, timeout=300)  # 5 minutos
-
-    subject = "Acceso protegido - Código de desbloqueo"
-    message = (
-        f"Hola {user.username},\n\n"
-        "Tu cuenta fue bloqueada tras 3 intentos fallidos de inicio de sesión.\n"
-        f"Tu código de desbloqueo es: {token}\n\n"
-        "Este código es válido por 5 minutos."
-    )
-
-    try:
-        send_mail(subject, message, getattr(settings, 'DEFAULT_FROM_EMAIL', None), [email], fail_silently=False)
-    except Exception:
-        messages.error(request, "No se pudo enviar el código de desbloqueo. Intenta nuevamente.")
-        return redirect('validar_token_bloqueo')
-
-    messages.success(request, f"Se envió un código de acceso al correo {email}.")
+    ok, info = enviar_token_desbloqueo(user=user, source="manual")
+    if ok:
+        messages.success(request, info)
+    else:
+        # info ya viene formateado por el service ("No se pudo enviar...",
+        # "Se envio recientemente...", etc.).
+        messages.warning(request, info)
     return redirect('validar_token_bloqueo')
 # ==========================================
 # MÓDULO PRINCIPAL (DASHBOARD Y KPIS)
@@ -272,7 +321,7 @@ def inicio(request):
         'empresas_registradas': Empresa.objects.count() if request.user.has_perm('licencias.view_empresa') else 0,
         'ultimas_asignaciones': asignaciones_activas.select_related('licencia__tipo', 'empleado').order_by('-fecha_asignacion')[:4] if puede_ver_licencias else [],
     }
-    return render(request, 'inicio.html', context)
+    return render(request, 'licencias/inicio.html', context)
 
 
 @login_required
@@ -340,7 +389,7 @@ def dashboard(request, tenant_id=None):
         'limite_30_dias': limite_30_dias,
         'form_licencia': form_licencia,
     }
-    return render(request, 'dashboard.html', context)
+    return render(request, 'licencias/dashboard.html', context)
 
 
 # ==========================================
@@ -638,7 +687,7 @@ def configuracion(request):
                 tenant = form_tenant.save()
                 log_tenant_crear(request, tenant)
                 messages.success(request, "Grupo corporativo (Tenant) aprovisionado.")
-                return redirect('configuracion')
+                return _redirect_config_tab(active_tab)
 
         elif tipo == 'empresa':
             form_empresa = EmpresaForm(request.POST)
@@ -646,7 +695,7 @@ def configuracion(request):
                 empresa = form_empresa.save()
                 log_empresa_crear(request, empresa)
                 messages.success(request, "Razón social aprovisionada.")
-                return redirect('configuracion')
+                return _redirect_config_tab(active_tab)
 
         elif tipo == 'proveedor':
             form_proveedor = ProveedorForm(request.POST)
@@ -654,7 +703,7 @@ def configuracion(request):
                 proveedor = form_proveedor.save()
                 log_proveedor_crear(request, proveedor)
                 messages.success(request, "Socio comercial (Proveedor) registrado.")
-                return redirect('configuracion')
+                return _redirect_config_tab(active_tab)
 
         elif tipo == 'tipo_licencia':
             form_tipo = TipoLicenciaForm(request.POST)
@@ -662,7 +711,7 @@ def configuracion(request):
                 tipo_lic = form_tipo.save()
                 log_tipo_licencia_crear(request, tipo_lic)
                 messages.success(request, "SKU de licencia ingresado al catálogo.")
-                return redirect('configuracion')
+                return _redirect_config_tab(active_tab)
 
         elif tipo == 'division':
             form_division = GerenciaDivisionForm(request.POST)
@@ -670,7 +719,7 @@ def configuracion(request):
                 division = form_division.save()
                 log_division_crear(request, division)
                 messages.success(request, "Entidad organizacional (División) registrada.")
-                return redirect('configuracion')
+                return _redirect_config_tab(active_tab)
 
         elif tipo == 'area':
             form_area = GerenciaAreaForm(request.POST)
@@ -678,7 +727,7 @@ def configuracion(request):
                 area = form_area.save()
                 log_area_crear(request, area)
                 messages.success(request, "Entidad organizacional (Área) registrada.")
-                return redirect('configuracion')
+                return _redirect_config_tab(active_tab)
 
         elif tipo == 'unidad':
             form_unidad = UnidadForm(request.POST)
@@ -686,7 +735,7 @@ def configuracion(request):
                 unidad = form_unidad.save()
                 log_unidad_crear(request, unidad)
                 messages.success(request, "Entidad organizacional (Unidad) registrada.")
-                return redirect('configuracion')
+                return _redirect_config_tab(active_tab)
 
     # 5. DICCIONARIO DE CONTEXTO FINAL
     context = {
@@ -706,7 +755,7 @@ def configuracion(request):
         'form_unidad': form_unidad,
         'titulo': 'Parametrización Global'
     }
-    return render(request, 'configuracion.html', context)
+    return render(request, 'licencias/configuracion.html', context)
 
 # ==========================================
 # CONTROLADORES DE EDICIÓN DE CATÁLOGOS
@@ -735,7 +784,7 @@ def editar_licencia(request, licencia_id):
         'licencia': licencia,
         'titulo': f'Edición de Activo: {licencia.tipo.nombre}'
     }
-    return render(request, 'editar_licencia.html', context)
+    return render(request, 'licencias/editar_licencia.html', context)
 
 
 @login_required
@@ -746,11 +795,12 @@ def editar_division(request, pk):
         form = GerenciaDivisionForm(request.POST, instance=division)
         if form.is_valid():
             form.save()
+            log_division_editar(request, division)
             messages.success(request, "Estructura divisional actualizada.")
-            return redirect('configuracion')
+            return _redirect_config_tab('divisiones')
     else:
         form = GerenciaDivisionForm(instance=division)
-    return render(request, 'editar_catalogo.html', {'form': form, 'titulo': f'Editar División: {division.codigo}'})
+    return render(request, 'licencias/editar_catalogo.html', {'form': form, 'titulo': f'Editar División: {division.codigo}'})
 
 
 @login_required
@@ -761,11 +811,12 @@ def editar_area(request, pk):
         form = GerenciaAreaForm(request.POST, instance=area)
         if form.is_valid():
             form.save()
+            log_area_editar(request, area)
             messages.success(request, "Metadatos del área operativa actualizados.")
-            return redirect('configuracion')
+            return _redirect_config_tab(active_tab)
     else:
         form = GerenciaAreaForm(instance=area)
-    return render(request, 'editar_catalogo.html', {'form': form, 'titulo': f'Editar Área: {area.codigo}'})
+    return render(request, 'licencias/editar_catalogo.html', {'form': form, 'titulo': f'Editar Área: {area.codigo}'})
 
 
 @login_required
@@ -776,11 +827,12 @@ def editar_unidad(request, pk):
         form = UnidadForm(request.POST, instance=unidad)
         if form.is_valid():
             form.save()
+            log_unidad_editar(request, unidad)
             messages.success(request, "Parámetros de la unidad modificados.")
-            return redirect('configuracion')
+            return _redirect_config_tab(active_tab)
     else:
         form = UnidadForm(instance=unidad)
-    return render(request, 'editar_catalogo.html', {'form': form, 'titulo': f'Editar Unidad: {unidad.nombre}'})
+    return render(request, 'licencias/editar_catalogo.html', {'form': form, 'titulo': f'Editar Unidad: {unidad.nombre}', 'active_tab': 'unidades'})
 
 
 @login_required
@@ -791,11 +843,12 @@ def editar_tenant(request, pk):
         form = TenantForm(request.POST, instance=tenant)
         if form.is_valid():
             form.save()
+            log_tenant_editar(request, tenant)
             messages.success(request, "Propiedades del Tenant corporativo actualizadas.")
-            return redirect('configuracion')
+            return _redirect_config_tab('tenants')
     else:
         form = TenantForm(instance=tenant)
-    return render(request, 'editar_catalogo.html', {'form': form, 'titulo': f'Propiedades de Tenant: {tenant.nombre}'})
+    return render(request, 'licencias/editar_catalogo.html', {'form': form, 'titulo': f'Propiedades de Tenant: {tenant.nombre}', 'active_tab': 'tenants'})
 # ==========================================
 # EDICIÓN DE PARÁMETROS GLOBALES (TI)
 # ==========================================
@@ -809,11 +862,12 @@ def editar_empresa(request, pk):
         form = EmpresaForm(request.POST, instance=empresa)
         if form.is_valid():
             form.save()
+            log_empresa_editar(request, empresa)
             messages.success(request, "Razón social actualizada exitosamente.")
-            return redirect('configuracion')
+            return _redirect_config_tab(active_tab)
     else:
         form = EmpresaForm(instance=empresa)
-    return render(request, 'editar_catalogo.html', {'form': form, 'titulo': f'Editar Empresa: {empresa.nombre}'})
+    return render(request, 'licencias/editar_catalogo.html', {'form': form, 'titulo': f'Editar Empresa: {empresa.nombre}', 'active_tab': 'empresas'})
 
 
 @login_required
@@ -825,11 +879,12 @@ def editar_proveedor(request, pk):
         form = ProveedorForm(request.POST, instance=proveedor)
         if form.is_valid():
             form.save()
+            log_proveedor_editar(request, proveedor)
             messages.success(request, "Datos de proveedor comercial actualizados.")
-            return redirect('configuracion')
+            return _redirect_config_tab('proveedores')
     else:
         form = ProveedorForm(instance=proveedor)
-    return render(request, 'editar_catalogo.html', {'form': form, 'titulo': f'Editar Proveedor: {proveedor.nombre}'})
+    return render(request, 'licencias/editar_catalogo.html', {'form': form, 'titulo': f'Editar Proveedor: {proveedor.nombre}', 'active_tab': 'proveedores'})
 
 
 @login_required
@@ -841,11 +896,12 @@ def editar_tipo_licencia(request, pk):
         form = TipoLicenciaForm(request.POST, instance=tipo)
         if form.is_valid():
             form.save()
+            log_tipo_licencia_editar(request, tipo)
             messages.success(request, "Especificaciones de SKU de software actualizadas.")
-            return redirect('configuracion')
+            return _redirect_config_tab('tipos')
     else:
         form = TipoLicenciaForm(instance=tipo)
-    return render(request, 'editar_catalogo.html', {'form': form, 'titulo': f'Editar Software: {tipo.nombre}'})
+    return render(request, 'licencias/editar_catalogo.html', {'form': form, 'titulo': f'Editar Software: {tipo.nombre}', 'active_tab': 'tipos'})
 
 
 # ==========================================
@@ -855,51 +911,72 @@ def editar_tipo_licencia(request, pk):
 @login_required
 def eliminar_division(request, pk):
     exigir_permiso(request, 'empleados.delete_gerenciadivision')
-    get_object_or_404(GerenciaDivision, pk=pk).delete()
+    _obj = get_object_or_404(GerenciaDivision, pk=pk)
+    _label = str(_obj)
+    _obj.delete()
+    log_division_eliminar(request, _label)
     messages.success(request, "Entidad divisional purgada del sistema.")
-    return redirect('configuracion')
+    return _redirect_config_tab('divisiones')
 
 @login_required
 def eliminar_area(request, pk):
     exigir_permiso(request, 'empleados.delete_gerenciaarea')
-    get_object_or_404(GerenciaArea, pk=pk).delete()
+    _obj = get_object_or_404(GerenciaArea, pk=pk)
+    _label = str(_obj)
+    _obj.delete()
+    log_area_eliminar(request, _label)
     messages.success(request, "Área operativa purgada del sistema.")
-    return redirect('configuracion')
+    return _redirect_config_tab(active_tab)
 
 @login_required
 def eliminar_unidad(request, pk):
     exigir_permiso(request, 'empleados.delete_unidad')
-    get_object_or_404(Unidad, pk=pk).delete()
+    _obj = get_object_or_404(Unidad, pk=pk)
+    _label = str(_obj)
+    _obj.delete()
+    log_unidad_eliminar(request, _label)
     messages.success(request, "Unidad purgada del sistema.")
-    return redirect('configuracion')
+    return _redirect_config_tab('unidades')
 
 @login_required
 def eliminar_tenant(request, pk):
     exigir_permiso(request, 'licencias.delete_tenant')
-    get_object_or_404(Tenant, pk=pk).delete()
+    _obj = get_object_or_404(Tenant, pk=pk)
+    _label = str(_obj)
+    _obj.delete()
+    log_tenant_eliminar(request, _label)
     messages.success(request, "Grupo corporativo purgado del ecosistema.")
-    return redirect('configuracion')
+    return _redirect_config_tab('tenants')
 
 @login_required
 def eliminar_empresa(request, pk):
     exigir_permiso(request, 'licencias.delete_empresa')
-    get_object_or_404(Empresa, pk=pk).delete()
+    _obj = get_object_or_404(Empresa, pk=pk)
+    _label = str(_obj)
+    _obj.delete()
+    log_empresa_eliminar(request, _label)
     messages.success(request, "Razón social purgada del catálogo.")
-    return redirect('configuracion')
+    return _redirect_config_tab(active_tab)
 
 @login_required
 def eliminar_proveedor(request, pk):
     exigir_permiso(request, 'licencias.delete_proveedor')
-    get_object_or_404(Proveedor, pk=pk).delete()
+    _obj = get_object_or_404(Proveedor, pk=pk)
+    _label = str(_obj)
+    _obj.delete()
+    log_proveedor_eliminar(request, _label)
     messages.success(request, "Proveedor retirado del catálogo.")
-    return redirect('configuracion')
+    return _redirect_config_tab(active_tab)
 
 @login_required
 def eliminar_tipo_licencia(request, pk):
     exigir_permiso(request, 'licencias.delete_tipolicencia')
-    get_object_or_404(TipoLicencia, pk=pk).delete()
+    _obj = get_object_or_404(TipoLicencia, pk=pk)
+    _label = str(_obj)
+    _obj.delete()
+    log_tipo_licencia_eliminar(request, _label)
     messages.success(request, "SKU de software retirado del catálogo global.")
-    return redirect('configuracion')
+    return _redirect_config_tab(active_tab)
 
 @login_required
 def eliminar_licencia(request, licencia_id):

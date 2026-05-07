@@ -1,23 +1,30 @@
+"""
+Vistas principales del modulo bitacora: listado y detalle de eventos.
+"""
+
 from __future__ import annotations
 
-from django.contrib.auth.decorators import login_required
-from django.core.exceptions import PermissionDenied
-from django.shortcuts import render
+from .base import (
+    login_required,
+    permiso_requerido,
+    render,
+)
 
-from ...application.use_cases.listar_eventos import BitacoraFiltro, uc_listar_bitacora
+from ...application.use_cases import (
+    filtro_desde_request,
+    uc_listar_bitacora,
+    uc_ver_detalle_evento,
+)
+from ...domain.services import (
+    clasificar_nivel,
+    color_para_accion,
+)
 
 
 @login_required
+@permiso_requerido("bitacora.view_bitacora")
 def lista_bitacora(request):
-    if not request.user.has_perm("bitacora.view_bitacora"):
-        raise PermissionDenied
-
-    filtro = BitacoraFiltro(
-        usuario=request.GET.get("usuario") or None,
-        accion=request.GET.get("accion") or None,
-        fecha_inicio=request.GET.get("fecha_inicio") or None,
-        fecha_fin=request.GET.get("fecha_fin") or None,
-    )
+    filtro = filtro_desde_request(request)
 
     page_obj, usuarios = uc_listar_bitacora(
         filtro=filtro,
@@ -39,3 +46,20 @@ def lista_bitacora(request):
     }
     return render(request, "bitacora/lista.html", context)
 
+
+@login_required
+@permiso_requerido("bitacora.view_bitacora")
+def detalle_evento(request, evento_id: int):
+    evento = uc_ver_detalle_evento(
+        evento_id=evento_id,
+        is_superuser=bool(request.user.is_superuser),
+        username=request.user.username if request.user.is_authenticated else None,
+    )
+
+    context = {
+        "evento": evento,
+        "nivel": clasificar_nivel(evento.accion),
+        "color": color_para_accion(evento.accion),
+        "modulo_label": getattr(evento, "modulo_label", evento.modulo),
+    }
+    return render(request, "bitacora/detalle.html", context)

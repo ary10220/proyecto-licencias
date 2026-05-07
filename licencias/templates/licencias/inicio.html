@@ -200,9 +200,38 @@
         line-height: 36px;
         text-align: center;
     }
+
+    @media (max-width: 767.98px) {
+        .home-hero {
+            padding: 1.05rem;
+        }
+
+        .home-title {
+            font-size: 1.45rem;
+            line-height: 1.15;
+        }
+
+        .hero-actions {
+            flex-direction: column;
+        }
+
+        .hero-button {
+            justify-content: center;
+            width: 100%;
+        }
+
+        .module-card {
+            min-height: auto;
+        }
+
+        .activity-row {
+            align-items: flex-start;
+        }
+    }
 </style>
 
 <section class="home-hero mb-4">
+    <div class="page-shell">
     <div class="home-eyebrow">Centro de control</div>
     <h1 class="home-title">Bienvenido, {{ request.user.first_name|default:request.user.username }}</h1>
     <p class="home-copy">
@@ -222,6 +251,7 @@
         <a href="{% url 'mi_perfil' %}" class="hero-button secondary">
             <i class="fa-solid fa-user-circle"></i> Mi perfil
         </a>
+    </div>
     </div>
 </section>
 

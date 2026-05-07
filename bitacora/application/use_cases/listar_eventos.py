@@ -1,48 +1,45 @@
-from __future__ import annotations
+"""
+Caso de uso: listar eventos de bitacora con filtros y paginacion.
 
-from dataclasses import dataclass
-from typing import Optional
+La definicion de `BitacoraFiltro` se centralizo en `filtrar_eventos.py`.
+Este modulo la re-exporta para mantener compatibilidad con los imports
+existentes.
+"""
+
+from __future__ import annotations
 
 from django.core.paginator import Paginator
 
+from ...domain.services import limpiar_descripcion, resolver_modulo
 from ...infrastructure.repositories import bitacora as repo
+from .filtrar_eventos import BitacoraFiltro, aplicar_filtros  # noqa: F401
 
 
-@dataclass(frozen=True)
-class BitacoraFiltro:
-    usuario: Optional[str] = None
-    accion: Optional[str] = None
-    fecha_inicio: Optional[str] = None  # YYYY-MM-DD
-    fecha_fin: Optional[str] = None     # YYYY-MM-DD
+def _enriquecer_evento(evento):
+    evento.modulo_label = resolver_modulo(evento.modulo, evento.descripcion, evento.accion)
+    evento.descripcion_label = limpiar_descripcion(evento.descripcion)
+    return evento
 
 
-def uc_listar_bitacora(*, filtro: BitacoraFiltro, is_superuser: bool, username: str | None, page: int | None, per_page: int = 10):
-    """
-    Devuelve (page_obj, usuarios_distintos).
-    Mantiene la misma lógica actual: superuser ve todo, usuario normal ve solo lo suyo.
-    """
+def uc_listar_bitacora(
+    *,
+    filtro: BitacoraFiltro,
+    is_superuser: bool,
+    username: str | None,
+    page: int | None,
+    per_page: int = 10,
+):
     registros = repo.query_eventos()
 
     if not is_superuser and username:
         registros = registros.filter(usuario__username=username)
 
-    if filtro.usuario:
-        registros = registros.filter(usuario__username=filtro.usuario)
-
-    if filtro.accion:
-        registros = registros.filter(accion=filtro.accion)
-
-    if filtro.fecha_inicio:
-        registros = registros.filter(fecha__date__gte=filtro.fecha_inicio)
-
-    if filtro.fecha_fin:
-        registros = registros.filter(fecha__date__lte=filtro.fecha_fin)
-
+    registros = aplicar_filtros(registros, filtro=filtro)
     registros = registros.order_by("-fecha")
 
     paginator = Paginator(registros, per_page)
     page_obj = paginator.get_page(page)
+    page_obj.object_list = [_enriquecer_evento(evento) for evento in page_obj.object_list]
 
     usuarios = repo.distinct_usernames()
     return page_obj, usuarios
-
