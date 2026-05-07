@@ -630,12 +630,22 @@ def cargar_empresas(request):
 # MÓDULO DE CONFIGURACIÓN GLOBAL UNIFICADO
 # ==========================================
 
+
+
 @login_required
 def configuracion(request):
     """
     Panel de administración de catálogos paramétricos unificado.
     Gestiona altas de Tenants, Empresas, Proveedores, SKUs de Licencias, Divisiones, Áreas y Unidades.
     """
+    # Tab activo: viene del POST (hidden input), del query param `?tab=`, o
+    # se infiere del tipo de formulario enviado. Default: 'empresas'.
+    active_tab = _config_tab_from_request(request, default='empresas')
+    if request.method == 'POST':
+        tipo_formulario = request.POST.get('tipo_formulario')
+        if tipo_formulario in CONFIG_TAB_BY_TYPE and not request.POST.get('active_tab'):
+            active_tab = CONFIG_TAB_BY_TYPE[tipo_formulario]
+
     # 1. UNIFICACIÓN DE PERMISOS
     if request.method == 'POST':
         permisos_creacion = {
@@ -1210,15 +1220,17 @@ def sincronizar_m365(request):
             else:
                 messages.success(request, msg)
 
+
             log_sincronizar_m365(
                 request,
                 resumen=f"{creados} altas, {actualizados} validadas, {asignadas} asignaciones, {liberadas} revocadas, sin stock={sin_stock}.",
             )
-                
+
         except Exception as e:
-            messages.error(request, f"Error crítico en Pipeline de Datos. Traceback: {str(e)}")
+            messages.error(request, f"Error critico en Pipeline de Datos. Traceback: {str(e)}")
 
     return redirect('dashboard_general')
+
 
 # ==========================================
 # BORRADO MASIVO DE LICENCIAS
@@ -1226,23 +1238,20 @@ def sincronizar_m365(request):
 @login_required
 def eliminar_licencias_masivo(request):
     if request.method == 'POST':
-        # Recibimos el texto con los IDs (ejemplo: '["1", "5", "12"]')
         ids_json = request.POST.get('ids_licencias', '[]')
-        
+
         try:
-            # Lo convertimos a una lista real de Python
             ids = json.loads(ids_json)
-            
+
             if ids:
-                # Magia de Django: Buscamos todas las licencias que estén en esa lista y las borramos de golpe
                 cantidad, _ = Licencia.objects.filter(id__in=ids).delete()
                 if cantidad:
                     log_eliminar_licencias_masivo(request, cantidad)
-                messages.success(request, f"¡Limpieza completada! Se eliminaron {cantidad} licencias permanentemente.")
+                messages.success(request, f"Limpieza completada! Se eliminaron {cantidad} licencias permanentemente.")
             else:
-                messages.warning(request, "No se seleccionó ninguna licencia para borrar.")
-                
+                messages.warning(request, "No se selecciono ninguna licencia para borrar.")
+
         except Exception as e:
-            messages.error(request, f"Ocurrió un error al intentar borrar las licencias: {str(e)}")
+            messages.error(request, f"Ocurrio un error al intentar borrar las licencias: {str(e)}")
 
     return redirect('dashboard_general')

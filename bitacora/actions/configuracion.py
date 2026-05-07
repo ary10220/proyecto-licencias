@@ -1,12 +1,8 @@
 """
-Actions de bitácora para el módulo Configuración / Parametrización Global.
+Actions de bitacora para el modulo Configuracion / Parametrizacion Global.
 
-Estas funciones se llaman desde las vistas del panel `configuracion` (licencias/views.py)
-para registrar altas/bajas/cambios de catálogos.
-
-Nota: Para mantener coherencia con la UI:
-- Tenants/Empresas/Proveedores/Tipos de licencia => MODULOS["PARAM"]
-- Divisiones/Áreas/Unidades (estructura organizacional) => MODULOS["PARAM"]
+Estas funciones se llaman desde las vistas del panel `configuracion` para
+registrar altas/bajas/cambios de catalogos.
 """
 
 from ..domain.services import ACCIONES, MODULOS
@@ -20,12 +16,16 @@ def _safe_str(obj, fallback="N/D"):
         return fallback
 
 
+# ============================================================================
+# CREAR
+# ============================================================================
+
 def log_tenant_crear(request, tenant):
     log_event(
         request=request,
         accion=ACCIONES["CREAR"],
-        modulo=MODULOS["PARAM"],
-        descripcion=f"Creó el tenant corporativo {_safe_str(tenant)} (id={getattr(tenant, 'pk', 'N/D')}).",
+        modulo=MODULOS["CONFIG"],
+        descripcion=f"Creo el tenant corporativo {_safe_str(tenant)} (id={getattr(tenant, 'pk', 'N/D')}).",
     )
 
 
@@ -34,8 +34,8 @@ def log_empresa_crear(request, empresa):
     log_event(
         request=request,
         accion=ACCIONES["CREAR"],
-        modulo=MODULOS["PARAM"],
-        descripcion=f"Creó la empresa {_safe_str(empresa)} (Tenant: {tenant}).",
+        modulo=MODULOS["CONFIG"],
+        descripcion=f"Creo la empresa {_safe_str(empresa)} (Tenant: {tenant}).",
     )
 
 
@@ -43,8 +43,8 @@ def log_proveedor_crear(request, proveedor):
     log_event(
         request=request,
         accion=ACCIONES["CREAR"],
-        modulo=MODULOS["PARAM"],
-        descripcion=f"Creó el proveedor {_safe_str(proveedor)}.",
+        modulo=MODULOS["CONFIG"],
+        descripcion=f"Creo el proveedor {_safe_str(proveedor)}.",
     )
 
 
@@ -53,8 +53,8 @@ def log_tipo_licencia_crear(request, tipo_licencia):
     log_event(
         request=request,
         accion=ACCIONES["CREAR"],
-        modulo=MODULOS["PARAM"],
-        descripcion=f"Creó el tipo de licencia {_safe_str(tipo_licencia)} (Fabricante: {fabricante}).",
+        modulo=MODULOS["CONFIG"],
+        descripcion=f"Creo el tipo de licencia {_safe_str(tipo_licencia)} (Fabricante: {fabricante}).",
     )
 
 
@@ -63,8 +63,8 @@ def log_division_crear(request, division):
     log_event(
         request=request,
         accion=ACCIONES["CREAR"],
-        modulo=MODULOS["PARAM"],
-        descripcion=f"Creó la división {_safe_str(division)} (Empresa: {empresa}).",
+        modulo=MODULOS["ORG"],
+        descripcion=f"Creo la division {_safe_str(division)} (Empresa: {empresa}).",
     )
 
 
@@ -74,8 +74,8 @@ def log_area_crear(request, area):
     log_event(
         request=request,
         accion=ACCIONES["CREAR"],
-        modulo=MODULOS["PARAM"],
-        descripcion=f"Creó el área {_safe_str(area)} (Empresa: {empresa}; División: {division}).",
+        modulo=MODULOS["ORG"],
+        descripcion=f"Creo el area {_safe_str(area)} (Empresa: {empresa}; Division: {division}).",
     )
 
 
@@ -84,8 +84,8 @@ def log_unidad_crear(request, unidad):
     log_event(
         request=request,
         accion=ACCIONES["CREAR"],
-        modulo=MODULOS["PARAM"],
-        descripcion=f"Creó la unidad {_safe_str(unidad)} (Área: {area}).",
+        modulo=MODULOS["ORG"],
+        descripcion=f"Creo la unidad {_safe_str(unidad)} (Area: {area}).",
     )
 
 
@@ -97,7 +97,7 @@ def log_tenant_editar(request, tenant):
     log_event(
         request=request,
         accion=ACCIONES["EDITAR"],
-        modulo=MODULOS["PARAM"],
+        modulo=MODULOS["CONFIG"],
         descripcion=f"Actualizo el tenant corporativo {_safe_str(tenant)} (id={getattr(tenant, 'pk', 'N/D')}).",
     )
 
@@ -107,7 +107,7 @@ def log_empresa_editar(request, empresa):
     log_event(
         request=request,
         accion=ACCIONES["EDITAR"],
-        modulo=MODULOS["PARAM"],
+        modulo=MODULOS["CONFIG"],
         descripcion=f"Actualizo la empresa {_safe_str(empresa)} (Tenant: {tenant}).",
     )
 
@@ -116,7 +116,7 @@ def log_proveedor_editar(request, proveedor):
     log_event(
         request=request,
         accion=ACCIONES["EDITAR"],
-        modulo=MODULOS["PARAM"],
+        modulo=MODULOS["CONFIG"],
         descripcion=f"Actualizo el proveedor {_safe_str(proveedor)}.",
     )
 
@@ -126,7 +126,7 @@ def log_tipo_licencia_editar(request, tipo_licencia):
     log_event(
         request=request,
         accion=ACCIONES["EDITAR"],
-        modulo=MODULOS["PARAM"],
+        modulo=MODULOS["CONFIG"],
         descripcion=f"Actualizo el tipo de licencia {_safe_str(tipo_licencia)} (Fabricante: {fabricante}).",
     )
 
@@ -136,7 +136,7 @@ def log_division_editar(request, division):
     log_event(
         request=request,
         accion=ACCIONES["EDITAR"],
-        modulo=MODULOS["PARAM"],
+        modulo=MODULOS["ORG"],
         descripcion=f"Actualizo la division {_safe_str(division)} (Empresa: {empresa}).",
     )
 
@@ -147,7 +147,7 @@ def log_area_editar(request, area):
     log_event(
         request=request,
         accion=ACCIONES["EDITAR"],
-        modulo=MODULOS["PARAM"],
+        modulo=MODULOS["ORG"],
         descripcion=f"Actualizo el area {_safe_str(area)} (Empresa: {empresa}; Division: {division}).",
     )
 
@@ -157,22 +157,20 @@ def log_unidad_editar(request, unidad):
     log_event(
         request=request,
         accion=ACCIONES["EDITAR"],
-        modulo=MODULOS["PARAM"],
+        modulo=MODULOS["ORG"],
         descripcion=f"Actualizo la unidad {_safe_str(unidad)} (Area: {area}).",
     )
 
 
 # ============================================================================
 # ELIMINAR
-# Se reciben labels (strings), no objetos, porque el registro se invoca
-# despues del delete() y la instancia ya no existe en BD.
 # ============================================================================
 
 def log_tenant_eliminar(request, tenant_label):
     log_event(
         request=request,
         accion=ACCIONES["ELIMINAR"],
-        modulo=MODULOS["PARAM"],
+        modulo=MODULOS["CONFIG"],
         descripcion=f"Elimino el tenant {tenant_label}.",
     )
 
@@ -181,7 +179,7 @@ def log_empresa_eliminar(request, empresa_label):
     log_event(
         request=request,
         accion=ACCIONES["ELIMINAR"],
-        modulo=MODULOS["PARAM"],
+        modulo=MODULOS["CONFIG"],
         descripcion=f"Elimino la empresa {empresa_label}.",
     )
 
@@ -190,7 +188,7 @@ def log_proveedor_eliminar(request, proveedor_label):
     log_event(
         request=request,
         accion=ACCIONES["ELIMINAR"],
-        modulo=MODULOS["PARAM"],
+        modulo=MODULOS["CONFIG"],
         descripcion=f"Elimino el proveedor {proveedor_label}.",
     )
 
@@ -199,7 +197,7 @@ def log_tipo_licencia_eliminar(request, tipo_label):
     log_event(
         request=request,
         accion=ACCIONES["ELIMINAR"],
-        modulo=MODULOS["PARAM"],
+        modulo=MODULOS["CONFIG"],
         descripcion=f"Elimino el tipo de licencia {tipo_label}.",
     )
 
@@ -208,7 +206,7 @@ def log_division_eliminar(request, division_label):
     log_event(
         request=request,
         accion=ACCIONES["ELIMINAR"],
-        modulo=MODULOS["PARAM"],
+        modulo=MODULOS["ORG"],
         descripcion=f"Elimino la division {division_label}.",
     )
 
@@ -217,7 +215,7 @@ def log_area_eliminar(request, area_label):
     log_event(
         request=request,
         accion=ACCIONES["ELIMINAR"],
-        modulo=MODULOS["PARAM"],
+        modulo=MODULOS["ORG"],
         descripcion=f"Elimino el area {area_label}.",
     )
 
@@ -226,6 +224,6 @@ def log_unidad_eliminar(request, unidad_label):
     log_event(
         request=request,
         accion=ACCIONES["ELIMINAR"],
-        modulo=MODULOS["PARAM"],
+        modulo=MODULOS["ORG"],
         descripcion=f"Elimino la unidad {unidad_label}.",
     )

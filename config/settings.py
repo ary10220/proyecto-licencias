@@ -154,10 +154,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
 # LOGGING
 # Habilita logging en consola para los modulos del proyecto.
-# Util para ver fallos de SMTP (envio de tokens de desbloqueo) en development.
-# En produccion, redirigir a un archivo o a un sistema externo (Sentry, etc.).
 # ---------------------------------------------------------------------------
 LOGGING = {
     'version': 1,
