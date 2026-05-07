@@ -1,0 +1,110 @@
+<div id="bitacoraTableContainer" class="bitacora-table-shell">
+    <div class="audit-table-scroll">
+        <table class="table table-sm table-hover table-bordered align-middle text-center audit-table">
+            <thead class="table-light">
+                <tr>
+                    <th>#</th>
+                    <th>Usuario</th>
+                    <th>Acción</th>
+                    <th>Módulo</th>
+                    <th class="text-center">Descripción</th>
+                    <th>Fecha</th>
+                    <th>IP</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for registro in registros %}
+                    <tr {% if forloop.counter|divisibleby:2 %}class="table-light"{% endif %}>
+                        <td class="text-muted fw-bold">{{ forloop.counter }}</td>
+
+                        <td>
+                            {% if registro.usuario %}
+                                <i class="fa-solid fa-user me-1 text-muted"></i>{{ registro.usuario.username }}
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            <span class="audit-action audit-{{ registro.accion|lower }}">
+                                {% if registro.accion == 'CREAR' %}<i class="fa-solid fa-circle-plus"></i>
+                                {% elif registro.accion == 'EDITAR' %}<i class="fa-solid fa-pen-to-square"></i>
+                                {% elif registro.accion == 'ELIMINAR' %}<i class="fa-solid fa-trash-can"></i>
+                                {% elif registro.accion == 'ASIGNAR' %}<i class="fa-solid fa-user-plus"></i>
+                                {% elif registro.accion == 'LIBERAR' %}<i class="fa-solid fa-unlock"></i>
+                                {% elif registro.accion == 'BAJA' %}<i class="fa-solid fa-user-slash"></i>
+                                {% elif registro.accion == 'REACTIVAR' %}<i class="fa-solid fa-user-check"></i>
+                                {% elif registro.accion == 'SINCRONIZAR' %}<i class="fa-solid fa-rotate"></i>
+                                {% elif registro.accion == 'EXPORTAR' %}<i class="fa-solid fa-file-export"></i>
+                                {% elif registro.accion == 'LOGIN' %}<i class="fa-solid fa-right-to-bracket"></i>
+                                {% elif registro.accion == 'LOGOUT' %}<i class="fa-solid fa-right-from-bracket"></i>
+                                {% else %}<i class="fa-solid fa-circle-info"></i>
+                                {% endif %}
+                                {{ registro.accion }}
+                            </span>
+                        </td>
+
+                        <td>
+                            <span class="badge bg-light text-dark border">
+                                {{ registro.modulo_label|default:registro.modulo }}
+                            </span>
+                        </td>
+
+                        <td class="text-center description-cell" title="{{ registro.descripcion_label|default:registro.descripcion }}">
+                            {{ registro.descripcion_label|default:registro.descripcion }}
+                        </td>
+
+                        <td>
+                            <small class="text-muted">{{ registro.fecha|date:"d/m/Y H:i" }}</small>
+                        </td>
+
+                        <td>
+                            <code>{{ registro.ip|default:"-" }}</code>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">
+                            <i class="fa-solid fa-circle-info me-2"></i>
+                            No hay registros en la bitácora
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+        <nav class="audit-pagination" aria-label="Paginación de bitácora">
+            {% if page_obj.has_previous %}
+                <a href="?{% if query_string %}{{ query_string }}&{% endif %}page=1" title="Primera página">
+                    <i class="fa-solid fa-angles-left"></i>
+                </a>
+                <a href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.previous_page_number }}" title="Página anterior">
+                    <i class="fa-solid fa-angle-left"></i>
+                </a>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if num == page_obj.number %}
+                    <span class="is-current">{{ num }}</span>
+                {% elif num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+                    <a href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ num }}">{{ num }}</a>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <a href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.next_page_number }}" title="Página siguiente">
+                    <i class="fa-solid fa-angle-right"></i>
+                </a>
+                <a href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.paginator.num_pages }}" title="Última página">
+                    <i class="fa-solid fa-angles-right"></i>
+                </a>
+            {% endif %}
+        </nav>
+        <div class="audit-page-summary">
+            Mostrando {{ page_obj.start_index }}-{{ page_obj.end_index }} de {{ page_obj.paginator.count }} registros
+        </div>
+    {% endif %}
+</div>
+

@@ -1,13 +1,9 @@
-from django.db import models
-from django.contrib.auth.models import User
+"""
+Django expects `bitacora.models` to exist for migrations/admin autodiscovery.
 
-class Bitacora(models.Model):
-    usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
-    accion = models.CharField(max_length=255)
-    modulo = models.CharField(max_length=100)
-    descripcion = models.TextField()
-    fecha = models.DateTimeField(auto_now_add=True)
-    ip = models.GenericIPAddressField(null=True, blank=True)
+We keep the ORM models in `bitacora.infrastructure.models` and re-export them here
+to preserve a clean architecture without breaking imports.
+"""
 
-    def __str__(self):
-        return f"{self.usuario} - {self.accion} - {self.fecha}"
+from .infrastructure.models import *  # noqa: F401,F403
+

@@ -1,0 +1,210 @@
+.main-content {
+    height: 100vh;
+    overflow: hidden;
+    padding: 18px 22px;
+}
+
+.audit-card {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 36px);
+    overflow: hidden;
+}
+
+
+.audit-card-body {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    padding: 0.85rem;
+}
+
+.audit-action {
+    align-items: center;
+    border-radius: 999px;
+    display: inline-flex;
+    font-size: 0.7rem;
+    font-weight: 800;
+    gap: 0.4rem;
+    justify-content: center;
+    letter-spacing: 0.35px;
+    min-width: 104px;
+    padding: 0.34rem 0.62rem;
+}
+
+.audit-action i {
+    font-size: 0.95rem;
+}
+
+.audit-crear { background-color: #d1e7dd; color: #0f5132; }
+.audit-editar { background-color: #fff3cd; color: #8a5a00; }
+.audit-eliminar { background-color: #f8d7da; color: #842029; }
+.audit-asignar { background-color: #cff4fc; color: #055160; }
+.audit-liberar { background-color: #e2f3ef; color: #146c43; }
+.audit-baja { background-color: #ead7dd; color: #7a1830; }
+.audit-reactivar { background-color: #cfe2ff; color: #084298; }
+.audit-sincronizar { background-color: #e0cffc; color: #4b238f; }
+.audit-exportar { background-color: #d1e7dd; color: #0f5132; }
+.audit-login { background-color: #dbeafe; color: #1d4ed8; }
+.audit-logout { background-color: #ffe5d0; color: #b45309; }
+.audit-default { background-color: #f1f3f5; color: #343a40; }
+
+.filter-panel {
+    background: linear-gradient(135deg, #ffffff 0%, #fff7f0 100%);
+    border: 1px solid #f0dfd0;
+    border-radius: 8px;
+    flex: 0 0 auto;
+    padding: 0.7rem;
+}
+
+.filter-panel .form-label {
+    margin-bottom: 0.18rem;
+}
+
+.filter-panel .form-control,
+.filter-panel .form-select,
+.filter-panel .btn {
+    min-height: 36px;
+    padding-bottom: 0.35rem;
+    padding-top: 0.35rem;
+}
+
+.filter-status {
+    color: var(--color-principal-dark);
+    display: none;
+    font-size: 0.75rem;
+    font-weight: 700;
+    margin-top: 0.55rem;
+}
+
+.filter-status.is-visible {
+    align-items: center;
+    display: inline-flex;
+    gap: 0.4rem;
+}
+
+.bitacora-table-shell {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    transition: opacity 220ms ease, transform 220ms ease, filter 220ms ease;
+    will-change: opacity, transform, filter;
+}
+
+.audit-table-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+}
+
+.audit-table {
+    font-size: 0.82rem;
+    margin-bottom: 0;
+}
+
+.audit-table th,
+.audit-table td {
+    padding: 0.48rem 0.55rem;
+    vertical-align: middle;
+}
+
+.audit-table .description-cell {
+    max-width: 420px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bitacora-table-shell.is-loading {
+    filter: blur(1px);
+    opacity: 0.45;
+    transform: translateY(4px);
+}
+
+.bitacora-table-shell.is-entering {
+    animation: auditTableEnter 260ms ease-out both;
+}
+
+.audit-pagination {
+    align-items: center;
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    justify-content: center;
+    margin-top: 0.65rem;
+}
+
+.audit-pagination a,
+.audit-pagination span {
+    align-items: center;
+    border: 1px solid #ead8c8;
+    border-radius: 8px;
+    color: var(--color-principal-dark);
+    display: inline-flex;
+    font-weight: 800;
+    justify-content: center;
+    min-height: 32px;
+    min-width: 32px;
+    padding: 0.34rem 0.58rem;
+    text-decoration: none;
+}
+
+.audit-pagination a:hover {
+    background: #fff3e8;
+}
+
+.audit-pagination .is-current {
+    background: var(--color-principal);
+    border-color: var(--color-principal);
+    color: #ffffff;
+}
+
+.audit-page-summary {
+    color: #697382;
+    font-size: 0.82rem;
+    font-weight: 700;
+    margin-top: 0.35rem;
+    text-align: center;
+}
+
+@media (max-width: 992px) {
+    .main-content {
+        height: auto;
+        overflow: visible;
+        padding: 16px;
+    }
+
+    .audit-card {
+        height: auto;
+        min-height: calc(100vh - 32px);
+    }
+
+    .audit-card-body,
+    .bitacora-table-shell {
+        overflow: visible;
+    }
+
+    .audit-table-scroll {
+        max-height: 58vh;
+    }
+}
+
+@keyframes auditTableEnter {
+    from {
+        filter: blur(1px);
+        opacity: 0.35;
+        transform: translateY(6px);
+    }
+
+    to {
+        filter: blur(0);
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+

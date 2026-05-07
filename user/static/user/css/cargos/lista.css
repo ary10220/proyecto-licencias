@@ -1,0 +1,9 @@
+.cargos-title {
+        color: var(--color-principal-dark);
+        font-size: 1.55rem;
+        font-weight: 800;
+    }
+
+    .cargos-title i {
+        color: var(--color-principal);
+    }

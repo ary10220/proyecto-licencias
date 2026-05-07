@@ -1,0 +1,8 @@
+.cargo-form-title {
+        color: var(--color-principal-dark);
+        font-weight: 800;
+    }
+
+    .cargo-form-title i {
+        color: var(--color-principal);
+    }

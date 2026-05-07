@@ -3,21 +3,51 @@
 {% block title %}Editar Empleado{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-10">
-        
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h4 style="color: #333; font-weight: bold;"><i class="fa-solid fa-user-pen me-2"></i> {{ titulo }}</h4>
-            <a href="{% url 'lista_empleados' %}" class="btn btn-outline-secondary"><i class="fa-solid fa-arrow-left me-1"></i> Volver al Directorio</a>
+<style>
+    .employee-edit-shell {
+        display: flex;
+        justify-content: center;
+    }
+
+    .employee-edit-card {
+        max-width: 1040px;
+        width: 100%;
+    }
+
+    .employee-edit-body {
+        background: linear-gradient(180deg, #fff8f2 0%, #fffdf9 100%);
+    }
+
+    .employee-edit-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        justify-content: flex-end;
+    }
+
+    @media (max-width: 767.98px) {
+        .employee-edit-actions > * {
+            flex: 1 1 100%;
+        }
+    }
+</style>
+
+<div class="employee-edit-shell">
+    <div class="employee-edit-card">
+        <div class="page-header mb-3">
+            <h2 class="page-title mb-0"><span class="page-title-icon"><i class="fa-solid fa-user-pen"></i></span><span class="page-title-text page-title-accent">{{ titulo }}</span></h2>
+            <div class="page-actions">
+                <a href="{% url 'lista_empleados' %}" class="btn btn-outline-primary"><i class="fa-solid fa-arrow-left me-1"></i>Volver al Directorio</a>
+            </div>
         </div>
 
-        <div class="card shadow-sm border-0">
-            <div class="card-body p-4 bg-light">
+        <div class="card shadow-sm border-0 content-card">
+            <div class="card-body p-4 employee-edit-body">
                 <form method="POST">
                     {% csrf_token %}
-                    <div class="row">
+                    <div class="row g-3">
                         {% for field in form %}
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-6">
                                 <label class="form-label fw-bold text-secondary small">{{ field.label|upper }}</label>
                                 {{ field }}
                                 {% if field.errors %}
@@ -26,20 +56,15 @@
                             </div>
                         {% endfor %}
                     </div>
-                    
+
                     <hr class="mt-4 mb-3">
-                    <div class="d-flex justify-content-end mt-4">
-                        <a href="javascript:history.back()" class="btn btn-light border me-3 px-4 py-2">
-                        Cancelar
-                        </a>
-                        <button type="submit" class="btn text-white px-4 py-2" style="background-color: #df6e12; border-color: #df6e12;">
-                        Guardar Cambios
-                        </button>
+                    <div class="employee-edit-actions mt-4">
+                        <a href="javascript:history.back()" class="btn btn-light border px-4">Cancelar</a>
+                        <button type="submit" class="btn btn-primary px-4">Guardar Cambios</button>
                     </div>
                 </form>
             </div>
         </div>
-
     </div>
 </div>
 
@@ -50,20 +75,16 @@
 
 <script>
     $(document).ready(function(){
-        // Activar buscador en listas desplegables
         $('.select2-busqueda').select2({ theme: 'bootstrap-5', width: '100%' });
 
-        // Carga dinámica: Al seleccionar una Empresa, actualizar las Áreas disponibles
         $("#id_empresa").change(function () {
-            var url_areas = "{% url 'ajax_cargar_areas' %}";  
-            $.ajax({                       
-                url: url_areas,                    
+            var url_areas = "{% url 'ajax_cargar_areas' %}";
+            $.ajax({
+                url: url_areas,
                 data: { 'empresa_id': $(this).val() },
-                success: function (data) {   
-                    // Limpiar listas de áreas y unidades
+                success: function (data) {
                     $("#id_area").html('<option value="">---------</option>');
-                    $("#id_unidad").html('<option value="">---------</option>'); 
-                    // Llenar lista de áreas con los nuevos datos
+                    $("#id_unidad").html('<option value="">---------</option>');
                     $.each(data, function(index, area) {
                         $("#id_area").append('<option value="' + area.id + '">' + area.texto + '</option>');
                     });
@@ -71,16 +92,13 @@
             });
         });
 
-        // Carga dinámica: Al seleccionar un Área, actualizar las Unidades disponibles
         $("#id_area").change(function () {
-            var url_unidades = "{% url 'ajax_cargar_unidades' %}";  
-            $.ajax({                       
-                url: url_unidades,                    
+            var url_unidades = "{% url 'ajax_cargar_unidades' %}";
+            $.ajax({
+                url: url_unidades,
                 data: { 'area_id': $(this).val() },
-                success: function (data) {   
-                    // Limpiar lista de unidades
+                success: function (data) {
                     $("#id_unidad").html('<option value="">---------</option>');
-                    // Llenar lista de unidades con los nuevos datos
                     $.each(data, function(index, unidad) {
                         $("#id_unidad").append('<option value="' + unidad.id + '">' + unidad.nombre + '</option>');
                     });

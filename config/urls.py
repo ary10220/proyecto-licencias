@@ -20,6 +20,8 @@ from django.contrib.auth import views as auth_views
 from django.conf import settings
 from django.conf.urls.static import static
 from licencias import views
+from user.interfaces.views.password import ForcedPasswordChangeView
+from config.error_handlers import custom_permission_denied
 
 urlpatterns = [
     # Administración de Django
@@ -39,6 +41,8 @@ urlpatterns = [
     path('reset_password_sent/', auth_views.PasswordResetDoneView.as_view(template_name="registration/password_reset_done.html"), name="password_reset_done"),
     path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(template_name="registration/password_reset_confirm.html"), name="password_reset_confirm"),
     path('reset_password_complete/', auth_views.PasswordResetCompleteView.as_view(template_name="registration/password_reset_complete.html"), name="password_reset_complete"),
+    path('password_change/', ForcedPasswordChangeView.as_view(), name="password_change"),
+    path('password_change_done/', auth_views.PasswordChangeDoneView.as_view(template_name="registration/password_change_done.html"), name="password_change_done"),
 
     # Dashboard y Vistas Principales
     path('', views.inicio, name='home'),
@@ -60,6 +64,7 @@ urlpatterns = [
     path('licencia/<int:licencia_id>/liberar/', views.liberar_licencia, name='liberar_licencia'),
     # para token
     path('desbloqueo-seguro/', views.validar_token_bloqueo, name='validar_token_bloqueo'),
+    path('solicitar-token/', views.enviar_token_bloqueo, name='enviar_token_bloqueo'),
 
     # Módulo de Empleados
     path('empleados/', views.lista_empleados, name='lista_empleados'),
@@ -90,8 +95,8 @@ urlpatterns = [
     path('configuracion/unidad/<int:pk>/editar/', views.editar_unidad, name='editar_unidad'),
     path('configuracion/unidad/<int:pk>/eliminar/', views.eliminar_unidad, name='eliminar_unidad'),
     
-    path('bitacora/', include('bitacora.urls')),
-    path('user/', include('user.urls')),
+    path('bitacora/', include('bitacora.interfaces.urls')),
+    path('user/', include('user.interfaces.urls')),
 
     # Endpoints de API / AJAX
     path('ajax/cargar-empresas/', views.cargar_empresas, name='ajax_cargar_empresas'),
@@ -101,3 +106,6 @@ urlpatterns = [
     
     
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+
+handler403 = custom_permission_denied

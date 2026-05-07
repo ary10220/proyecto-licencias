@@ -1,0 +1,57 @@
+.profile-hero {
+        background:
+            radial-gradient(circle at top left, rgba(223, 110, 18, 0.22), transparent 28rem),
+            linear-gradient(135deg, #fffaf6 0%, #ffffff 70%);
+        border: 1px solid #f0dfd0;
+        border-radius: 22px;
+        overflow: hidden;
+        padding: 1.5rem;
+    }
+
+    .profile-avatar {
+        align-items: center;
+        background: linear-gradient(135deg, var(--color-principal), var(--color-principal-dark));
+        border: 5px solid #ffffff;
+        border-radius: 50%;
+        box-shadow: 0 1rem 2rem rgba(95, 54, 18, 0.18);
+        color: #ffffff;
+        display: flex;
+        font-size: 2.4rem;
+        font-weight: 800;
+        height: 132px;
+        justify-content: center;
+        object-fit: cover;
+        width: 132px;
+    }
+
+    .profile-title {
+        color: var(--color-principal-dark);
+        font-weight: 850;
+    }
+
+    .info-card {
+        border: 1px solid #eee1d6;
+        border-radius: 16px;
+        height: 100%;
+        padding: 1rem;
+    }
+
+    .info-label {
+        color: #6c757d;
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    .role-chip {
+        background: #fff3e7;
+        border: 1px solid #f2cfad;
+        border-radius: 999px;
+        color: var(--color-principal-dark);
+        display: inline-flex;
+        font-size: 0.78rem;
+        font-weight: 800;
+        margin: 0.12rem;
+        padding: 0.32rem 0.65rem;
+    }

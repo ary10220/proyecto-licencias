@@ -1,0 +1,71 @@
+/* ==========================================================================
+   Bitacora - vista de detalle de evento
+   ========================================================================== */
+
+.audit-detail-card {
+    border: 1px solid #e3e6ec;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.audit-detail-card .card-header {
+    background-color: #f8fafc;
+    border-bottom: 1px solid #e3e6ec;
+    padding: 1rem 1.25rem;
+}
+
+.bitacora-detail-title {
+    color: #1f3864;
+    font-weight: 600;
+}
+
+.audit-detail-body {
+    padding: 1.5rem 1.25rem;
+}
+
+.detail-label {
+    font-weight: 600;
+    color: #555;
+    text-transform: uppercase;
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    padding-top: 0.35rem;
+}
+
+.detail-value {
+    color: #262626;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.audit-badge {
+    font-size: 0.78rem;
+    letter-spacing: 0.03em;
+    padding: 0.45em 0.7em;
+}
+
+.audit-level {
+    margin-left: 0.5rem;
+    font-weight: 500;
+    font-size: 0.72rem;
+}
+
+.audit-description {
+    background-color: #f4f6fa;
+    border: 1px solid #e3e6ec;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: "Consolas", "Menlo", monospace;
+    font-size: 0.88rem;
+    color: #1f3864;
+}
+
+@media (max-width: 768px) {
+    .detail-label {
+        margin-bottom: 0.25rem;
+        padding-top: 0;
+    }
+}
