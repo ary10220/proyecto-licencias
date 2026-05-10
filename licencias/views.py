@@ -30,16 +30,17 @@ from .services.asignacion import (
     asignar_licencia as svc_asignar,
     liberar_licencia as svc_liberar,
 )
+from .services.empleados import dar_baja_empleado as svc_baja_empleado
 from .services.exceptions import (
     LicenciaNoEncontradaError,
     EmpleadoNoEncontradoError,
     LicenciaYaAsignadaError,
     EmpleadoYaTieneTipoError,
     AsignacionInactivaError,
+    EmpleadoYaInactivoError,
 )
 from django.http import Http404
 from bitacora.actions import (
-    log_baja_empleado,
     log_creacion_licencias,
     log_crear_empleado,
     log_division_crear,
@@ -523,36 +524,22 @@ def editar_empleado(request, empleado_id):
 
 @login_required
 def baja_empleado(request, empleado_id):
-    """
-    Inhabilita operativamente a un colaborador y ejecuta la política de
-    revocación automática de todos sus activos de software vinculados.
-    """
+    """Inhabilita empleado y revoca licencias en cascada. Delega al service."""
     exigir_permiso(request, 'empleados.change_empleado')
-    empleado = get_object_or_404(Empleado, id=empleado_id)
-    
-    # 1. Inhabilitación de la identidad
-    empleado.activo = False
-    empleado.save()
-    
-    # Importación local para mitigación de dependencias circulares
-    from .models import Asignacion 
-    asignaciones_activas = Asignacion.objects.filter(empleado=empleado, activo=True)
-    
-    # 2. Revocación en lote de activos asignados
-    licencias_liberadas = 0
-    for asignacion in asignaciones_activas:
-        asignacion.activo = False
-        asignacion.fecha_retiro = timezone.now()
-        asignacion.observaciones = f"Revocación automatizada por baja operativa el {timezone.now().strftime('%d/%m/%Y')}."
-        asignacion.save()
-        licencias_liberadas += 1
-        
-    mensaje = f"Baja operativa procesada para {empleado.nombre_completo}."
-    if licencias_liberadas > 0:
-        mensaje += f" Se liberaron {licencias_liberadas} activos vinculados."
-        
-    messages.success(request, mensaje)
-    log_baja_empleado(request, empleado, licencias_liberadas=licencias_liberadas)
+    try:
+        result = svc_baja_empleado(empleado_id, request)
+    except EmpleadoNoEncontradoError as e:
+        raise Http404(str(e))
+    except EmpleadoYaInactivoError as e:
+        messages.warning(request, f"{e.empleado_nombre} ya se encontraba inactivo.")
+        return redirect('lista_empleados')
+
+    empleado = result['empleado']
+    n = result['licencias_liberadas']
+    msg = f"Baja operativa procesada para {empleado.nombre_completo}."
+    if n > 0:
+        msg += f" Se liberaron {n} activos vinculados."
+    messages.success(request, msg)
     return redirect('lista_empleados')
 
 

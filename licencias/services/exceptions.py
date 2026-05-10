@@ -40,3 +40,11 @@ class EmpleadoYaTieneTipoError(LicenciaServiceError):
 
 class AsignacionInactivaError(LicenciaServiceError):
     """Se intentó liberar una asignación que ya no está activa."""
+
+
+class EmpleadoYaInactivoError(LicenciaServiceError):
+    """Se intentó dar de baja a un empleado que ya estaba inactivo."""
+
+    def __init__(self, empleado_nombre: str):
+        self.empleado_nombre = empleado_nombre
+        super().__init__(f"{empleado_nombre} ya estaba inactivo")

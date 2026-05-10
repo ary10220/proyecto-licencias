@@ -10,8 +10,10 @@ from licencias.services.asignacion import (
     asignar_licencia as svc_asignar,
     liberar_licencia as svc_liberar,
 )
+from licencias.services.empleados import dar_baja_empleado as svc_baja_empleado
 from licencias.services.exceptions import (
     AsignacionInactivaError,
+    EmpleadoYaInactivoError,
     EmpleadoYaTieneTipoError,
 )
 
@@ -102,3 +104,77 @@ class AsignacionServiceTests(TestCase):
 
         with self.assertRaises(AsignacionInactivaError):
             svc_liberar(asignacion.id, '', self._request())
+
+
+class BajaEmpleadoServiceTests(TestCase):
+    """Tests del service de ciclo de vida del empleado."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='tester_baja', password='x')
+        self.factory = RequestFactory()
+
+        self.tenant = Tenant.objects.create(nombre='Tenant Baja')
+        self.empresa = Empresa.objects.create(tenant=self.tenant, nombre='Empresa Baja')
+        self.area = GerenciaArea.objects.create(
+            empresa=self.empresa, codigo='GHC', nombre='Capital Humano',
+        )
+        self.empleado = Empleado.objects.create(
+            nombre_completo='María López',
+            ci='99887766',
+            email_principal='maria@example.com',
+            empresa=self.empresa,
+            area=self.area,
+        )
+        self.tipo_a = TipoLicencia.objects.create(nombre='Office 365 E3')
+        self.tipo_b = TipoLicencia.objects.create(nombre='Power BI Pro')
+        self.licencia_a = Licencia.objects.create(
+            tenant=self.tenant, empresa=self.empresa, tipo=self.tipo_a,
+            fecha_compra=date.today(),
+            fecha_vencimiento=date.today() + timedelta(days=365),
+        )
+        self.licencia_b = Licencia.objects.create(
+            tenant=self.tenant, empresa=self.empresa, tipo=self.tipo_b,
+            fecha_compra=date.today(),
+            fecha_vencimiento=date.today() + timedelta(days=365),
+        )
+
+    def _request(self):
+        request = self.factory.post('/dummy/')
+        request.user = self.user
+        return request
+
+    def test_dar_baja_empleado_libera_todas_sus_licencias_activas(self):
+        asig_a = svc_asignar(self.licencia_a.id, self.empleado.id, self._request())
+        asig_b = svc_asignar(self.licencia_b.id, self.empleado.id, self._request())
+
+        result = svc_baja_empleado(self.empleado.id, self._request())
+
+        self.assertEqual(result['licencias_liberadas'], 2)
+        self.assertEqual(result['empleado'].id, self.empleado.id)
+
+        self.empleado.refresh_from_db()
+        self.assertFalse(self.empleado.activo)
+
+        for asig in (asig_a, asig_b):
+            asig.refresh_from_db()
+            self.assertFalse(asig.activo)
+            self.assertIsNotNone(asig.fecha_retiro)
+            self.assertIn('Revocación automatizada por baja operativa el ', asig.observaciones)
+
+    def test_dar_baja_empleado_sin_licencias_no_falla(self):
+        result = svc_baja_empleado(self.empleado.id, self._request())
+
+        self.assertEqual(result['licencias_liberadas'], 0)
+        self.empleado.refresh_from_db()
+        self.assertFalse(self.empleado.activo)
+
+    def test_dar_baja_empleado_ya_inactivo_lanza_excepcion(self):
+        self.empleado.activo = False
+        self.empleado.save()
+        inactivas_antes = Asignacion.objects.filter(activo=False).count()
+
+        with self.assertRaises(EmpleadoYaInactivoError) as ctx:
+            svc_baja_empleado(self.empleado.id, self._request())
+
+        self.assertEqual(ctx.exception.empleado_nombre, 'María López')
+        self.assertEqual(Asignacion.objects.filter(activo=False).count(), inactivas_antes)
