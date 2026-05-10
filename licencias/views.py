@@ -31,6 +31,7 @@ from .services.asignacion import (
     liberar_licencia as svc_liberar,
 )
 from .services.empleados import dar_baja_empleado as svc_baja_empleado
+from .selectors import obtener_kpis_dashboard
 from .services.exceptions import (
     LicenciaNoEncontradaError,
     EmpleadoNoEncontradoError,
@@ -337,65 +338,41 @@ def inicio(request):
 
 @login_required
 def dashboard(request, tenant_id=None):
-    """
-    Controlador principal de la vista gerencial. 
-    Calcula KPIs operativos (Asignaciones, Disponibilidad, Riesgo de Vencimiento)
-    mediante iteración única para minimizar la carga transaccional en la base de datos.
-    """
+    """Vista gerencial de licencias. KPIs vía selector agregado (1 query)."""
     exigir_permiso(request, 'licencias.view_licencia')
     tenants = Tenant.objects.all()
-    
+
     if tenant_id:
         tenant_seleccionado = get_object_or_404(Tenant, pk=tenant_id)
-        licencias = Licencia.objects.filter(tenant=tenant_seleccionado).select_related('tipo', 'empresa', 'proveedor', 'tenant')
+        licencias = Licencia.objects.filter(tenant=tenant_seleccionado).select_related(
+            'tipo', 'empresa', 'proveedor', 'tenant'
+        )
         titulo = f"Licencias de {tenant_seleccionado.nombre}"
     else:
         tenant_seleccionado = None
-        licencias = Licencia.objects.all().select_related('tipo', 'empresa', 'proveedor', 'tenant')
+        licencias = Licencia.objects.all().select_related(
+            'tipo', 'empresa', 'proveedor', 'tenant'
+        )
         titulo = "Todas las Licencias"
 
     empleados = Empleado.objects.filter(activo=True).order_by('nombre_completo')
-
     hoy = timezone.now().date()
     limite_30_dias = hoy + timedelta(days=30)
-
-    # Cálculo algorítmico de KPIs
-    total_licencias = licencias.count()
-    ocupadas = 0
-    disponibles = 0
-    vencidas = 0
-    por_vencer = 0
-
-    for lic in licencias:
-        if lic.usuario_activo:
-            ocupadas += 1
-            
-        # Evaluación de riesgos y caducidad
-        if lic.fecha_vencimiento < hoy:
-            vencidas += 1
-        elif lic.fecha_vencimiento <= limite_30_dias:
-            por_vencer += 1
-            
-        # Disponibilidad neta
-        if not lic.usuario_activo and lic.fecha_vencimiento >= hoy:
-            disponibles += 1
-
     form_licencia = LicenciaForm()
-    
+
+    kpis = obtener_kpis_dashboard(tenant=tenant_seleccionado)
+
     context = {
         'tenants': tenants,
         'tenant_seleccionado': tenant_seleccionado,
         'licencias': licencias,
         'empleados': empleados,
         'titulo': titulo,
-        
-        # Métricas de telemetría
-        'kpi_total': total_licencias,
-        'kpi_ocupadas': ocupadas,
-        'kpi_disponibles': disponibles,
-        'kpi_vencidas': vencidas,
-        'kpi_por_vencer': por_vencer,
-        
+        'kpi_total': kpis['total'],
+        'kpi_ocupadas': kpis['ocupadas'],
+        'kpi_disponibles': kpis['disponibles'],
+        'kpi_vencidas': kpis['vencidas'],
+        'kpi_por_vencer': kpis['por_vencer'],
         'hoy': hoy,
         'limite_30_dias': limite_30_dias,
         'form_licencia': form_licencia,

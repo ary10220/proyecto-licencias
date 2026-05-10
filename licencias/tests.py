@@ -10,6 +10,7 @@ from licencias.services.asignacion import (
     asignar_licencia as svc_asignar,
     liberar_licencia as svc_liberar,
 )
+from licencias.selectors import obtener_kpis_dashboard
 from licencias.services.empleados import dar_baja_empleado as svc_baja_empleado
 from licencias.services.exceptions import (
     AsignacionInactivaError,
@@ -178,3 +179,91 @@ class BajaEmpleadoServiceTests(TestCase):
 
         self.assertEqual(ctx.exception.empleado_nombre, 'María López')
         self.assertEqual(Asignacion.objects.filter(activo=False).count(), inactivas_antes)
+
+
+class KpisDashboardSelectorTests(TestCase):
+    """Tests del selector obtener_kpis_dashboard (queries agregadas)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.tenant = Tenant.objects.create(nombre='Tenant Selector A')
+        cls.empresa = Empresa.objects.create(tenant=cls.tenant, nombre='Empresa Selector')
+        cls.tipo = TipoLicencia.objects.create(nombre='Tipo Selector')
+        cls.area = GerenciaArea.objects.create(
+            empresa=cls.empresa, codigo='SEL', nombre='Selectores',
+        )
+        cls.empleado = Empleado.objects.create(
+            nombre_completo='Carlos Test',
+            ci='SELECTOR1',
+            email_principal='carlos@selector.test',
+            empresa=cls.empresa,
+            area=cls.area,
+        )
+
+    def _crear_licencia(self, *, fecha_vencimiento, tenant=None, empresa=None):
+        return Licencia.objects.create(
+            tenant=tenant or self.tenant,
+            empresa=empresa or self.empresa,
+            tipo=self.tipo,
+            fecha_compra=date.today(),
+            fecha_vencimiento=fecha_vencimiento,
+        )
+
+    def test_kpis_dashboard_cuenta_correctamente(self):
+        hoy = date.today()
+        l_asignada = self._crear_licencia(fecha_vencimiento=hoy + timedelta(days=100))
+        self._crear_licencia(fecha_vencimiento=hoy + timedelta(days=100))
+        self._crear_licencia(fecha_vencimiento=hoy - timedelta(days=5))
+        Asignacion.objects.create(licencia=l_asignada, empleado=self.empleado, activo=True)
+
+        kpis = obtener_kpis_dashboard()
+
+        self.assertEqual(kpis['total'], 3)
+        self.assertEqual(kpis['ocupadas'], 1)
+        self.assertEqual(kpis['disponibles'], 1)
+        self.assertEqual(kpis['vencidas'], 1)
+        self.assertEqual(kpis['por_vencer'], 0)
+
+    def test_kpis_dashboard_filtra_por_tenant(self):
+        hoy = date.today()
+        tenant_b = Tenant.objects.create(nombre='Tenant Selector B')
+        empresa_b = Empresa.objects.create(tenant=tenant_b, nombre='Empresa B')
+        for _ in range(2):
+            self._crear_licencia(fecha_vencimiento=hoy + timedelta(days=100))
+        for _ in range(3):
+            self._crear_licencia(
+                fecha_vencimiento=hoy + timedelta(days=100),
+                tenant=tenant_b,
+                empresa=empresa_b,
+            )
+
+        self.assertEqual(obtener_kpis_dashboard(tenant=self.tenant)['total'], 2)
+        self.assertEqual(obtener_kpis_dashboard(tenant=tenant_b)['total'], 3)
+        self.assertEqual(obtener_kpis_dashboard()['total'], 5)
+
+    def test_kpis_dashboard_distingue_vencer_de_vencida(self):
+        hoy = date.today()
+        self._crear_licencia(fecha_vencimiento=hoy - timedelta(days=1))
+        self._crear_licencia(fecha_vencimiento=hoy)
+        self._crear_licencia(fecha_vencimiento=hoy + timedelta(days=15))
+        self._crear_licencia(fecha_vencimiento=hoy + timedelta(days=45))
+
+        kpis = obtener_kpis_dashboard()
+
+        self.assertEqual(kpis['total'], 4)
+        self.assertEqual(kpis['vencidas'], 1)
+        self.assertEqual(kpis['por_vencer'], 2)
+        self.assertEqual(kpis['disponibles'], 3)
+        self.assertEqual(kpis['ocupadas'], 0)
+
+    def test_kpis_dashboard_no_duplica_licencia_con_varias_asignaciones(self):
+        hoy = date.today()
+        licencia = self._crear_licencia(fecha_vencimiento=hoy + timedelta(days=100))
+        Asignacion.objects.create(licencia=licencia, empleado=self.empleado, activo=False)
+        Asignacion.objects.create(licencia=licencia, empleado=self.empleado, activo=True)
+
+        kpis = obtener_kpis_dashboard()
+
+        self.assertEqual(kpis['total'], 1)
+        self.assertEqual(kpis['ocupadas'], 1)
+        self.assertEqual(kpis['disponibles'], 0)
