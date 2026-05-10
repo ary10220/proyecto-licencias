@@ -1,5 +1,4 @@
 import json
-import pandas as pd
 import openpyxl
 from openpyxl.styles import Font, PatternFill
 from datetime import timedelta
@@ -18,8 +17,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
-from django.db import transaction
- 
+
 from empleados.models import Empleado, GerenciaDivision, GerenciaArea, Unidad
 from .models import Licencia, Asignacion, Tenant, Empresa, Proveedor, TipoLicencia
 from .forms import (
@@ -57,7 +55,6 @@ from bitacora.actions import (
     log_eliminar_licencias_masivo,
     log_exportar_excel,
     log_reactivar_empleado,
-    log_sincronizar_m365,
     log_division_editar,
     log_division_eliminar,
     log_area_editar,
@@ -1002,182 +999,6 @@ def crear_licencia(request):
             
     return redirect('dashboard_general')
 
-
-# ==========================================
-# MOTOR DE SINCRONIZACIÓN AUTOMATIZADA M365
-# ==========================================
-
-@login_required
-def sincronizar_m365(request):
-    """
-    Motor de ingesta y conciliación de datos contra el proveedor M365.
-    Procesa múltiples hojas de cálculo vía DataFrames y ejecuta actualización
-    transaccional garantizando el principio ACID en la base de datos.
-    """
-    exigir_permiso(request, 'licencias.change_licencia')
-    if request.method == 'POST' and request.FILES.get('archivo_excel'):
-        excel_file = request.FILES['archivo_excel']
-        
-        try:
-            # 1. Extracción de datos en memoria mediante motor OpenPyXL
-            diccionario_hojas = pd.read_excel(excel_file, engine='openpyxl', sheet_name=None)
-            df = pd.concat(diccionario_hojas.values(), ignore_index=True)
-            df.columns = df.columns.str.strip()
-
-            creados, actualizados, asignadas, liberadas, sin_stock = 0, 0, 0, 0, 0
-
-            # 2. Diccionario de enrutamiento de dominios corporativos
-            mapa_dominios = {
-                'avicolasofia.com': 'AVICOLASOFIA',
-                'mamayatech.com': 'MAMAYATECH',
-                'indatta.com': 'INDATTA',
-                'agrosofiaservicios.com': 'AGROSOFIA'
-            }
-
-            # 3. Diccionario de homologación de SKUs (M365 vs Sistema Interno)
-            mapa_licencias = {
-                'ENTERPRISEPACK': 'E3',                             
-                'SPE_F1': 'F3',                                     
-                'O365_BUSINESS_PREMIUM': 'ESTANDAR',                
-                'Office_365_E3_(no_Teams)': 'E3 (SIN TEAMS)',       
-                'Office_365_E1_(no_Teams)': 'E1 (SIN TEAMS)',       
-                'Microsoft_Teams_Enterprise_New': 'TEAMS ENTERPRISE',
-                'PROJECTPROFESSIONAL': 'PROJECT',                   
-                'POWER_BI_PRO': 'POWER BI',                         
-                'VISIOCLIENT': 'VISIO PLAN 2',                      
-                'EXCHANGESTANDARD': 'EXCHANGE ONLINE (PLAN 1)'      
-            }
-
-            # 4. Bloque Transaccional Atómico (Evita inconsistencias ante errores críticos)
-            with transaction.atomic():
-                for index, row in df.iterrows():
-                    correo = str(row.get('Nombre principal de usuario', '')).strip().lower()
-                    nombre = str(row.get('Nombre para mostrar', '')).strip()
-                    tiene_lic = str(row.get('Tiene licencia', '')).strip().upper() == 'VERDADERO'
-                    skus_str = str(row.get('AssignedProductSkus', '')).strip()
-
-                    # Limpieza de registros inválidos
-                    if pd.isna(correo) or not correo or '@' not in correo:
-                        continue
-
-                    # Resolución de dependencias corporativas
-                    dominio = correo.split('@')[1]
-                    nombre_empresa = mapa_dominios.get(dominio, 'MAMAYATECH')
-                    empresa_obj = Empresa.objects.filter(nombre__icontains=nombre_empresa).first()
-                    
-                    if not empresa_obj: 
-                        continue
-                        
-                    area_por_defecto = GerenciaArea.objects.filter(empresa=empresa_obj).first()
-
-                    # Consolidación de Identidades Operativas
-                    empleado, creado = Empleado.objects.get_or_create(
-                        email_principal=correo,
-                        defaults={
-                            'nombre_completo': nombre,
-                            'ci': correo.split('@')[0],
-                            'empresa': empresa_obj,
-                            'area': area_por_defecto,
-                            'activo': tiene_lic
-                        }
-                    )
-
-                    if creado: 
-                        creados += 1
-                    else:
-                        if empleado.activo != tiene_lic:
-                            empleado.activo = tiene_lic
-                            empleado.save(update_fields=['activo'])
-                        actualizados += 1
-
-                    # Parseo estructural de SKUs compuestos
-                    skus_lista = skus_str.split('+') if skus_str else []
-                    skus_principales = []
-                    skus_extra = [] 
-
-                    for sku in skus_lista:
-                        sku = sku.strip()
-                        if sku in mapa_licencias:
-                            skus_principales.append(sku)
-                        elif sku:
-                            skus_extra.append(sku)
-
-                    nombres_licencias_excel = [mapa_licencias[s] for s in skus_principales]
-                    nombres_manejados = list(mapa_licencias.values())
-
-                    # Políticas de retención: Se revocan únicamente las licencias gestionadas en la conciliación actual
-                    asignaciones_actuales = Asignacion.objects.filter(empleado=empleado, activo=True)
-                    
-                    for asig in asignaciones_actuales:
-                        nombre_bd = asig.licencia.tipo.nombre.upper()
-                        es_gestionada = any(nm.upper() in nombre_bd for nm in nombres_manejados)
-                        
-                        if es_gestionada:
-                            viene_en_excel = any(nm.upper() in nombre_bd for nm in nombres_licencias_excel)
-                            if not viene_en_excel or not tiene_lic:
-                                asig.activo = False
-                                asig.fecha_retiro = timezone.now()
-                                asig.save()
-                                liberadas += 1
-
-                    # Aprovisionamiento dinámico de activos
-                    texto_extra = f"Complementos M365: {', '.join(skus_extra)}" if skus_extra else ""
-
-                    if tiene_lic:
-                        for sku_principal in skus_principales:
-                            nombre_lic_bd = mapa_licencias[sku_principal]
-                            
-                            tiene_esta_licencia = Asignacion.objects.filter(
-                                empleado=empleado, 
-                                licencia__tipo__nombre__icontains=nombre_lic_bd, 
-                                activo=True
-                            ).exists()
-
-                            if not tiene_esta_licencia:
-                                licencia_libre = Licencia.objects.filter(
-                                    tipo__nombre__icontains=nombre_lic_bd,
-                                    empresa=empresa_obj
-                                ).exclude(asignaciones__activo=True).first()
-
-                                if licencia_libre:
-                                    Asignacion.objects.create(
-                                        licencia=licencia_libre,
-                                        empleado=empleado,
-                                        observaciones=texto_extra
-                                    )
-                                    asignadas += 1
-                                else:
-                                    sin_stock += 1 
-                            else:
-                                # Sincronización de adiciones de bajo nivel (Add-ons)
-                                asig_actual = Asignacion.objects.filter(
-                                    empleado=empleado, 
-                                    licencia__tipo__nombre__icontains=nombre_lic_bd, 
-                                    activo=True
-                                ).first()
-                                if asig_actual and skus_extra:
-                                    asig_actual.observaciones = texto_extra
-                                    asig_actual.save(update_fields=['observaciones'])
-
-            # ==========================================
-            # DIAGNÓSTICO FINAL DE SINCRONIZACIÓN
-            # ==========================================
-            msg = f"Conciliación Finalizada: {creados} altas, {actualizados} validadas. {asignadas} asignaciones generadas, {liberadas} revocadas."
-            if sin_stock > 0:
-                msg += f" RIESGO DETECTADO: Déficit de inventario. Faltan {sin_stock} activos en pool corporativo."
-                messages.warning(request, msg)
-            else:
-                messages.success(request, msg)
-
-            log_sincronizar_m365(
-                request,
-                resumen=f"{creados} altas, {actualizados} validadas, {asignadas} asignaciones, {liberadas} revocadas, sin stock={sin_stock}.",
-            )
-                
-        except Exception as e:
-            messages.error(request, f"Error crítico en Pipeline de Datos. Traceback: {str(e)}")
-
-    return redirect('dashboard_general')
 
 # ==========================================
 # BORRADO MASIVO DE LICENCIAS

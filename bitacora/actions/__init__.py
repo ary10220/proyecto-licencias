@@ -25,7 +25,6 @@ from .licencias import (  # noqa: F401
     log_eliminar_licencias_masivo,
     log_exportar_excel,
     log_liberar_licencia,
-    log_sincronizar_m365,
 )
 
 from .usuarios import (  # noqa: F401

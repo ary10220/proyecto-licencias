@@ -25,12 +25,6 @@
                 
                 <span class="mx-1"></span>
                 
-                <button class="btn text-white shadow-sm" style="background-color: #df6e12; border-color: #df6e12;" data-bs-toggle="modal" data-bs-target="#modalSincronizar" title="Sincronizar Excel de Microsoft">
-                    <i class="fa-solid fa-cloud-arrow-up me-2"></i> Sincronizar M365
-                </button>
- 
-                <span class="mx-1"></span>
-                
                 <button class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNuevaLicencia" title="Registrar nueva compra de licencia">
                     <i class="fa-solid fa-plus me-2"></i> Nueva Licencia
                 </button>
@@ -291,36 +285,6 @@
                 <div class="modal-footer border-0">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-primary">Guardar Licencia(s)</button>
-                </div>
-            </form>
-        </div>
-    </div>
- 
-    <!-- MODAL: SINCRONIZAR M365 -->
-    <div class="modal fade" id="modalSincronizar" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <form method="POST" action="{% url 'sincronizar' %}" enctype="multipart/form-data" class="modal-content border-0 shadow">
-                {% csrf_token %}
-                <div class="modal-header text-white border-0" style="background-color: #df6e12;">
-                    <h5 class="modal-title"><i class="fa-brands fa-microsoft me-2"></i>Conciliación de Entorno M365</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body bg-light text-center p-4">
-                    <i class="fa-solid fa-file-excel fa-4x text-success mb-3 opacity-75"></i>
-                    <h6 class="fw-bold text-secondary mb-3">Carga de Payload (Reporte de Azure/M365)</h6>
-                    <div class="mb-3 text-start">
-                        <input class="form-control form-control-lg border-success" type="file" name="archivo_excel" accept=".xlsx, .xls, .csv" required>
-                    </div>
-                    <div class="alert alert-warning text-start small mb-0">
-                        <i class="fa-solid fa-triangle-exclamation me-1"></i>
-                        <strong>Importante:</strong> El motor de conciliación utilizará el <i>UPN (User Principal Name / Correo electrónico)</i> como llave primaria para resolver identidades, mapear dominios y actualizar el estado del inventario automáticamente.
-                    </div>
-                </div>
-                <div class="modal-footer border-0">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Abortar</button>
-                    <button type="submit" class="btn text-white px-4" style="background-color: #df6e12;" onclick="this.innerHTML='<i class=\'fa-solid fa-spinner fa-spin me-2\'></i>Procesando DataFrames...';">
-                        <i class="fa-solid fa-play me-1"></i> Iniciar Conciliación
-                    </button>
                 </div>
             </form>
         </div>

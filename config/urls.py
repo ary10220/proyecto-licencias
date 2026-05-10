@@ -50,8 +50,7 @@ urlpatterns = [
     path('dashboard/', views.dashboard, name='dashboard_general'),
     path('dashboard/<int:tenant_id>/', views.dashboard, name='dashboard_tenant'),
 
-    # Sincronización y Exportación de Datos
-    path('sincronizar/', views.sincronizar_m365, name='sincronizar'),
+    # Exportación de Datos
     path('exportar/', views.exportar_excel, name='exportar_general'),
     path('exportar/<int:tenant_id>/', views.exportar_excel, name='exportar_tenant'),
 
