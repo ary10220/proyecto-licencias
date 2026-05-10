@@ -26,8 +26,19 @@ from .forms import (
     EmpleadoForm, GerenciaDivisionForm, GerenciaAreaForm, UnidadForm,
     TenantForm, EmpresaForm, ProveedorForm, TipoLicenciaForm, LicenciaForm
 )
+from .services.asignacion import (
+    asignar_licencia as svc_asignar,
+    liberar_licencia as svc_liberar,
+)
+from .services.exceptions import (
+    LicenciaNoEncontradaError,
+    EmpleadoNoEncontradoError,
+    LicenciaYaAsignadaError,
+    EmpleadoYaTieneTipoError,
+    AsignacionInactivaError,
+)
+from django.http import Http404
 from bitacora.actions import (
-    log_asignacion_licencia,
     log_baja_empleado,
     log_creacion_licencias,
     log_crear_empleado,
@@ -43,7 +54,6 @@ from bitacora.actions import (
     log_eliminar_licencia,
     log_eliminar_licencias_masivo,
     log_exportar_excel,
-    log_liberar_licencia,
     log_reactivar_empleado,
     log_sincronizar_m365,
     log_division_editar,
@@ -398,72 +408,57 @@ def dashboard(request, tenant_id=None):
 
 @login_required
 def asignar_licencia(request, licencia_id):
-    """
-    Ejecuta la transacción de vinculación entre un activo de software y un colaborador.
-    Implementa validaciones de control de duplicidad y concurrencia.
-    """
+    """Vincula una licencia a un empleado. Delega reglas de negocio al service."""
     exigir_permiso(request, 'licencias.add_asignacion')
-    if request.method == 'POST':
-        licencia = get_object_or_404(Licencia, pk=licencia_id)
-        empleado_id = request.POST.get('empleado_id')
-        empleado = get_object_or_404(Empleado, pk=empleado_id)
+    if request.method != 'POST':
+        return redirect(request.META.get('HTTP_REFERER', 'dashboard_general'))
 
-        # Prevención de condición de carrera (Race Condition)
-        if licencia.usuario_activo:
-            messages.error(request, f"Violación de concurrencia: La licencia ya fue asignado a {licencia.usuario_activo.empleado.nombre_completo}.")
-            return redirect(request.META.get('HTTP_REFERER', 'dashboard_general'))
-
-        # Control de duplicidad de licenciamiento por usuario
-        tiene_duplicada = Asignacion.objects.filter(
-            empleado=empleado,
-            licencia__tipo=licencia.tipo,
-            activo=True
-        ).exists()
-
-        if tiene_duplicada:
-            messages.warning(request, f"Regla de negocio: {empleado.nombre_completo} ya posee una instancia de '{licencia.tipo.nombre}' activa.")
-            return redirect(request.META.get('HTTP_REFERER', 'dashboard_general'))
-
-        Asignacion.objects.create(
-            licencia=licencia,
-            empleado=empleado,
-            activo=True
+    empleado_id = request.POST.get('empleado_id')
+    try:
+        asignacion = svc_asignar(licencia_id, empleado_id, request)
+    except (LicenciaNoEncontradaError, EmpleadoNoEncontradoError) as e:
+        raise Http404(str(e))
+    except LicenciaYaAsignadaError as e:
+        messages.error(
+            request,
+            f"Violación de concurrencia: la licencia ya fue asignada a {e.empleado_actual_nombre}."
         )
-        log_asignacion_licencia(request, licencia, empleado)
-        messages.success(request, f"Transacción exitosa: Licencia asignada a {empleado.nombre_completo}.")
-        
+    except EmpleadoYaTieneTipoError as e:
+        messages.warning(
+            request,
+            f"Regla de negocio: {e.empleado_nombre} ya posee una instancia de '{e.tipo_nombre}' activa."
+        )
+    else:
+        messages.success(
+            request,
+            f"Transacción exitosa: Licencia asignada a {asignacion.empleado.nombre_completo}."
+        )
+
     return redirect(request.META.get('HTTP_REFERER', 'dashboard_general'))
 
 
 @login_required
 def liberar_licencia(request, licencia_id):
-    """
-    Revoca el acceso a un activo de software, clausurando la asignación activa
-    y generando el registro en el historial de auditoría.
-    """
+    """Revoca la asignación activa de una licencia. Delega al service."""
     exigir_permiso(request, 'licencias.change_asignacion')
     licencia = get_object_or_404(Licencia, pk=licencia_id)
-    asignaciones_activas = licencia.asignaciones.filter(activo=True)
-    
-    if asignaciones_activas.exists():
-        empleados_afectados = [
-            getattr(asig.empleado, 'nombre_completo', str(asig.empleado))
-            for asig in asignaciones_activas.select_related('empleado')
-        ]
-        count = 0
-        for asignacion in asignaciones_activas:
-            asignacion.activo = False
-            if not asignacion.fecha_retiro:
-                asignacion.fecha_retiro = timezone.now()
-            asignacion.save() 
-            count += 1
+    asignacion_activa = licencia.asignaciones.filter(activo=True).first()
 
-        log_liberar_licencia(request, licencia, empleados=empleados_afectados, cantidad=count)
-
-        messages.success(request, f"Activo revocado. Se consolidaron {count} registros en la bitácora de auditoría.")
-    else:
+    if asignacion_activa is None:
         messages.warning(request, "El activo no presentaba asignaciones activas.")
-    
+        return redirect('dashboard_general')
+
+    motivo = request.POST.get('motivo', '')
+    try:
+        svc_liberar(asignacion_activa.id, motivo, request)
+    except AsignacionInactivaError:
+        messages.warning(request, "La asignación ya no estaba activa.")
+    else:
+        messages.success(
+            request,
+            "Activo revocado. Se consolidó el registro en la bitácora de auditoría."
+        )
+
     return redirect('dashboard_general')
 
 
