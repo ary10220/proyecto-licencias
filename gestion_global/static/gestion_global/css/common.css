@@ -12,6 +12,24 @@
   padding: 1rem;
 }
 
+.gg-shell {
+  animation: ggPageIn 180ms ease-out;
+}
+
+.gg-table-card {
+  transition: opacity 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+}
+
+.gg-table-card.is-loading {
+  opacity: 0.45;
+  transform: translateY(4px);
+  pointer-events: none;
+}
+
+.gg-table-card.is-updated {
+  animation: ggTableIn 220ms ease-out;
+}
+
 .gg-status-badge {
   min-width: 74px;
 }
@@ -44,5 +62,36 @@
 
   .gg-actions {
     justify-content: flex-start;
+  }
+}
+
+@keyframes ggPageIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ggTableIn {
+  from {
+    opacity: 0.6;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gg-shell,
+  .gg-table-card,
+  .gg-table-card.is-updated {
+    animation: none;
+    transition: none;
   }
 }
