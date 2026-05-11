@@ -6,6 +6,7 @@ from empleados.models import Empleado
 class Tenant(models.Model):
     """Representa el grupo corporativo o conglomerado principal."""
     nombre = models.CharField(max_length=80, unique=True)
+    activo = models.BooleanField(default=True)
     
     def __str__(self):
         return self.nombre
@@ -28,6 +29,7 @@ class Empresa(models.Model):
     """Razón social específica vinculada a un Tenant."""
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='empresas')
     nombre = models.CharField(max_length=100)
+    activo = models.BooleanField(default=True)
     
     def __str__(self):
         return f"{self.nombre} ({self.tenant.nombre})"

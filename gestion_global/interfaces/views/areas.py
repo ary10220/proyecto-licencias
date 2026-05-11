@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
 
 from .base import consumir_estado_modal, exigir_permiso, guardar_estado_modal
@@ -15,6 +16,7 @@ from ...application.use_cases import (
     uc_editar_area,
     uc_eliminar_area,
     uc_listar_areas,
+    uc_reactivar_area,
 )
 from ...infrastructure import repositories as repo
 
@@ -23,6 +25,8 @@ from ...infrastructure import repositories as repo
 @exigir_permiso('empleados.view_gerenciaarea')
 def lista_areas(request):
     puede_crear = request.user.is_superuser or request.user.has_perm('empleados.add_gerenciaarea')
+    q = (request.GET.get('q') or '').strip()
+    estado = request.GET.get('estado') or 'activos'
 
     if request.method == 'POST':
         if not puede_crear:
@@ -40,11 +44,13 @@ def lista_areas(request):
 
     return render(request, 'gestion_global/areas/lista.html', {
         'titulo': 'Areas',
-        'areas': uc_listar_areas(),
+        'areas': uc_listar_areas(q=q, estado=estado),
         'form': form,
         'puede_crear': puede_crear,
         'modal_abierto': modal_abierto,
         'gestion_global_active': 'areas',
+        'q': q,
+        'estado': estado,
     })
 
 
@@ -95,6 +101,22 @@ def editar_area(request, pk):
 def eliminar_area(request, pk):
     area = repo.get_area(pk)
     if request.method == 'POST':
-        label = uc_eliminar_area(request=request, area=area)
-        messages.success(request, f"Area '{label}' eliminada.")
+        try:
+            label = uc_eliminar_area(request=request, area=area)
+            messages.success(request, f"Area '{label}' inactivada.")
+        except ValidationError as exc:
+            messages.error(request, exc.message)
+    return redirect('gestion_global:lista_areas')
+
+
+@login_required
+@exigir_permiso('empleados.change_gerenciaarea')
+def reactivar_area(request, pk):
+    area = repo.get_area(pk)
+    if request.method == 'POST':
+        try:
+            label = uc_reactivar_area(request=request, area=area)
+            messages.success(request, f"Area '{label}' reactivada.")
+        except ValidationError as exc:
+            messages.error(request, exc.message)
     return redirect('gestion_global:lista_areas')

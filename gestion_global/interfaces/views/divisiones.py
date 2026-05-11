@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
 
 from .base import consumir_estado_modal, exigir_permiso, guardar_estado_modal
@@ -15,6 +16,7 @@ from ...application.use_cases import (
     uc_editar_division,
     uc_eliminar_division,
     uc_listar_divisiones,
+    uc_reactivar_division,
 )
 from ...infrastructure import repositories as repo
 
@@ -23,6 +25,8 @@ from ...infrastructure import repositories as repo
 @exigir_permiso('empleados.view_gerenciadivision')
 def lista_divisiones(request):
     puede_crear = request.user.is_superuser or request.user.has_perm('empleados.add_gerenciadivision')
+    q = (request.GET.get('q') or '').strip()
+    estado = request.GET.get('estado') or 'activos'
 
     if request.method == 'POST':
         if not puede_crear:
@@ -40,11 +44,13 @@ def lista_divisiones(request):
 
     return render(request, 'gestion_global/divisiones/lista.html', {
         'titulo': 'Divisiones',
-        'divisiones': uc_listar_divisiones(),
+        'divisiones': uc_listar_divisiones(q=q, estado=estado),
         'form': form,
         'puede_crear': puede_crear,
         'modal_abierto': modal_abierto,
         'gestion_global_active': 'divisiones',
+        'q': q,
+        'estado': estado,
     })
 
 
@@ -95,6 +101,22 @@ def editar_division(request, pk):
 def eliminar_division(request, pk):
     division = repo.get_division(pk)
     if request.method == 'POST':
-        label = uc_eliminar_division(request=request, division=division)
-        messages.success(request, f"Division '{label}' eliminada.")
+        try:
+            label = uc_eliminar_division(request=request, division=division)
+            messages.success(request, f"Division '{label}' inactivada.")
+        except ValidationError as exc:
+            messages.error(request, exc.message)
+    return redirect('gestion_global:lista_divisiones')
+
+
+@login_required
+@exigir_permiso('empleados.change_gerenciadivision')
+def reactivar_division(request, pk):
+    division = repo.get_division(pk)
+    if request.method == 'POST':
+        try:
+            label = uc_reactivar_division(request=request, division=division)
+            messages.success(request, f"Division '{label}' reactivada.")
+        except ValidationError as exc:
+            messages.error(request, exc.message)
     return redirect('gestion_global:lista_divisiones')

@@ -18,13 +18,20 @@ Regla del Dashboard:
 
 from __future__ import annotations
 
-from bitacora.actions import log_tenant_crear, log_tenant_editar, log_tenant_eliminar
+from django.core.exceptions import ValidationError
+
+from bitacora.actions import (
+    log_tenant_crear,
+    log_tenant_editar,
+    log_tenant_eliminar,
+    log_tenant_reactivar,
+)
 from ...infrastructure import repositories as repo
 from ...infrastructure.models import Tenant
 
 
-def uc_listar_tenants():
-    return repo.list_tenants()
+def uc_listar_tenants(*, q="", estado="activos"):
+    return repo.list_tenants(q=q, estado=estado)
 
 
 def uc_crear_tenant(*, request, form) -> Tenant:
@@ -40,7 +47,15 @@ def uc_editar_tenant(*, request, form, tenant: Tenant) -> Tenant:
 
 
 def uc_eliminar_tenant(*, request, tenant: Tenant) -> str:
+    if tenant.empresas.filter(activo=True).exists():
+        raise ValidationError("No se puede inactivar un tenant con empresas activas.")
     label = str(tenant)
-    repo.delete_tenant(tenant)
+    repo.set_tenant_activo(tenant, False)
     log_tenant_eliminar(request, label)
     return label
+
+
+def uc_reactivar_tenant(*, request, tenant: Tenant) -> str:
+    repo.set_tenant_activo(tenant, True)
+    log_tenant_reactivar(request, tenant)
+    return str(tenant)

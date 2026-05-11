@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
 
 from .base import consumir_estado_modal, exigir_permiso, guardar_estado_modal
@@ -15,6 +16,7 @@ from ...application.use_cases import (
     uc_editar_empresa,
     uc_eliminar_empresa,
     uc_listar_empresas,
+    uc_reactivar_empresa,
 )
 from ...infrastructure import repositories as repo
 
@@ -23,6 +25,8 @@ from ...infrastructure import repositories as repo
 @exigir_permiso('licencias.view_empresa')
 def lista_empresas(request):
     puede_crear = request.user.is_superuser or request.user.has_perm('licencias.add_empresa')
+    q = (request.GET.get('q') or '').strip()
+    estado = request.GET.get('estado') or 'activos'
 
     if request.method == 'POST':
         if not puede_crear:
@@ -40,11 +44,13 @@ def lista_empresas(request):
 
     return render(request, 'gestion_global/empresas/lista.html', {
         'titulo': 'Empresas',
-        'empresas': uc_listar_empresas(),
+        'empresas': uc_listar_empresas(q=q, estado=estado),
         'form': form,
         'puede_crear': puede_crear,
         'modal_abierto': modal_abierto,
         'gestion_global_active': 'empresas',
+        'q': q,
+        'estado': estado,
     })
 
 
@@ -95,6 +101,22 @@ def editar_empresa(request, pk):
 def eliminar_empresa(request, pk):
     empresa = repo.get_empresa(pk)
     if request.method == 'POST':
-        label = uc_eliminar_empresa(request=request, empresa=empresa)
-        messages.success(request, f"Empresa '{label}' eliminada.")
+        try:
+            label = uc_eliminar_empresa(request=request, empresa=empresa)
+            messages.success(request, f"Empresa '{label}' inactivada.")
+        except ValidationError as exc:
+            messages.error(request, exc.message)
+    return redirect('gestion_global:lista_empresas')
+
+
+@login_required
+@exigir_permiso('licencias.change_empresa')
+def reactivar_empresa(request, pk):
+    empresa = repo.get_empresa(pk)
+    if request.method == 'POST':
+        try:
+            label = uc_reactivar_empresa(request=request, empresa=empresa)
+            messages.success(request, f"Empresa '{label}' reactivada.")
+        except ValidationError as exc:
+            messages.error(request, exc.message)
     return redirect('gestion_global:lista_empresas')

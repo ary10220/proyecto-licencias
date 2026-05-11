@@ -18,13 +18,21 @@ Excepciones:
 
 from __future__ import annotations
 
-from bitacora.actions import log_unidad_crear, log_unidad_editar, log_unidad_eliminar
+from django.core.exceptions import ValidationError
+
+from bitacora.actions import (
+    log_unidad_crear,
+    log_unidad_editar,
+    log_unidad_eliminar,
+    log_unidad_reactivar,
+)
+from empleados.models import Empleado
 from ...infrastructure import repositories as repo
 from ...infrastructure.models import Unidad
 
 
-def uc_listar_unidades():
-    return repo.list_unidades()
+def uc_listar_unidades(*, q="", estado="activos"):
+    return repo.list_unidades(q=q, estado=estado)
 
 
 def uc_crear_unidad(*, request, form) -> Unidad:
@@ -40,7 +48,17 @@ def uc_editar_unidad(*, request, form, unidad: Unidad) -> Unidad:
 
 
 def uc_eliminar_unidad(*, request, unidad: Unidad) -> str:
+    if Empleado.objects.filter(unidad=unidad, activo=True).exists():
+        raise ValidationError("No se puede inactivar una unidad con empleados activos.")
     label = str(unidad)
-    repo.delete_unidad(unidad)
+    repo.set_unidad_activa(unidad, False)
     log_unidad_eliminar(request, label)
     return label
+
+
+def uc_reactivar_unidad(*, request, unidad: Unidad) -> str:
+    if not unidad.area.activo:
+        raise ValidationError("No se puede reactivar una unidad cuya area esta inactiva.")
+    repo.set_unidad_activa(unidad, True)
+    log_unidad_reactivar(request, unidad)
+    return str(unidad)

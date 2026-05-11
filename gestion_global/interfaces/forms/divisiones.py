@@ -1,11 +1,19 @@
 """Formulario de Division (CU11)."""
 
 from django import forms
+from django.db.models import Q
 
-from ...infrastructure.models import GerenciaDivision
+from ...infrastructure.models import Empresa, GerenciaDivision
 
 
 class DivisionForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        empresa_qs = Empresa.objects.filter(activo=True)
+        if self.instance.pk and self.instance.empresa_id:
+            empresa_qs = Empresa.objects.filter(Q(activo=True) | Q(pk=self.instance.empresa_id))
+        self.fields['empresa'].queryset = empresa_qs.order_by('nombre')
+
     class Meta:
         model = GerenciaDivision
         fields = ['empresa', 'codigo', 'nombre']
@@ -20,6 +28,8 @@ class DivisionForm(forms.ModelForm):
         empresa = cleaned_data.get('empresa')
         codigo = (cleaned_data.get('codigo') or '').strip()
         nombre = (cleaned_data.get('nombre') or '').strip()
+        if empresa and not empresa.activo:
+            self.add_error('empresa', 'No se puede asociar una division a una empresa inactiva.')
         if empresa and codigo:
             qs = GerenciaDivision.objects.filter(empresa=empresa, codigo__iexact=codigo)
             if self.instance.pk:

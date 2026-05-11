@@ -18,13 +18,21 @@ Excepciones:
 
 from __future__ import annotations
 
-from bitacora.actions import log_division_crear, log_division_editar, log_division_eliminar
+from django.core.exceptions import ValidationError
+
+from bitacora.actions import (
+    log_division_crear,
+    log_division_editar,
+    log_division_eliminar,
+    log_division_reactivar,
+)
+from empleados.models import Empleado
 from ...infrastructure import repositories as repo
 from ...infrastructure.models import GerenciaDivision
 
 
-def uc_listar_divisiones():
-    return repo.list_divisiones()
+def uc_listar_divisiones(*, q="", estado="activos"):
+    return repo.list_divisiones(q=q, estado=estado)
 
 
 def uc_crear_division(*, request, form) -> GerenciaDivision:
@@ -40,7 +48,19 @@ def uc_editar_division(*, request, form, division: GerenciaDivision) -> Gerencia
 
 
 def uc_eliminar_division(*, request, division: GerenciaDivision) -> str:
+    if division.areas.filter(activo=True).exists():
+        raise ValidationError("No se puede inactivar una division con areas activas.")
+    if Empleado.objects.filter(division=division, activo=True).exists():
+        raise ValidationError("No se puede inactivar una division con empleados activos.")
     label = str(division)
-    repo.delete_division(division)
+    repo.set_division_activa(division, False)
     log_division_eliminar(request, label)
     return label
+
+
+def uc_reactivar_division(*, request, division: GerenciaDivision) -> str:
+    if not division.empresa.activo:
+        raise ValidationError("No se puede reactivar una division cuya empresa esta inactiva.")
+    repo.set_division_activa(division, True)
+    log_division_reactivar(request, division)
+    return str(division)

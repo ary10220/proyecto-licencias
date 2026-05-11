@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
 
 from .base import consumir_estado_modal, exigir_permiso, guardar_estado_modal
@@ -15,6 +16,7 @@ from ...application.use_cases import (
     uc_editar_unidad,
     uc_eliminar_unidad,
     uc_listar_unidades,
+    uc_reactivar_unidad,
 )
 from ...infrastructure import repositories as repo
 
@@ -23,6 +25,8 @@ from ...infrastructure import repositories as repo
 @exigir_permiso('empleados.view_unidad')
 def lista_unidades(request):
     puede_crear = request.user.is_superuser or request.user.has_perm('empleados.add_unidad')
+    q = (request.GET.get('q') or '').strip()
+    estado = request.GET.get('estado') or 'activos'
 
     if request.method == 'POST':
         if not puede_crear:
@@ -40,11 +44,13 @@ def lista_unidades(request):
 
     return render(request, 'gestion_global/unidades/lista.html', {
         'titulo': 'Unidades',
-        'unidades': uc_listar_unidades(),
+        'unidades': uc_listar_unidades(q=q, estado=estado),
         'form': form,
         'puede_crear': puede_crear,
         'modal_abierto': modal_abierto,
         'gestion_global_active': 'unidades',
+        'q': q,
+        'estado': estado,
     })
 
 
@@ -95,6 +101,22 @@ def editar_unidad(request, pk):
 def eliminar_unidad(request, pk):
     unidad = repo.get_unidad(pk)
     if request.method == 'POST':
-        label = uc_eliminar_unidad(request=request, unidad=unidad)
-        messages.success(request, f"Unidad '{label}' eliminada.")
+        try:
+            label = uc_eliminar_unidad(request=request, unidad=unidad)
+            messages.success(request, f"Unidad '{label}' inactivada.")
+        except ValidationError as exc:
+            messages.error(request, exc.message)
+    return redirect('gestion_global:lista_unidades')
+
+
+@login_required
+@exigir_permiso('empleados.change_unidad')
+def reactivar_unidad(request, pk):
+    unidad = repo.get_unidad(pk)
+    if request.method == 'POST':
+        try:
+            label = uc_reactivar_unidad(request=request, unidad=unidad)
+            messages.success(request, f"Unidad '{label}' reactivada.")
+        except ValidationError as exc:
+            messages.error(request, exc.message)
     return redirect('gestion_global:lista_unidades')

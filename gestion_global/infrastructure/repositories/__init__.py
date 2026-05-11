@@ -10,33 +10,33 @@ get/list/delete). NO contienen logica de negocio ni manejan request HTTP.
 from .empresas import (
     list_empresas,
     get_empresa,
-    delete_empresa,
+    set_empresa_activa,
 )
 from .tenants import (
     list_tenants,
     get_tenant,
-    delete_tenant,
+    set_tenant_activo,
 )
 from .areas import (
     list_areas,
     get_area,
-    delete_area,
+    set_area_activa,
 )
 from .divisiones import (
     list_divisiones,
     get_division,
-    delete_division,
+    set_division_activa,
 )
 from .unidades import (
     list_unidades,
     get_unidad,
-    delete_unidad,
+    set_unidad_activa,
 )
 
 __all__ = [
-    "list_empresas", "get_empresa", "delete_empresa",
-    "list_tenants", "get_tenant", "delete_tenant",
-    "list_areas", "get_area", "delete_area",
-    "list_divisiones", "get_division", "delete_division",
-    "list_unidades", "get_unidad", "delete_unidad",
+    "list_empresas", "get_empresa", "set_empresa_activa",
+    "list_tenants", "get_tenant", "set_tenant_activo",
+    "list_areas", "get_area", "set_area_activa",
+    "list_divisiones", "get_division", "set_division_activa",
+    "list_unidades", "get_unidad", "set_unidad_activa",
 ]

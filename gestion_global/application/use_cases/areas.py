@@ -18,13 +18,21 @@ Excepciones:
 
 from __future__ import annotations
 
-from bitacora.actions import log_area_crear, log_area_editar, log_area_eliminar
+from django.core.exceptions import ValidationError
+
+from bitacora.actions import (
+    log_area_crear,
+    log_area_editar,
+    log_area_eliminar,
+    log_area_reactivar,
+)
+from empleados.models import Empleado
 from ...infrastructure import repositories as repo
 from ...infrastructure.models import GerenciaArea
 
 
-def uc_listar_areas():
-    return repo.list_areas()
+def uc_listar_areas(*, q="", estado="activos"):
+    return repo.list_areas(q=q, estado=estado)
 
 
 def uc_crear_area(*, request, form) -> GerenciaArea:
@@ -40,7 +48,21 @@ def uc_editar_area(*, request, form, area: GerenciaArea) -> GerenciaArea:
 
 
 def uc_eliminar_area(*, request, area: GerenciaArea) -> str:
+    if area.unidades.filter(activo=True).exists():
+        raise ValidationError("No se puede inactivar un area con unidades activas.")
+    if Empleado.objects.filter(area=area, activo=True).exists():
+        raise ValidationError("No se puede inactivar un area con empleados activos.")
     label = str(area)
-    repo.delete_area(area)
+    repo.set_area_activa(area, False)
     log_area_eliminar(request, label)
     return label
+
+
+def uc_reactivar_area(*, request, area: GerenciaArea) -> str:
+    if not area.empresa.activo:
+        raise ValidationError("No se puede reactivar un area cuya empresa esta inactiva.")
+    if area.division and not area.division.activo:
+        raise ValidationError("No se puede reactivar un area cuya division esta inactiva.")
+    repo.set_area_activa(area, True)
+    log_area_reactivar(request, area)
+    return str(area)

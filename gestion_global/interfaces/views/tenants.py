@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
 
 from .base import consumir_estado_modal, exigir_permiso, guardar_estado_modal
@@ -15,6 +16,7 @@ from ...application.use_cases import (
     uc_editar_tenant,
     uc_eliminar_tenant,
     uc_listar_tenants,
+    uc_reactivar_tenant,
 )
 from ...infrastructure import repositories as repo
 
@@ -23,6 +25,8 @@ from ...infrastructure import repositories as repo
 @exigir_permiso('licencias.view_tenant')
 def lista_tenants(request):
     puede_crear = request.user.is_superuser or request.user.has_perm('licencias.add_tenant')
+    q = (request.GET.get('q') or '').strip()
+    estado = request.GET.get('estado') or 'activos'
 
     if request.method == 'POST':
         if not puede_crear:
@@ -40,11 +44,13 @@ def lista_tenants(request):
 
     return render(request, 'gestion_global/tenants/lista.html', {
         'titulo': 'Tenants',
-        'tenants': uc_listar_tenants(),
+        'tenants': uc_listar_tenants(q=q, estado=estado),
         'form': form,
         'puede_crear': puede_crear,
         'modal_abierto': modal_abierto,
         'gestion_global_active': 'tenants',
+        'q': q,
+        'estado': estado,
     })
 
 
@@ -95,6 +101,19 @@ def editar_tenant(request, pk):
 def eliminar_tenant(request, pk):
     tenant = repo.get_tenant(pk)
     if request.method == 'POST':
-        label = uc_eliminar_tenant(request=request, tenant=tenant)
-        messages.success(request, f"Tenant '{label}' eliminado.")
+        try:
+            label = uc_eliminar_tenant(request=request, tenant=tenant)
+            messages.success(request, f"Tenant '{label}' inactivado.")
+        except ValidationError as exc:
+            messages.error(request, exc.message)
+    return redirect('gestion_global:lista_tenants')
+
+
+@login_required
+@exigir_permiso('licencias.change_tenant')
+def reactivar_tenant(request, pk):
+    tenant = repo.get_tenant(pk)
+    if request.method == 'POST':
+        label = uc_reactivar_tenant(request=request, tenant=tenant)
+        messages.success(request, f"Tenant '{label}' reactivado.")
     return redirect('gestion_global:lista_tenants')

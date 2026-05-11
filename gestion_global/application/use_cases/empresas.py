@@ -25,16 +25,22 @@ Excepciones:
 
 from __future__ import annotations
 
-from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 
-from bitacora.actions import log_empresa_crear, log_empresa_editar, log_empresa_eliminar
+from bitacora.actions import (
+    log_empresa_crear,
+    log_empresa_editar,
+    log_empresa_eliminar,
+    log_empresa_reactivar,
+)
+from empleados.models import Empleado
 from ...infrastructure import repositories as repo
 from ...infrastructure.models import Empresa
 
 
-def uc_listar_empresas():
+def uc_listar_empresas(*, q="", estado="activos"):
     """Retorna el listado de empresas (consulta)."""
-    return repo.list_empresas()
+    return repo.list_empresas(q=q, estado=estado)
 
 
 def uc_crear_empresa(*, request, form) -> Empresa:
@@ -52,13 +58,18 @@ def uc_editar_empresa(*, request, form, empresa: Empresa) -> Empresa:
 
 
 def uc_eliminar_empresa(*, request, empresa: Empresa) -> str:
-    """Elimina (fisicamente por ahora) la empresa y registra en bitacora.
-
-    NOTA: el CU07 menciona 'deshabilitar (inactivar)'. El soft-delete con
-    flag `activo` es una refinacion futura (requiere migracion para agregar
-    el campo). Por ahora se mantiene el borrado fisico previo.
-    """
+    """Inactiva la empresa y registra en bitacora."""
+    if Empleado.objects.filter(empresa=empresa, activo=True).exists():
+        raise ValidationError("No se puede inactivar una empresa con empleados activos.")
     label = str(empresa)
-    repo.delete_empresa(empresa)
+    repo.set_empresa_activa(empresa, False)
     log_empresa_eliminar(request, label)
     return label
+
+
+def uc_reactivar_empresa(*, request, empresa: Empresa) -> str:
+    if not empresa.tenant.activo:
+        raise ValidationError("No se puede reactivar una empresa cuyo tenant esta inactivo.")
+    repo.set_empresa_activa(empresa, True)
+    log_empresa_reactivar(request, empresa)
+    return str(empresa)

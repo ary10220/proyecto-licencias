@@ -1,0 +1,48 @@
+.gg-filter-bar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 180px auto auto;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.gg-filter-card {
+  background: #fff;
+  border: 1px solid rgba(35, 48, 68, 0.08);
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.gg-status-badge {
+  min-width: 74px;
+}
+
+.gg-filter-submit {
+  min-width: 94px;
+}
+
+.gg-js-ready .gg-filter-submit {
+  display: none;
+}
+
+.gg-actions {
+  display: inline-flex;
+  gap: 0.25rem;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 767.98px) {
+  .gg-filter-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .gg-filter-bar .btn,
+  .gg-filter-bar .form-control,
+  .gg-filter-bar .form-select {
+    width: 100%;
+  }
+
+  .gg-actions {
+    justify-content: flex-start;
+  }
+}
