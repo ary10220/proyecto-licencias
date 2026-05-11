@@ -1,0 +1,14 @@
+.gg-shell { display: flex; flex-direction: column; gap: 1rem; }
+.gg-table-card { overflow: hidden; }
+.gg-modal .modal-header { background: linear-gradient(180deg, #ef882d 0%, #df6e12 100%); border: 0; color: #fff; }
+.gg-modal .modal-body { background: #fff8f2; max-height: calc(100vh - 210px); overflow-y: auto; }
+.gg-modal .modal-footer { background: #fffdf9; border-top: 1px solid rgba(220, 197, 177, 0.5); bottom: 0; position: sticky; z-index: 3; }
+.gg-modal .form-control,
+.gg-modal .form-select { min-height: 46px; }
+.gg-modal .text-danger.small { display: block; line-height: 1.35; }
+@media (max-width: 767.98px) {
+  .gg-modal .modal-dialog { margin: 0.55rem; }
+  .gg-modal .modal-body { max-height: calc(100vh - 190px); padding-bottom: 1rem; }
+  .gg-modal .modal-footer { padding: 0.9rem; }
+  .gg-modal .modal-footer .btn { flex: 1 1 0; }
+}
