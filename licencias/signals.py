@@ -1,16 +1,9 @@
 """
 Signals del modulo licencias.
 
-Conecta el evento `user_locked_out` de django-axes para preparar el flujo
-de desbloqueo cuando un usuario alcanza el limite de intentos fallidos.
-
-DECISION DE DISENO:
-El envio del correo NO se hace aqui. El signal de Axes corre con
-`signal.send_robust()` que silencia excepciones, y ademas el contexto del
-request en ese momento es inestable (Axes intercepta antes de finalizar
-el response). En lugar de eso, marcamos un flag en sesion y delegamos el
-envio a la vista `validar_token_bloqueo`, que corre en el contexto normal
-de un GET (el mismo donde el reenvio manual funciona sin problema).
+`user_locked_out` de django-axes solo deja el flag `enviar_token_pendiente`
+en sesion. El envio real lo hace la vista `validar_token_bloqueo` en su
+proximo GET (mismo contexto que el reenvio manual, donde send_mail funciona).
 """
 
 from __future__ import annotations
@@ -28,15 +21,9 @@ logger = logging.getLogger(__name__)
 
 @receiver(user_locked_out)
 def preparar_desbloqueo(sender, request, username, **kwargs):
-    """
-    Se dispara cuando Axes bloquea al usuario tras 3 intentos fallidos.
-
-    Solo deja en sesion los marcadores necesarios para que la pantalla
-    `/desbloqueo-seguro/` (vista `validar_token_bloqueo`) sepa para quien
-    enviar el token apenas el browser siga el redirect.
-    """
+    """Marca la sesion para que la siguiente vista dispare el envio."""
     if request is None:
-        logger.warning("[axes_lockout] signal disparado sin request, no se puede marcar sesion (%s).", username)
+        logger.warning("[axes_lockout] signal sin request, no se puede marcar sesion.")
         return
 
     user = User.objects.filter(username=username).first()
@@ -45,12 +32,6 @@ def preparar_desbloqueo(sender, request, username, **kwargs):
         return
 
     request.session["usuario_bloqueado_nombre"] = username
-    # Flag que la vista de desbloqueo leera para hacer el envio automatico
-    # en su propio contexto (donde send_mail funciona sin problema).
     request.session["enviar_token_pendiente"] = True
     request.session.modified = True
-
-    logger.info(
-        "[axes_lockout] usuario %s bloqueado; marcado para envio automatico de token.",
-        username,
-    )
+    logger.info("[axes_lockout] usuario %s bloqueado, marcado para envio automatico.", username)

@@ -9,6 +9,185 @@
 
 
 <link rel="stylesheet" href="{% static 'user/css/perfil/detalle.css' %}">
+<style>
+    .profile-hero {
+        background: linear-gradient(135deg, #f07d1b 0%, #d76510 58%, #a94409 100%);
+        border: 0;
+        border-radius: 8px;
+        box-shadow: 0 18px 40px rgba(169, 68, 9, 0.18);
+        color: #ffffff;
+        overflow: visible;
+        padding: 1.25rem;
+        position: relative;
+    }
+
+    .profile-hero::after {
+        background: rgba(255, 255, 255, 0.13);
+        content: "";
+        height: 190px;
+        pointer-events: none;
+        position: absolute;
+        right: -54px;
+        top: -62px;
+        transform: rotate(18deg);
+        width: 128px;
+        z-index: 0;
+    }
+
+    .profile-hero > .row {
+        position: relative;
+        z-index: 1;
+    }
+
+    .profile-avatar {
+        align-items: center;
+        background: linear-gradient(135deg, var(--color-principal), var(--color-principal-dark));
+        border: 5px solid #ffffff;
+        border-radius: 50%;
+        box-shadow: 0 1rem 2rem rgba(95, 54, 18, 0.18);
+        color: #ffffff;
+        display: flex;
+        font-size: 2.15rem;
+        font-weight: 800;
+        height: 118px;
+        justify-content: center;
+        object-fit: cover;
+        width: 118px;
+    }
+
+    .avatar-wrap {
+        display: inline-block;
+        padding-bottom: 1.9rem;
+        position: relative;
+        z-index: 5;
+    }
+
+    .photo-edit-btn {
+        background: #ffffff;
+        border: 1px solid #f0dfd0;
+        border-radius: 999px;
+        bottom: 0;
+        box-shadow: 0 0.7rem 1.4rem rgba(95, 54, 18, 0.18);
+        color: var(--color-principal-dark);
+        font-weight: 800;
+        left: 50%;
+        padding: 0.35rem 0.85rem;
+        position: absolute;
+        transform: translateX(-50%);
+        white-space: nowrap;
+    }
+
+    .photo-menu {
+        background: #ffffff;
+        border: 1px solid #f0dfd0;
+        border-radius: 8px;
+        box-shadow: 0 1rem 2rem rgba(95, 54, 18, 0.18);
+        min-width: 210px;
+        overflow: hidden;
+        padding: 0.4rem;
+        z-index: 1080;
+    }
+
+    .photo-menu .dropdown-item {
+        align-items: center;
+        border-radius: 8px;
+        color: #5c6470;
+        display: flex;
+        font-weight: 700;
+        gap: 0.75rem;
+        padding: 0.78rem 0.9rem;
+    }
+
+    .photo-menu .dropdown-item:hover {
+        background: #fff3e8;
+        color: var(--color-principal-dark);
+    }
+
+    .photo-menu .dropdown-item.text-danger:hover {
+        background: #fff1f2;
+        color: #dc3545 !important;
+    }
+
+    .photo-menu .dropdown-divider {
+        border-color: #f0dfd0;
+        margin: 0.35rem 0.2rem;
+    }
+
+    .profile-title {
+        color: var(--color-principal-dark);
+        font-weight: 850;
+    }
+
+    .profile-hero .profile-title,
+    .profile-hero .text-muted,
+    .profile-hero .profile-kicker {
+        color: #ffffff !important;
+    }
+
+    .profile-kicker {
+        font-size: 0.72rem;
+        font-weight: 850;
+        opacity: 0.78;
+        text-transform: uppercase;
+    }
+
+    .profile-status-badge {
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        border-radius: 999px;
+        box-shadow: 0 0.45rem 1rem rgba(92, 36, 4, 0.12);
+        font-weight: 850;
+        padding: 0.42rem 0.68rem;
+    }
+
+    .profile-status-active { background: #d1e7dd !important; color: #0f5132 !important; }
+    .profile-status-inactive { background: #f8d7da !important; color: #842029 !important; }
+    .profile-status-admin { background: #dbeafe !important; color: #1d4ed8 !important; }
+    .profile-status-super { background: #212529 !important; color: #ffffff !important; }
+
+    .info-card {
+        border: 1px solid #eee1d6;
+        border-radius: 8px;
+        height: 100%;
+        padding: 0.82rem;
+    }
+
+    .info-label {
+        color: #6c757d;
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    .role-chip {
+        background: #fff3e7;
+        border: 1px solid #f2cfad;
+        border-radius: 999px;
+        color: var(--color-principal-dark);
+        display: inline-flex;
+        font-size: 0.78rem;
+        font-weight: 800;
+        margin: 0.12rem;
+        padding: 0.32rem 0.65rem;
+    }
+
+    .profile-card {
+        border: 1px solid #eee1d6;
+        border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(31, 38, 50, 0.06);
+    }
+
+    .profile-card .text-primary {
+        color: var(--color-principal) !important;
+    }
+
+    @media (max-width: 767.98px) {
+        .profile-hero { padding: 1rem; }
+        .profile-avatar { height: 96px; width: 96px; font-size: 1.8rem; }
+        .avatar-wrap { padding-bottom: 1.7rem; }
+        .photo-edit-btn { font-size: 0.86rem; }
+    }
+</style>
 
 
 <div class="d-flex justify-content-between align-items-center mb-3">

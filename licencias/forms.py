@@ -1,92 +1,46 @@
+"""
+Formularios del modulo licencias/.
+
+Despues de la migracion a `gestion_global`, este archivo solo contiene:
+  - EmpleadoForm        (sera migrado a `empleados/` cuando se haga CU09)
+  - ProveedorForm       (catalogo de licenciamiento, no migra)
+  - TipoLicenciaForm    (catalogo de licenciamiento, no migra)
+  - LicenciaForm        (operativo de licencias)
+
+Los formularios de Tenant, Empresa, Division, Area, Unidad viven ahora
+en `gestion_global/interfaces/forms/`.
+"""
+
 from django import forms
-from empleados.models import Empleado, GerenciaDivision, GerenciaArea, Unidad
-from .models import Tenant, Empresa, Proveedor, TipoLicencia, Licencia
+from empleados.models import Empleado
+from .models import Proveedor, TipoLicencia, Licencia
+
 
 class EmpleadoForm(forms.ModelForm):
     class Meta:
         model = Empleado
         fields = [
-            'nombre_completo', 'ci', 'email_principal', 
-            'empresa', 'division', 'area', 'unidad', 
+            'nombre_completo', 'ci', 'email_principal',
+            'empresa', 'division', 'area', 'unidad',
             'puesto', 'centro_de_costos', 'pais', 'ciudad', 'oficina'
         ]
-        
         widgets = {
             'nombre_completo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Juan Perez'}),
             'ci': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Carnet de Identidad'}),
             'email_principal': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'juan.perez@dominio.com'}),
-            
             'empresa': forms.Select(attrs={'class': 'form-select select2-busqueda'}),
             'division': forms.Select(attrs={'class': 'form-select select2-busqueda'}),
             'area': forms.Select(attrs={'class': 'form-select select2-busqueda'}),
             'unidad': forms.Select(attrs={'class': 'form-select select2-busqueda'}),
-            
             'puesto': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Analista de Sistemas'}),
             'centro_de_costos': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Opcional'}),
             'pais': forms.TextInput(attrs={'class': 'form-control'}),
             'ciudad': forms.TextInput(attrs={'class': 'form-control'}),
             'oficina': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Planta Administrativa'}),
         }
-
         error_messages = {
-            'ci': {
-                'unique': 'Ya existe un empleado registrado con esta Cédula de Identidad.',
-            },
-            'email_principal': {
-                'unique': 'Este correo electrónico ya está en uso por otro empleado.',
-            }
-        }
-
-
-class GerenciaDivisionForm(forms.ModelForm):
-    class Meta:
-        model = GerenciaDivision
-        fields = ['empresa', 'codigo', 'nombre']
-        widgets = {
-            'empresa': forms.Select(attrs={'class': 'form-select'}),
-            'codigo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: GDO'}),
-            'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Gerencia de Operaciones'}),
-        }
-
-
-class GerenciaAreaForm(forms.ModelForm):
-    class Meta:
-        model = GerenciaArea
-        fields = ['empresa', 'division', 'codigo', 'nombre']
-        widgets = {
-            'empresa': forms.Select(attrs={'class': 'form-select select2-busqueda'}),
-            'division': forms.Select(attrs={'class': 'form-select select2-busqueda'}),
-            'codigo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: GOM (Opcional)'}),
-            'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Mantenimiento'}),
-        }
-
-
-class UnidadForm(forms.ModelForm):
-    class Meta:
-        model = Unidad
-        fields = ['area', 'nombre']
-        widgets = {
-            'area': forms.Select(attrs={'class': 'form-select select2-busqueda'}),
-            'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Activos Fijos'}),
-        }
-
-
-class TenantForm(forms.ModelForm):
-    class Meta:
-        model = Tenant
-        fields = ['nombre']
-        widgets = {
-            'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Grupo Corporativo'}),
-        }
-
-
-class EmpresaForm(forms.ModelForm):
-    class Meta:
-        model = Empresa
-        fields = ['tenant', 'nombre']
-        widgets = {
-            'tenant': forms.Select(attrs={'class': 'form-select select2-busqueda'}),
-            'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Razón Social'}),
+            'ci': {'unique': 'Ya existe un empleado registrado con esta Cedula de Identidad.'},
+            'email_principal': {'unique': 'Este correo electronico ya esta en uso por otro empleado.'},
         }
 
 
@@ -100,6 +54,15 @@ class ProveedorForm(forms.ModelForm):
             'telefono': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: +591 70000000'}),
         }
 
+    def clean_nombre(self):
+        nombre = (self.cleaned_data.get('nombre') or '').strip()
+        qs = Proveedor.objects.filter(nombre__iexact=nombre)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if nombre and qs.exists():
+            raise forms.ValidationError('Ya existe un proveedor con este nombre.')
+        return nombre
+
 
 class TipoLicenciaForm(forms.ModelForm):
     class Meta:
@@ -109,6 +72,18 @@ class TipoLicenciaForm(forms.ModelForm):
             'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Microsoft 365 E3'}),
             'fabricante': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Microsoft'}),
         }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        nombre = (cleaned_data.get('nombre') or '').strip()
+        fabricante = (cleaned_data.get('fabricante') or '').strip()
+        if nombre and fabricante:
+            qs = TipoLicencia.objects.filter(nombre__iexact=nombre, fabricante__iexact=fabricante)
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                self.add_error('nombre', 'Ya existe un tipo de licencia con ese nombre y fabricante.')
+        return cleaned_data
 
 
 class LicenciaForm(forms.ModelForm):
