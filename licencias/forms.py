@@ -13,7 +13,7 @@ en `gestion_global/interfaces/forms/`.
 
 from django import forms
 from empleados.models import Empleado
-from .models import Proveedor, TipoLicencia, Licencia
+from .models import Proveedor, TipoLicencia, Licencia, Factura, DetalleFactura
 
 
 class EmpleadoForm(forms.ModelForm):
@@ -98,4 +98,64 @@ class LicenciaForm(forms.ModelForm):
             'fecha_compra': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'fecha_activacion': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'fecha_vencimiento': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+        }
+
+class FacturaForm(forms.ModelForm):
+
+    class Meta:
+        model = Factura
+
+        fields = [
+            'proveedor',
+            'tenant',
+            'numero',
+            'fecha',
+            'observaciones'
+        ]
+
+        widgets = {
+            'proveedor': forms.Select(attrs={'class': 'form-select'}),
+            'tenant': forms.Select(attrs={'class': 'form-select'}),
+            'numero': forms.TextInput(attrs={'class': 'form-control'}),
+            'fecha': forms.DateInput(
+                attrs={
+                    'class': 'form-control',
+                    'type': 'date'
+                }
+            ),
+            'observaciones': forms.Textarea(
+                attrs={'class': 'form-control'}
+            ),
+        }
+
+
+class DetalleFacturaForm(forms.ModelForm):
+
+    class Meta:
+        model = DetalleFactura
+
+        fields = [
+            'tipo_licencia',
+            'empresa',
+            'cantidad',
+            'precio_unitario',
+            'fecha_vencimiento'
+        ]
+
+        widgets = {
+            'tipo_licencia': forms.Select(attrs={'class': 'form-select'}),
+            'empresa': forms.Select(attrs={'class': 'form-select'}),
+            'cantidad': forms.NumberInput(attrs={'class': 'form-control'}),
+            'precio_unitario': forms.NumberInput(attrs={ 
+                'class': 'form-control',
+                'placeholder': '0.00',
+                'step': '0.01',
+                'min': '0'
+            }),
+            'fecha_vencimiento': forms.DateInput(
+                attrs={
+                    'class': 'form-control',
+                    'type': 'date'
+                }
+            ),
         }

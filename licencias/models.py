@@ -158,3 +158,67 @@ class Asignacion(models.Model):
             # Depuración física de registros excedentes
             for viejo in excedentes:
                 viejo.delete()
+
+class Factura(models.Model):
+    proveedor = models.ForeignKey(
+        Proveedor,
+        on_delete=models.PROTECT,
+        related_name='facturas'
+    )
+
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE
+    )
+
+    numero = models.CharField(max_length=30, unique=True)
+
+    fecha = models.DateField(default=timezone.now)
+
+    observaciones = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"Factura {self.numero}"
+
+    @property
+    def total(self):
+        return sum(d.subtotal for d in self.detalles.all())
+
+
+class DetalleFactura(models.Model):
+    factura = models.ForeignKey(
+        Factura,
+        on_delete=models.CASCADE,
+        related_name='detalles'
+    )
+
+    tipo_licencia = models.ForeignKey(
+        TipoLicencia,
+        on_delete=models.PROTECT
+    )
+
+    empresa = models.ForeignKey(
+        Empresa,
+        on_delete=models.PROTECT
+    )
+
+    cantidad = models.PositiveIntegerField(default=1)
+
+    precio_unitario = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        help_text="Precio por unidad de licencia (en USD o moneda local)"
+    )
+
+    @property
+    def subtotal(self):
+        return self.precio_unitario * self.cantidad
+
+    def __str__(self):
+        return f"{self.tipo_licencia.nombre} x {self.cantidad} @ {self.precio_unitario}"
+
+    fecha_vencimiento = models.DateField()
+
+    def __str__(self):
+        return f"{self.tipo_licencia.nombre} x {self.cantidad}"
