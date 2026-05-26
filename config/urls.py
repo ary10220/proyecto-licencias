@@ -86,6 +86,13 @@ urlpatterns = [
     path('catalogo-licencias/software/<int:pk>/eliminar/',
          views.eliminar_tipo_licencia, name='eliminar_tipo_licencia'),
 
+    # ==========================
+    # PROPUESTAS COMERCIALES
+    # ==========================
+    path('propuestas/', views.lista_propuestas, name='lista_propuestas'),
+    path('propuestas/crear/', views.crear_propuesta, name='crear_propuesta'),
+    path('propuestas/<int:pk>/editar/', views.editar_propuesta, name='editar_propuesta'),
+
     # ============================================================
     # GESTION GLOBAL (CU07/08/10/11/12) -- nuevo modulo
     # ============================================================
