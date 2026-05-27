@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     'user',
     'empleados',
     'licencias.apps.LicenciasConfig',
+    'gestion_global.apps.GestionGlobalConfig',
     'axes',
 ]
 

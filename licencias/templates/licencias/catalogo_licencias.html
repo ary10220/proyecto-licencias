@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+{% block title %}Licencias{% endblock %}
+
+{% block content %}
+<style>
+    .lic-shell { display: flex; flex-direction: column; gap: 1rem; }
+    .lic-module-nav { display: flex; flex-wrap: wrap; gap: 0.65rem; }
+    .lic-module-link {
+        background: #fffdf9;
+        border: 1px solid rgba(223, 110, 18, 0.18);
+        border-radius: 8px;
+        color: #6d7480;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        font-size: 0.92rem;
+        font-weight: 700;
+        padding: 0.7rem 1rem;
+        text-decoration: none;
+        transition: all 0.18s ease;
+    }
+    .lic-module-link:hover { background: #fff6ed; border-color: rgba(223, 110, 18, 0.34); color: #b65a11; }
+    .lic-module-link.active { background: linear-gradient(180deg, #ef882d 0%, #df6e12 100%); border-color: #df6e12; box-shadow: 0 10px 22px rgba(223, 110, 18, 0.18); color: #fff; }
+    .lic-modal .modal-header { background: linear-gradient(180deg, #ef882d 0%, #df6e12 100%); border: 0; color: #fff; }
+    .lic-modal .modal-body { background: #fff8f2; max-height: calc(100vh - 210px); overflow-y: auto; }
+    .lic-modal .modal-footer { background: #fffdf9; border-top: 1px solid rgba(220,197,177,.5); bottom: 0; position: sticky; z-index: 3; }
+    @media (max-width: 767.98px) {
+        .lic-modal .modal-dialog { margin: 0.55rem; }
+        .lic-modal .modal-footer .btn { flex: 1 1 0; }
+    }
+</style>
+
+<div class="lic-shell">
+    <div class="page-header mb-0">
+        <h2 class="page-title">
+            <span class="page-title-icon"><i class="fa-solid fa-key"></i></span>
+            <span class="page-title-text">Licencias</span>
+        </h2>
+        <div class="page-actions">
+            {% if puede_crear_proveedor %}
+            <button class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNuevoProveedor">
+                <i class="fa-solid fa-plus me-2"></i>Nuevo Proveedor
+            </button>
+            {% endif %}
+            {% if puede_crear_tipo %}
+            <button class="btn btn-outline-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNuevoTipo">
+                <i class="fa-solid fa-plus me-2"></i>Nuevo Tipo de Licencia
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="lic-module-nav">
+        <a href="{% url 'dashboard_general' %}" class="lic-module-link"><i class="fa-solid fa-table-list"></i><span>Gestionar Licencias</span></a>
+        <a href="{% url 'catalogo_licencias' %}" class="lic-module-link active"><i class="fa-solid fa-tags"></i><span>Gestionar Proveedores</span></a>
+        <a href="{% url 'crear_factura' %}" class="btn btn-primary"><i class="fa-solid fa-file-invoice-dollar me-2"></i>Gestionar Compra</a>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-12 col-lg-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white d-flex align-items-center justify-content-between">
+                    <h5 class="mb-0">Proveedores</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr><th>Nombre</th><th>Contacto</th><th class="text-end">Acciones</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for p in proveedores %}
+                            <tr>
+                                <td><strong>{{ p.nombre }}</strong></td>
+                                <td class="text-muted small">{{ p.contacto|default:"-" }}</td>
+                                <td class="text-end">
+                                    <a href="{% url 'editar_proveedor' p.id %}" class="btn btn-sm btn-outline-primary py-0 px-2"><i class="fa-solid fa-pen"></i></a>
+                                    <form method="post" action="{% url 'eliminar_proveedor' p.id %}" class="d-inline" onsubmit="return confirm('Eliminar proveedor: {{ p.nombre|escapejs }}?');">{% csrf_token %}<button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2"><i class="fa-solid fa-trash"></i></button></form>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="3" class="text-center py-3 text-muted">Sin proveedores.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white d-flex align-items-center justify-content-between">
+                    <h5 class="mb-0">Software / Tipos de Licencia</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr><th>Nombre</th><th>Fabricante</th><th class="text-end">Acciones</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for t in tipos_licencia %}
+                            <tr>
+                                <td><strong>{{ t.nombre }}</strong></td>
+                                <td class="text-muted small">{{ t.fabricante }}</td>
+                                <td class="text-end">
+                                    <a href="{% url 'editar_tipo_licencia' t.id %}" class="btn btn-sm btn-outline-primary py-0 px-2"><i class="fa-solid fa-pen"></i></a>
+                                    <form method="post" action="{% url 'eliminar_tipo_licencia' t.id %}" class="d-inline" onsubmit="return confirm('Eliminar tipo de licencia: {{ t.nombre|escapejs }}?');">{% csrf_token %}<button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2"><i class="fa-solid fa-trash"></i></button></form>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="3" class="text-center py-3 text-muted">Sin tipos de licencia.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if puede_crear_proveedor and proveedor_form %}
+<div class="modal fade lic-modal" id="modalNuevoProveedor" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+            <form method="POST" action="{% url 'catalogo_licencias' %}">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="proveedor">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fa-solid fa-building-user me-2"></i>Nuevo Proveedor</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        {% if proveedor_form.non_field_errors %}<div class="col-12"><div class="alert alert-danger py-2 mb-2">{{ proveedor_form.non_field_errors }}</div></div>{% endif %}
+                        {% for field in proveedor_form %}
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-secondary small">{{ field.label|upper }}</label>
+                            {{ field }}
+                            {% if field.errors %}<div class="text-danger small mt-1 fw-bold">{{ field.errors|striptags }}</div>{% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if puede_crear_tipo and tipo_form %}
+<div class="modal fade lic-modal" id="modalNuevoTipo" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+            <form method="POST" action="{% url 'catalogo_licencias' %}">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="tipo">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fa-solid fa-microchip me-2"></i>Nuevo Tipo de Licencia</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        {% if tipo_form.non_field_errors %}<div class="col-12"><div class="alert alert-danger py-2 mb-2">{{ tipo_form.non_field_errors }}</div></div>{% endif %}
+                        {% for field in tipo_form %}
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-secondary small">{{ field.label|upper }}</label>
+                            {{ field }}
+                            {% if field.errors %}<div class="text-danger small mt-1 fw-bold">{{ field.errors|striptags }}</div>{% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        {% if modal_abierto == 'proveedor' %}
+        new bootstrap.Modal(document.getElementById('modalNuevoProveedor')).show();
+        {% elif modal_abierto == 'tipo' %}
+        new bootstrap.Modal(document.getElementById('modalNuevoTipo')).show();
+        {% endif %}
+    });
+</script>
+{% endblock %}

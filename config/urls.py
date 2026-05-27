@@ -1,8 +1,10 @@
 """
 URL configuration for config project.
 
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/6.0/topics/http/urls/
+Despues de la migracion a `gestion_global`:
+  - /configuracion/ y todas sus subrutas migradas se REMOVIERON.
+  - /gestion-global/<feature>/ es la nueva entrada (CU07/08/10/11/12).
+  - Proveedor y TipoLicencia se quedan en `licencias/` (no son CU del CICLO 2).
 """
 from django.contrib import admin
 from django.urls import path, include
@@ -17,10 +19,9 @@ from config.error_handlers import custom_permission_denied
 
 
 urlpatterns = [
-    # Administracion de Django
     path('admin/', admin.site.urls),
 
-    # Autenticacion y Sesiones
+    # Autenticacion
     path('accounts/login/', auth_views.LoginView.as_view(), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
 
@@ -31,34 +32,27 @@ urlpatterns = [
         html_email_template_name="registration/password_reset_email.html",
         subject_template_name="registration/password_reset_subject.txt",
     ), name="reset_password"),
-
     path('reset_password_sent/', auth_views.PasswordResetDoneView.as_view(
         template_name="registration/password_reset_done.html"
     ), name="password_reset_done"),
-
-    # Vista custom: limpia el lockout de Axes despues de restablecer la
-    # contrasena. Si no, el usuario queda atrapado en /desbloqueo-seguro/
-    # tras cambiar su password porque Axes aun lo ve como bloqueado.
     path('reset/<uidb64>/<token>/',
          AxesAwarePasswordResetConfirmView.as_view(),
          name="password_reset_confirm"),
-
     path('reset_password_complete/', auth_views.PasswordResetCompleteView.as_view(
         template_name="registration/password_reset_complete.html"
     ), name="password_reset_complete"),
-
     path('password_change/', ForcedPasswordChangeView.as_view(), name="password_change"),
     path('password_change_done/', auth_views.PasswordChangeDoneView.as_view(
         template_name="registration/password_change_done.html"
     ), name="password_change_done"),
 
-    # Dashboard y Vistas Principales
+    # Dashboard
     path('', views.inicio, name='home'),
     path('inicio/', views.inicio, name='inicio'),
     path('dashboard/', views.dashboard, name='dashboard_general'),
     path('dashboard/<int:tenant_id>/', views.dashboard, name='dashboard_tenant'),
 
-    # Sincronizacion y Exportacion de Datos
+    # Sincronizacion / Reportes
     path('sincronizar/', views.sincronizar_m365, name='sincronizar'),
     path('exportar/', views.exportar_excel, name='exportar_general'),
     path('exportar/<int:tenant_id>/', views.exportar_excel, name='exportar_tenant'),
@@ -75,40 +69,53 @@ urlpatterns = [
     path('desbloqueo-seguro/', views.validar_token_bloqueo, name='validar_token_bloqueo'),
     path('solicitar-token/', views.enviar_token_bloqueo, name='enviar_token_bloqueo'),
 
-    # Modulo de Empleados
+    # Modulo de Empleados (CU09 -- futura migracion separada)
     path('empleados/', views.lista_empleados, name='lista_empleados'),
     path('empleado/<int:empleado_id>/editar/', views.editar_empleado, name='editar_empleado'),
     path('empleado/<int:empleado_id>/baja/', views.baja_empleado, name='baja_empleado'),
     path('empleado/<int:empleado_id>/reactivar/', views.reactivar_empleado, name='reactivar_empleado'),
 
-    # ==========================================
-    # Modulo de Configuracion (Catalogos y Parametricas)
-    # ==========================================
-    path('configuracion/', views.configuracion, name='configuracion'),
+    # Catalogo de licenciamiento (Proveedor + TipoLicencia siguen en licencias/)
+    path('catalogo-licencias/', views.catalogo_licencias, name='catalogo_licencias'),
+    path('catalogo-licencias/proveedor/<int:pk>/editar/',
+         views.editar_proveedor, name='editar_proveedor'),
+    path('catalogo-licencias/proveedor/<int:pk>/eliminar/',
+         views.eliminar_proveedor, name='eliminar_proveedor'),
+    path('catalogo-licencias/software/<int:pk>/editar/',
+         views.editar_tipo_licencia, name='editar_tipo_licencia'),
+    path('catalogo-licencias/software/<int:pk>/eliminar/',
+         views.eliminar_tipo_licencia, name='eliminar_tipo_licencia'),
+    
+    # Facturas de compra
+    path(
+    'facturas/',
+    views.lista_facturas,
+    name='lista_facturas'),
 
-    # -- Tenants, Empresas, Proveedores y Licencias --
-    path('configuracion/tenant/<int:pk>/editar/', views.editar_tenant, name='editar_tenant'),
-    path('configuracion/tenant/<int:pk>/eliminar/', views.eliminar_tenant, name='eliminar_tenant'),
-    path('configuracion/empresa/<int:pk>/editar/', views.editar_empresa, name='editar_empresa'),
-    path('configuracion/empresa/<int:pk>/eliminar/', views.eliminar_empresa, name='eliminar_empresa'),
-    path('configuracion/proveedor/<int:pk>/editar/', views.editar_proveedor, name='editar_proveedor'),
-    path('configuracion/proveedor/<int:pk>/eliminar/', views.eliminar_proveedor, name='eliminar_proveedor'),
-    path('configuracion/software/<int:pk>/editar/', views.editar_tipo_licencia, name='editar_tipo_licencia'),
-    path('configuracion/software/<int:pk>/eliminar/', views.eliminar_tipo_licencia, name='eliminar_tipo_licencia'),
+    path(
+    'facturas/crear/',
+    views.crear_factura,
+    name='crear_factura'),
 
-    # -- Divisiones, Areas y Unidades --
-    path('configuracion/division/<int:pk>/editar/', views.editar_division, name='editar_division'),
-    path('configuracion/division/<int:pk>/eliminar/', views.eliminar_division, name='eliminar_division'),
-    path('configuracion/area/<int:pk>/editar/', views.editar_area, name='editar_area'),
-    path('configuracion/area/<int:pk>/eliminar/', views.eliminar_area, name='eliminar_area'),
-    path('configuracion/unidad/<int:pk>/editar/', views.editar_unidad, name='editar_unidad'),
-    path('configuracion/unidad/<int:pk>/eliminar/', views.eliminar_unidad, name='eliminar_unidad'),
+    path(
+    'factura/<int:pk>/editar/',
+    views.editar_factura,
+    name='editar_factura'),
+
+    path(
+    'factura/<int:pk>/eliminar/',
+    views.eliminar_factura,
+    name='eliminar_factura'),
+    # ============================================================
+    # GESTION GLOBAL (CU07/08/10/11/12) -- nuevo modulo
+    # ============================================================
+    path('gestion-global/', include('gestion_global.interfaces.urls', namespace='gestion_global')),
 
     # Apps modulares
     path('bitacora/', include('bitacora.interfaces.urls')),
     path('user/', include('user.interfaces.urls')),
 
-    # Endpoints de API / AJAX
+    # Endpoints AJAX (cascada Tenant -> Empresa -> Division -> Area -> Unidad)
     path('ajax/cargar-empresas/', views.cargar_empresas, name='ajax_cargar_empresas'),
     path('ajax/cargar-divisiones/', views.cargar_divisiones, name='ajax_cargar_divisiones'),
     path('ajax/cargar-areas/', views.cargar_areas, name='ajax_cargar_areas'),

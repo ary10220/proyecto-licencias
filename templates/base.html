@@ -398,6 +398,44 @@
             max-width: 100%;
         }
 
+        .module-nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.65rem;
+        }
+
+        .module-nav-link {
+            background: #fffdf9;
+            border: 1px solid rgba(223, 110, 18, 0.18);
+            border-radius: 8px;
+            color: #6d7480;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            font-size: 0.92rem;
+            font-weight: 700;
+            padding: 0.7rem 1rem;
+            text-decoration: none;
+            transition: all 0.18s ease;
+        }
+
+        .module-nav-link:hover {
+            background: #fff6ed;
+            border-color: rgba(223, 110, 18, 0.34);
+            color: #b65a11;
+        }
+
+        .module-nav-link.active {
+            background: linear-gradient(180deg, #ef882d 0%, #df6e12 100%);
+            border-color: #df6e12;
+            box-shadow: 0 10px 22px rgba(223, 110, 18, 0.18);
+            color: #ffffff;
+        }
+
+        .module-nav-link i {
+            opacity: 0.82;
+        }
+
 
         .page-title {
             align-items: center;
@@ -927,9 +965,17 @@
                 </a>
                 {% endif %}
  
-                {% if perms.licencias.view_tenant or perms.licencias.view_empresa or perms.licencias.view_proveedor or perms.licencias.view_tipolicencia or perms.empleados.view_gerenciadivision %}
-                <a href="{% url 'configuracion' %}" class="{% if request.resolver_match.url_name == 'configuracion' %}active{% endif %}">
-                    <i class="fa-solid fa-gears"></i> <span>Parametrización Global</span>
+                {% if perms.licencias.view_tenant or perms.licencias.view_empresa or perms.empleados.view_gerenciadivision or perms.empleados.view_gerenciaarea or perms.empleados.view_unidad %}
+                <a href="{% url 'gestion_global:lista_empresas' %}"
+                   class="{% if request.resolver_match.namespace == 'gestion_global' %}active{% endif %}">
+                    <i class="fa-solid fa-gears"></i> <span>Gestión Global</span>
+                </a>
+                {% endif %}
+
+                {% if perms.licencias.view_proveedor or perms.licencias.view_tipolicencia %}
+                <a href="{% url 'catalogo_licencias' %}"
+                   class="{% if request.resolver_match.url_name == 'catalogo_licencias' %}active{% endif %}">
+                    <i class="fa-solid fa-tags"></i> <span>Catálogo de Licencias</span>
                 </a>
                 {% endif %}
  
@@ -940,7 +986,7 @@
                 {% endif %}
  
                 {% if perms.auth.view_user or perms.auth.view_group or perms.empleados.view_cargo or perms.user.view_areausuario %}
-                <a href="{% if perms.auth.view_user %}{% url 'lista_usuarios' %}{% elif perms.auth.view_group %}{% url 'lista_roles' %}{% elif perms.empleados.view_cargo %}{% url 'lista_cargos' %}{% else %}{% url 'lista_areas' %}{% endif %}" class="{% if request.resolver_match.url_name == 'lista_usuarios' or request.resolver_match.url_name == 'crear_usuario' or request.resolver_match.url_name == 'editar_usuario' or request.resolver_match.url_name == 'lista_roles' or request.resolver_match.url_name == 'crear_rol' or request.resolver_match.url_name == 'detalle_rol' or request.resolver_match.url_name == 'editar_rol' or request.resolver_match.url_name == 'lista_areas' or request.resolver_match.url_name == 'crear_area' or request.resolver_match.url_name == 'editar_area' or request.resolver_match.url_name == 'lista_cargos' or request.resolver_match.url_name == 'crear_cargo' or request.resolver_match.url_name == 'editar_cargo' %}active{% endif %}">
+                <a href="{% if perms.auth.view_user %}{% url 'lista_usuarios' %}{% elif perms.auth.view_group %}{% url 'lista_roles' %}{% elif perms.empleados.view_cargo %}{% url 'lista_cargos' %}{% else %}{% url 'lista_areas' %}{% endif %}" class="{% if request.path|slice:':6' == '/user/' and request.resolver_match.url_name == 'lista_usuarios' or request.path|slice:':6' == '/user/' and request.resolver_match.url_name == 'crear_usuario' or request.path|slice:':6' == '/user/' and request.resolver_match.url_name == 'editar_usuario' or request.path|slice:':6' == '/user/' and request.resolver_match.url_name == 'lista_roles' or request.path|slice:':6' == '/user/' and request.resolver_match.url_name == 'crear_rol' or request.path|slice:':6' == '/user/' and request.resolver_match.url_name == 'detalle_rol' or request.path|slice:':6' == '/user/' and request.resolver_match.url_name == 'editar_rol' or request.path|slice:':6' == '/user/' and request.resolver_match.url_name == 'lista_areas' or request.path|slice:':6' == '/user/' and request.resolver_match.url_name == 'crear_area' or request.path|slice:':6' == '/user/' and request.resolver_match.url_name == 'editar_area' or request.path|slice:':6' == '/user/' and request.resolver_match.url_name == 'lista_cargos' or request.path|slice:':6' == '/user/' and request.resolver_match.url_name == 'crear_cargo' or request.path|slice:':6' == '/user/' and request.resolver_match.url_name == 'editar_cargo' %}active{% endif %}">
                     <i class="fa-solid fa-user-gear"></i> <span>Usuarios</span>
                 </a>
                 {% endif %}

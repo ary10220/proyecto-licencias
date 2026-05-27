@@ -163,24 +163,24 @@ def log_unidad_editar(request, unidad):
 
 
 # ============================================================================
-# ELIMINAR
+# BAJA / REACTIVAR
 # ============================================================================
 
 def log_tenant_eliminar(request, tenant_label):
     log_event(
         request=request,
-        accion=ACCIONES["ELIMINAR"],
+        accion=ACCIONES["BAJA"],
         modulo=MODULOS["CONFIG"],
-        descripcion=f"Elimino el tenant {tenant_label}.",
+        descripcion=f"Inactivo el tenant {tenant_label}.",
     )
 
 
 def log_empresa_eliminar(request, empresa_label):
     log_event(
         request=request,
-        accion=ACCIONES["ELIMINAR"],
+        accion=ACCIONES["BAJA"],
         modulo=MODULOS["CONFIG"],
-        descripcion=f"Elimino la empresa {empresa_label}.",
+        descripcion=f"Inactivo la empresa {empresa_label}.",
     )
 
 
@@ -205,25 +205,70 @@ def log_tipo_licencia_eliminar(request, tipo_label):
 def log_division_eliminar(request, division_label):
     log_event(
         request=request,
-        accion=ACCIONES["ELIMINAR"],
+        accion=ACCIONES["BAJA"],
         modulo=MODULOS["ORG"],
-        descripcion=f"Elimino la division {division_label}.",
+        descripcion=f"Inactivo la division {division_label}.",
     )
 
 
 def log_area_eliminar(request, area_label):
     log_event(
         request=request,
-        accion=ACCIONES["ELIMINAR"],
+        accion=ACCIONES["BAJA"],
         modulo=MODULOS["ORG"],
-        descripcion=f"Elimino el area {area_label}.",
+        descripcion=f"Inactivo el area {area_label}.",
     )
 
 
 def log_unidad_eliminar(request, unidad_label):
     log_event(
         request=request,
-        accion=ACCIONES["ELIMINAR"],
+        accion=ACCIONES["BAJA"],
         modulo=MODULOS["ORG"],
-        descripcion=f"Elimino la unidad {unidad_label}.",
+        descripcion=f"Inactivo la unidad {unidad_label}.",
+    )
+
+
+def log_tenant_reactivar(request, tenant):
+    log_event(
+        request=request,
+        accion=ACCIONES["REACTIVAR"],
+        modulo=MODULOS["CONFIG"],
+        descripcion=f"Reactivo el tenant {_safe_str(tenant)}.",
+    )
+
+
+def log_empresa_reactivar(request, empresa):
+    log_event(
+        request=request,
+        accion=ACCIONES["REACTIVAR"],
+        modulo=MODULOS["CONFIG"],
+        descripcion=f"Reactivo la empresa {_safe_str(empresa)}.",
+    )
+
+
+def log_division_reactivar(request, division):
+    log_event(
+        request=request,
+        accion=ACCIONES["REACTIVAR"],
+        modulo=MODULOS["ORG"],
+        descripcion=f"Reactivo la division {_safe_str(division)}.",
+    )
+
+
+def log_area_reactivar(request, area):
+    log_event(
+        request=request,
+        accion=ACCIONES["REACTIVAR"],
+        modulo=MODULOS["ORG"],
+        descripcion=f"Reactivo el area {_safe_str(area)}.",
+    )
+
+
+def log_unidad_reactivar(request, unidad):
+    log_event(
+        request=request,
+        accion=ACCIONES["REACTIVAR"],
+        modulo=MODULOS["ORG"],
+        descripcion=f"Reactivo la unidad {_safe_str(unidad)}.",
     )

@@ -23,20 +23,14 @@ from django.db import transaction
 from empleados.models import Empleado, GerenciaDivision, GerenciaArea, Unidad
 from .models import Licencia, Asignacion, Tenant, Empresa, Proveedor, TipoLicencia
 from .forms import (
-    EmpleadoForm, GerenciaDivisionForm, GerenciaAreaForm, UnidadForm,
-    TenantForm, EmpresaForm, ProveedorForm, TipoLicenciaForm, LicenciaForm
+    EmpleadoForm, ProveedorForm, TipoLicenciaForm, LicenciaForm,
 )
 from bitacora.actions import (
     log_asignacion_licencia,
     log_baja_empleado,
     log_creacion_licencias,
     log_crear_empleado,
-    log_division_crear,
-    log_area_crear,
-    log_unidad_crear,
-    log_empresa_crear,
     log_proveedor_crear,
-    log_tenant_crear,
     log_tipo_licencia_crear,
     log_editar_licencia,
     log_editar_empleado,
@@ -46,16 +40,6 @@ from bitacora.actions import (
     log_liberar_licencia,
     log_reactivar_empleado,
     log_sincronizar_m365,
-    log_division_editar,
-    log_division_eliminar,
-    log_area_editar,
-    log_area_eliminar,
-    log_unidad_editar,
-    log_unidad_eliminar,
-    log_tenant_editar,
-    log_tenant_eliminar,
-    log_empresa_editar,
-    log_empresa_eliminar,
     log_proveedor_editar,
     log_proveedor_eliminar,
     log_tipo_licencia_editar,
@@ -70,28 +54,6 @@ def exigir_permiso(request, permiso):
 def exigir_algun_permiso(request, permisos):
     if not any(request.user.has_perm(permiso) for permiso in permisos):
         raise PermissionDenied
-
-CONFIG_TAB_BY_TYPE = {
-    'empresa': 'empresas',
-    'division': 'divisiones',
-    'area': 'areas',
-    'unidad': 'unidades',
-    'tenant': 'tenants',
-    'proveedor': 'proveedores',
-    'tipo_licencia': 'tipos',
-}
-
-
-def _config_tab_from_request(request, default='empresas'):
-    return request.POST.get('active_tab') or request.GET.get('tab') or default
-
-
-def _redirect_config_tab(tab_name):
-    return redirect(f"{reverse('configuracion')}?tab={tab_name}")
-
-# ==========================================
-# MÓDULO DE EXPORTACIÓN Y REPORTES
-# ==========================================
 
 @login_required
 def exportar_excel(request, tenant_id=None):
@@ -638,145 +600,6 @@ def cargar_empresas(request):
 
 
 @login_required
-def configuracion(request):
-    """
-    Panel de administración de catálogos paramétricos unificado.
-    Gestiona altas de Tenants, Empresas, Proveedores, SKUs de Licencias, Divisiones, Áreas y Unidades.
-    """
-    # Tab activo: viene del POST (hidden input), del query param `?tab=`, o
-    # se infiere del tipo de formulario enviado. Default: 'empresas'.
-    active_tab = _config_tab_from_request(request, default='empresas')
-    if request.method == 'POST':
-        tipo_formulario = request.POST.get('tipo_formulario')
-        if tipo_formulario in CONFIG_TAB_BY_TYPE and not request.POST.get('active_tab'):
-            active_tab = CONFIG_TAB_BY_TYPE[tipo_formulario]
-
-    # 1. UNIFICACIÓN DE PERMISOS
-    if request.method == 'POST':
-        permisos_creacion = {
-            'tenant': 'licencias.add_tenant',
-            'empresa': 'licencias.add_empresa',
-            'proveedor': 'licencias.add_proveedor',
-            'tipo_licencia': 'licencias.add_tipolicencia',
-            'division': 'empleados.add_gerenciadivision',
-            'area': 'empleados.add_gerenciaarea',
-            'unidad': 'empleados.add_unidad',
-        }
-        exigir_permiso(request, permisos_creacion.get(request.POST.get('tipo_formulario'), 'licencias.view_empresa'))
-    else:
-        exigir_algun_permiso(request, [
-            'licencias.view_tenant',
-            'licencias.view_empresa',
-            'licencias.view_proveedor',
-            'licencias.view_tipolicencia',
-            'empleados.view_gerenciadivision',
-            'empleados.view_gerenciaarea',
-            'empleados.view_unidad',
-        ])
-
-    # 2. UNIFICACIÓN DE CONSULTAS (PREVENCIÓN N+1)
-    tenants = Tenant.objects.all().order_by('nombre')
-    empresas = Empresa.objects.all().select_related('tenant').order_by('tenant__nombre', 'nombre')
-    proveedores = Proveedor.objects.all().order_by('nombre')
-    tipos_licencia = TipoLicencia.objects.all().order_by('fabricante', 'nombre')
-    divisiones = GerenciaDivision.objects.all().select_related('empresa').order_by('empresa__nombre', 'nombre')
-    areas = GerenciaArea.objects.all().select_related('empresa', 'division').order_by('empresa__nombre', 'nombre')
-    unidades = Unidad.objects.all().select_related('area').order_by('area__nombre', 'nombre')
-
-    # 3. UNIFICACIÓN DE FORMULARIOS
-    form_tenant = TenantForm()
-    form_empresa = EmpresaForm()
-    form_proveedor = ProveedorForm()
-    form_tipo = TipoLicenciaForm()
-    form_division = GerenciaDivisionForm()
-    form_area = GerenciaAreaForm()
-    form_unidad = UnidadForm()
-
-    # 4. PROCESAMIENTO DE TODOS LOS MÉTODOS POST
-    if request.method == 'POST':
-        tipo = request.POST.get('tipo_formulario') 
-
-        if tipo == 'tenant':
-            form_tenant = TenantForm(request.POST)
-            if form_tenant.is_valid():
-                tenant = form_tenant.save()
-                log_tenant_crear(request, tenant)
-                messages.success(request, "Grupo corporativo (Tenant) aprovisionado.")
-                return _redirect_config_tab(active_tab)
-
-        elif tipo == 'empresa':
-            form_empresa = EmpresaForm(request.POST)
-            if form_empresa.is_valid():
-                empresa = form_empresa.save()
-                log_empresa_crear(request, empresa)
-                messages.success(request, "Razón social aprovisionada.")
-                return _redirect_config_tab(active_tab)
-
-        elif tipo == 'proveedor':
-            form_proveedor = ProveedorForm(request.POST)
-            if form_proveedor.is_valid():
-                proveedor = form_proveedor.save()
-                log_proveedor_crear(request, proveedor)
-                messages.success(request, "Socio comercial (Proveedor) registrado.")
-                return _redirect_config_tab(active_tab)
-
-        elif tipo == 'tipo_licencia':
-            form_tipo = TipoLicenciaForm(request.POST)
-            if form_tipo.is_valid():
-                tipo_lic = form_tipo.save()
-                log_tipo_licencia_crear(request, tipo_lic)
-                messages.success(request, "SKU de licencia ingresado al catálogo.")
-                return _redirect_config_tab(active_tab)
-
-        elif tipo == 'division':
-            form_division = GerenciaDivisionForm(request.POST)
-            if form_division.is_valid():
-                division = form_division.save()
-                log_division_crear(request, division)
-                messages.success(request, "Entidad organizacional (División) registrada.")
-                return _redirect_config_tab(active_tab)
-
-        elif tipo == 'area':
-            form_area = GerenciaAreaForm(request.POST)
-            if form_area.is_valid():
-                area = form_area.save()
-                log_area_crear(request, area)
-                messages.success(request, "Entidad organizacional (Área) registrada.")
-                return _redirect_config_tab(active_tab)
-
-        elif tipo == 'unidad':
-            form_unidad = UnidadForm(request.POST)
-            if form_unidad.is_valid():
-                unidad = form_unidad.save()
-                log_unidad_crear(request, unidad)
-                messages.success(request, "Entidad organizacional (Unidad) registrada.")
-                return _redirect_config_tab(active_tab)
-
-    # 5. DICCIONARIO DE CONTEXTO FINAL
-    context = {
-        'tenants': tenants,
-        'empresas': empresas,
-        'proveedores': proveedores,
-        'tipos_licencia': tipos_licencia,
-        'divisiones': divisiones,
-        'areas': areas,
-        'unidades': unidades,
-        'form_tenant': form_tenant,
-        'form_empresa': form_empresa,
-        'form_proveedor': form_proveedor,
-        'form_tipo': form_tipo,
-        'form_division': form_division,
-        'form_area': form_area,
-        'form_unidad': form_unidad,
-        'titulo': 'Parametrización Global'
-    }
-    return render(request, 'licencias/configuracion.html', context)
-
-# ==========================================
-# CONTROLADORES DE EDICIÓN DE CATÁLOGOS
-# ==========================================
-
-@login_required
 def editar_licencia(request, licencia_id):
     """Actualización de atributos físicos de un activo de software."""
     exigir_permiso(request, 'licencias.change_licencia')
@@ -803,89 +626,6 @@ def editar_licencia(request, licencia_id):
 
 
 @login_required
-def editar_division(request, pk):
-    exigir_permiso(request, 'empleados.change_gerenciadivision')
-    division = get_object_or_404(GerenciaDivision, pk=pk)
-    if request.method == 'POST':
-        form = GerenciaDivisionForm(request.POST, instance=division)
-        if form.is_valid():
-            form.save()
-            log_division_editar(request, division)
-            messages.success(request, "Estructura divisional actualizada.")
-            return _redirect_config_tab('divisiones')
-    else:
-        form = GerenciaDivisionForm(instance=division)
-    return render(request, 'licencias/editar_catalogo.html', {'form': form, 'titulo': f'Editar División: {division.codigo}'})
-
-
-@login_required
-def editar_area(request, pk):
-    exigir_permiso(request, 'empleados.change_gerenciaarea')
-    area = get_object_or_404(GerenciaArea, pk=pk)
-    if request.method == 'POST':
-        form = GerenciaAreaForm(request.POST, instance=area)
-        if form.is_valid():
-            form.save()
-            log_area_editar(request, area)
-            messages.success(request, "Metadatos del área operativa actualizados.")
-            return _redirect_config_tab(active_tab)
-    else:
-        form = GerenciaAreaForm(instance=area)
-    return render(request, 'licencias/editar_catalogo.html', {'form': form, 'titulo': f'Editar Área: {area.codigo}'})
-
-
-@login_required
-def editar_unidad(request, pk):
-    exigir_permiso(request, 'empleados.change_unidad')
-    unidad = get_object_or_404(Unidad, pk=pk)
-    if request.method == 'POST':
-        form = UnidadForm(request.POST, instance=unidad)
-        if form.is_valid():
-            form.save()
-            log_unidad_editar(request, unidad)
-            messages.success(request, "Parámetros de la unidad modificados.")
-            return _redirect_config_tab(active_tab)
-    else:
-        form = UnidadForm(instance=unidad)
-    return render(request, 'licencias/editar_catalogo.html', {'form': form, 'titulo': f'Editar Unidad: {unidad.nombre}', 'active_tab': 'unidades'})
-
-
-@login_required
-def editar_tenant(request, pk):
-    exigir_permiso(request, 'licencias.change_tenant')
-    tenant = get_object_or_404(Tenant, pk=pk)
-    if request.method == 'POST':
-        form = TenantForm(request.POST, instance=tenant)
-        if form.is_valid():
-            form.save()
-            log_tenant_editar(request, tenant)
-            messages.success(request, "Propiedades del Tenant corporativo actualizadas.")
-            return _redirect_config_tab('tenants')
-    else:
-        form = TenantForm(instance=tenant)
-    return render(request, 'licencias/editar_catalogo.html', {'form': form, 'titulo': f'Propiedades de Tenant: {tenant.nombre}', 'active_tab': 'tenants'})
-# ==========================================
-# EDICIÓN DE PARÁMETROS GLOBALES (TI)
-# ==========================================
-
-@login_required
-def editar_empresa(request, pk):
-    """Modificación de metadatos de una razón social (Empresa)."""
-    exigir_permiso(request, 'licencias.change_empresa')
-    empresa = get_object_or_404(Empresa, pk=pk)
-    if request.method == 'POST':
-        form = EmpresaForm(request.POST, instance=empresa)
-        if form.is_valid():
-            form.save()
-            log_empresa_editar(request, empresa)
-            messages.success(request, "Razón social actualizada exitosamente.")
-            return _redirect_config_tab(active_tab)
-    else:
-        form = EmpresaForm(instance=empresa)
-    return render(request, 'licencias/editar_catalogo.html', {'form': form, 'titulo': f'Editar Empresa: {empresa.nombre}', 'active_tab': 'empresas'})
-
-
-@login_required
 def editar_proveedor(request, pk):
     """Modificación de parámetros de un socio comercial."""
     exigir_permiso(request, 'licencias.change_proveedor')
@@ -896,7 +636,7 @@ def editar_proveedor(request, pk):
             form.save()
             log_proveedor_editar(request, proveedor)
             messages.success(request, "Datos de proveedor comercial actualizados.")
-            return _redirect_config_tab('proveedores')
+            return redirect('catalogo_licencias')
     else:
         form = ProveedorForm(instance=proveedor)
     return render(request, 'licencias/editar_catalogo.html', {'form': form, 'titulo': f'Editar Proveedor: {proveedor.nombre}', 'active_tab': 'proveedores'})
@@ -913,7 +653,7 @@ def editar_tipo_licencia(request, pk):
             form.save()
             log_tipo_licencia_editar(request, tipo)
             messages.success(request, "Especificaciones de SKU de software actualizadas.")
-            return _redirect_config_tab('tipos')
+            return redirect('catalogo_licencias')
     else:
         form = TipoLicenciaForm(instance=tipo)
     return render(request, 'licencias/editar_catalogo.html', {'form': form, 'titulo': f'Editar Software: {tipo.nombre}', 'active_tab': 'tipos'})
@@ -924,56 +664,6 @@ def editar_tipo_licencia(request, pk):
 # ==========================================
 
 @login_required
-def eliminar_division(request, pk):
-    exigir_permiso(request, 'empleados.delete_gerenciadivision')
-    _obj = get_object_or_404(GerenciaDivision, pk=pk)
-    _label = str(_obj)
-    _obj.delete()
-    log_division_eliminar(request, _label)
-    messages.success(request, "Entidad divisional purgada del sistema.")
-    return _redirect_config_tab('divisiones')
-
-@login_required
-def eliminar_area(request, pk):
-    exigir_permiso(request, 'empleados.delete_gerenciaarea')
-    _obj = get_object_or_404(GerenciaArea, pk=pk)
-    _label = str(_obj)
-    _obj.delete()
-    log_area_eliminar(request, _label)
-    messages.success(request, "Área operativa purgada del sistema.")
-    return _redirect_config_tab(active_tab)
-
-@login_required
-def eliminar_unidad(request, pk):
-    exigir_permiso(request, 'empleados.delete_unidad')
-    _obj = get_object_or_404(Unidad, pk=pk)
-    _label = str(_obj)
-    _obj.delete()
-    log_unidad_eliminar(request, _label)
-    messages.success(request, "Unidad purgada del sistema.")
-    return _redirect_config_tab('unidades')
-
-@login_required
-def eliminar_tenant(request, pk):
-    exigir_permiso(request, 'licencias.delete_tenant')
-    _obj = get_object_or_404(Tenant, pk=pk)
-    _label = str(_obj)
-    _obj.delete()
-    log_tenant_eliminar(request, _label)
-    messages.success(request, "Grupo corporativo purgado del ecosistema.")
-    return _redirect_config_tab('tenants')
-
-@login_required
-def eliminar_empresa(request, pk):
-    exigir_permiso(request, 'licencias.delete_empresa')
-    _obj = get_object_or_404(Empresa, pk=pk)
-    _label = str(_obj)
-    _obj.delete()
-    log_empresa_eliminar(request, _label)
-    messages.success(request, "Razón social purgada del catálogo.")
-    return _redirect_config_tab(active_tab)
-
-@login_required
 def eliminar_proveedor(request, pk):
     exigir_permiso(request, 'licencias.delete_proveedor')
     _obj = get_object_or_404(Proveedor, pk=pk)
@@ -981,7 +671,7 @@ def eliminar_proveedor(request, pk):
     _obj.delete()
     log_proveedor_eliminar(request, _label)
     messages.success(request, "Proveedor retirado del catálogo.")
-    return _redirect_config_tab(active_tab)
+    return redirect('catalogo_licencias')
 
 @login_required
 def eliminar_tipo_licencia(request, pk):
@@ -991,7 +681,7 @@ def eliminar_tipo_licencia(request, pk):
     _obj.delete()
     log_tipo_licencia_eliminar(request, _label)
     messages.success(request, "SKU de software retirado del catálogo global.")
-    return _redirect_config_tab(active_tab)
+    return redirect('catalogo_licencias')
 
 @login_required
 def eliminar_licencia(request, licencia_id):
@@ -1260,3 +950,158 @@ def eliminar_licencias_masivo(request):
             messages.error(request, f"Ocurrio un error al intentar borrar las licencias: {str(e)}")
 
     return redirect('dashboard_general')
+
+
+# ==========================================
+# CATALOGO DE LICENCIAS (Proveedor + TipoLicencia)
+# ==========================================
+# Pantalla simple que reemplaza el viejo panel /configuracion/ para las
+# entidades que NO migraron a gestion_global (no son CU del CICLO 2).
+
+@login_required
+def catalogo_licencias(request):
+    exigir_algun_permiso(request, [
+        'licencias.view_proveedor',
+        'licencias.view_tipolicencia',
+    ])
+
+    puede_crear_proveedor = request.user.is_superuser or request.user.has_perm('licencias.add_proveedor')
+    puede_crear_tipo = request.user.is_superuser or request.user.has_perm('licencias.add_tipolicencia')
+
+    modal_state = request.session.pop('_lic_catalog_modal_state', None)
+    proveedor_form = ProveedorForm(prefix='proveedor') if puede_crear_proveedor else None
+    tipo_form = TipoLicenciaForm(prefix='tipo') if puede_crear_tipo else None
+    modal_abierto = ''
+
+    if request.method == 'POST':
+        form_type = request.POST.get('form_type')
+
+        if form_type == 'proveedor':
+            if not puede_crear_proveedor:
+                messages.error(request, 'No tienes permiso para crear proveedores.')
+                return redirect('catalogo_licencias')
+            proveedor_form = ProveedorForm(request.POST, prefix='proveedor')
+            if proveedor_form.is_valid():
+                proveedor = proveedor_form.save()
+                log_proveedor_crear(request, proveedor)
+                messages.success(request, 'Proveedor creado correctamente.')
+                return redirect('catalogo_licencias')
+            request.session['_lic_catalog_modal_state'] = {
+                'modal': 'proveedor',
+                'data': dict(request.POST.items()),
+            }
+            request.session.modified = True
+            return redirect('catalogo_licencias')
+
+        elif form_type == 'tipo':
+            if not puede_crear_tipo:
+                messages.error(request, 'No tienes permiso para crear tipos de licencia.')
+                return redirect('catalogo_licencias')
+            tipo_form = TipoLicenciaForm(request.POST, prefix='tipo')
+            if tipo_form.is_valid():
+                tipo = tipo_form.save()
+                log_tipo_licencia_crear(request, tipo)
+                messages.success(request, 'Tipo de licencia creado correctamente.')
+                return redirect('catalogo_licencias')
+            request.session['_lic_catalog_modal_state'] = {
+                'modal': 'tipo',
+                'data': dict(request.POST.items()),
+            }
+            request.session.modified = True
+            return redirect('catalogo_licencias')
+
+    elif modal_state:
+        modal_abierto = modal_state.get('modal', '')
+        data = modal_state.get('data') or None
+        if modal_abierto == 'proveedor' and puede_crear_proveedor:
+            proveedor_form = ProveedorForm(data, prefix='proveedor')
+            proveedor_form.is_valid()
+        elif modal_abierto == 'tipo' and puede_crear_tipo:
+            tipo_form = TipoLicenciaForm(data, prefix='tipo')
+            tipo_form.is_valid()
+        else:
+            modal_abierto = ''
+
+    return render(request, 'licencias/catalogo_licencias.html', {
+        'titulo': 'Licencias',
+        'proveedores': Proveedor.objects.all().order_by('nombre'),
+        'tipos_licencia': TipoLicencia.objects.all().order_by('fabricante', 'nombre'),
+        'proveedor_form': proveedor_form,
+        'tipo_form': tipo_form,
+        'modal_abierto': modal_abierto,
+        'puede_crear_proveedor': puede_crear_proveedor,
+        'puede_crear_tipo': puede_crear_tipo,
+    })
+
+from .models import (
+    Factura,
+    DetalleFactura,
+    Licencia
+)
+
+from .forms import (
+    FacturaForm,
+    DetalleFacturaForm
+)
+
+def crear_factura(request):
+
+    if request.method == 'POST':
+
+        factura_form = FacturaForm(request.POST)
+        detalle_form = DetalleFacturaForm(request.POST)
+
+        if factura_form.is_valid() and detalle_form.is_valid():
+
+            factura = factura_form.save()
+
+            detalle = detalle_form.save(commit=False)
+            detalle.factura = factura
+            detalle.save()
+
+            # ==========================
+            # CREACION AUTOMATICA STOCK
+            # ==========================
+
+            for i in range(detalle.cantidad):
+
+                Licencia.objects.create(
+                    tenant=factura.tenant,
+                    empresa=detalle.empresa,
+                    tipo=detalle.tipo_licencia,
+                    proveedor=factura.proveedor,
+                    fecha_compra=factura.fecha,
+                    fecha_vencimiento=detalle.fecha_vencimiento
+                )
+
+            messages.success(
+                request,
+                'Factura registrada correctamente.'
+            )
+
+            return redirect('lista_facturas')
+
+    else:
+
+        factura_form = FacturaForm()
+        detalle_form = DetalleFacturaForm()
+
+    return render(
+        request,
+        'licencias/editar_factura.html',
+        {
+            'factura_form': factura_form,
+            'detalle_form': detalle_form,
+        }
+    )
+
+def lista_facturas(request):
+    return render(request, 'base.html')
+
+
+def editar_factura(request, pk):
+    return render(request, 'base.html')
+
+
+def eliminar_factura(request, pk):
+    return render(request, 'base.html')
