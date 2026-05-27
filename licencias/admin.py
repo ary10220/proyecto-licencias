@@ -1,6 +1,15 @@
 from django.contrib import admin
+from django.contrib import messages
 from django.utils import timezone
-from .models import Tenant, Empresa, TipoLicencia, Licencia, Asignacion, Proveedor
+from .models import (
+    Tenant, Empresa, TipoLicencia, Licencia, Asignacion, Proveedor,
+    PropuestaLicencia, NotaAlquiler, Notificacion, DetalleNotificacion
+)
+from licencias.application.use_cases.cierres_y_alertas import uc_crear_nota_alquiler
+
+# =====================================================================
+# REGISTROS ORIGINALES 
+# =====================================================================
 
 @admin.register(Tenant)
 class TenantAdmin(admin.ModelAdmin):
@@ -130,3 +139,88 @@ class LicenciaAdmin(admin.ModelAdmin):
             return '🔴 Asignada'
         else:
             return '🟢 Disponible'
+
+
+# =====================================================================
+# INTEGRACIÓN DEL MÓDULO DE CIERRES Y ALERTAS 
+# =====================================================================
+
+@admin.register(PropuestaLicencia)
+class PropuestaLicenciaAdmin(admin.ModelAdmin):
+    list_display = ('id', 'tenant', 'empresa', 'fecha_creacion', 'get_estado_visual')
+    list_filter = ('estado', 'tenant')
+    search_fields = ('empresa__nombre',)
+    actions = ['aprobar_y_generar_nota']
+
+    @admin.display(description='Estado')
+    def get_estado_visual(self, obj):
+        if obj.estado == 'APROBADA':
+            return '🔵 Aprobada / Confirmada'
+        elif obj.estado == 'RECHAZADA':
+            return '🔴 Rechazada'
+        return '🟡 Pendiente'
+
+    @admin.action(description='⚡ Ejecutar Cierre Operativo (Generar Nota de Alquiler)')
+    def aprobar_y_generar_nota(self, request, queryset):
+        if queryset.count() != 1:
+            self.message_user(request, "Por favor, selecciona únicamente una propuesta comercial para procesar el cierre.", messages.WARNING)
+            return
+            
+        propuesta = queryset.first()
+        
+        if propuesta.estado == 'APROBADA':
+            self.message_user(request, "Esta propuesta ya cuenta con un cierre operativo y una Nota de Alquiler activa.", messages.ERROR)
+            return
+
+        try:
+            # Ejecución síncrona de tu Caso de Uso
+            nota = uc_crear_nota_alquiler(
+                request=request,
+                propuesta_id=propuesta.id,
+                numero_nota=f"NALQ-2026-{propuesta.id:04d}",
+                monto=1850.00,  # Datos calculados/simulados para la demo en el navegador
+                dias_para_vencer=30
+            )
+            self.message_user(
+                request, 
+                f"¡Cierre Operativo Exitoso! Propuesta comercial convertida a Nota de Alquiler: {nota.numero_nota}. "
+                f"El subsistema calculó las fechas límite e inyectó una Alerta de Notificación preventiva en la base de datos.", 
+                messages.SUCCESS
+            )
+        except Exception as e:
+            self.message_user(request, f"Fallo en la transacción atómica: {str(e)}", messages.ERROR)
+
+
+@admin.register(NotaAlquiler)
+class NotaAlquilerAdmin(admin.ModelAdmin):
+    list_display = ('numero_nota', 'propuesta', 'fecha_emision', 'fecha_vencimiento_pago', 'monto_total', 'procesado')
+    list_filter = ('procesado', 'fecha_emision')
+    search_fields = ('numero_nota',)
+    readonly_fields = ('fecha_emision', 'fecha_vencimiento_pago', 'procesado')
+
+
+class DetalleNotificacionInline(admin.TabularInline):
+    model = DetalleNotificacion
+    extra = 0
+    readonly_fields = ('asunto', 'mensaje', 'referencia_nota')
+
+
+@admin.register(Notificacion)
+class NotificacionAdmin(admin.ModelAdmin):
+    list_display = ('id', 'tenant', 'get_tipo_visual', 'fecha_alerta', 'get_estado_visual')
+    list_filter = ('estado', 'tipo')
+    inlines = [DetalleNotificacionInline]
+
+    @admin.display(description='Tipo de Alerta')
+    def get_tipo_visual(self, obj):
+        if obj.tipo == 'VENCIMIENTO_PAGO':
+            return '⚠️ Vencimiento de Pago de Alquiler'
+        return '📅 Fecha Límite de Licencia'
+
+    @admin.display(description='Estado Notificación')
+    def get_estado_visual(self, obj):
+        if obj.estado == 'PENDIENTE':
+            return '⏳ Alerta Pendiente'
+        elif obj.estado == 'ENVIADA':
+            return '📩 Notificación Despachada'
+        return '✅ Atendida / Solucionada'

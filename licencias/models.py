@@ -222,3 +222,71 @@ class DetalleFactura(models.Model):
 
     def __str__(self):
         return f"{self.tipo_licencia.nombre} x {self.cantidad}"
+    
+class PropuestaLicencia(models.Model):
+    """Representa la propuesta comercial preliminar antes de ser confirmada."""
+    ESTADOS_PROPUESTA = [
+        ('PENDIENTE', 'Pendiente de Aprobación'),
+        ('APROBADA', 'Aprobada / Confirmada'),
+        ('RECHAZADA', 'Rechazada'),
+    ]
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE)
+    empresa = models.ForeignKey(Empresa, on_delete=models.PROTECT)
+    fecha_creacion = models.DateField(default=timezone.now)
+    estado = models.CharField(max_length=20, choices=ESTADOS_PROPUESTA, default='PENDIENTE')
+    observaciones = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"Propuesta #{self.id} - {self.empresa.nombre} ({self.estado})"
+
+
+class NotaAlquiler(models.Model):
+    """
+    Cierre Operativo: Formaliza el contrato de alquiler basado en una propuesta aprobada.
+    Relación 0..1 a 1 con PropuestaLicencia.
+    """
+    propuesta = models.OneToOneField(
+        PropuestaLicencia, 
+        on_delete=models.PROTECT, 
+        related_name='nota_alquiler',
+        help_text="Propuesta comercial que origina este cierre operativo"
+    )
+    numero_nota = models.CharField(max_length=50, unique=True, verbose_name="Número de Nota de Alquiler")
+    fecha_emision = models.DateField(default=timezone.now)
+    fecha_vencimiento_pago = models.DateField(help_text="Fecha límite para el pago del alquiler")
+    monto_total = models.DecimalField(max_digits=12, decimal_places=2, default=0.0)
+    procesado = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Nota de Alquiler {self.numero_nota} (Propuesta #{self.propuesta.id})"
+
+
+class Notificacion(models.Model):
+    """Módulo auxiliar de Alertas del Sistema."""
+    TIPOS_ALERTA = [
+        ('VENCIMIENTO_PAGO', 'Vencimiento de Pago de Alquiler'),
+        ('LIMITE_CONTRATO', 'Fecha Límite de Licencia'),
+    ]
+    ESTADOS_NOTIFICACION = [
+        ('PENDIENTE', 'Alerta Pendiente'),
+        ('ENVIADA', 'Notificación Despachada'),
+        ('PROCESADA', 'Atendida / Solucionada'),
+    ]
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE)
+    tipo = models.CharField(max_length=30, choices=TIPOS_ALERTA)
+    fecha_alerta = models.DateField(help_text="Fecha en la que debe saltar o mostrarse la alerta")
+    estado = models.CharField(max_length=20, choices=ESTADOS_NOTIFICACION, default='PENDIENTE')
+    
+    def __str__(self):
+        return f"Alerta {self.tipo} - {self.fecha_alerta} ({self.estado})"
+
+
+class DetalleNotificacion(models.Model):
+    """Desglose y contenido específico de cada alerta generada."""
+    notificacion = models.ForeignKey(Notificacion, on_delete=models.CASCADE, related_name='detalles')
+    asunto = models.CharField(max_length=150)
+    mensaje = models.TextField()
+    referencia_nota = models.ForeignKey(NotaAlquiler, on_delete=models.SET_NULL, null=True, blank=True)
+
+    def __str__(self):
+        return f"Detalle Alerta: {self.asunto}"
