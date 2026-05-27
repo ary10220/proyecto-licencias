@@ -159,6 +159,76 @@ class Asignacion(models.Model):
             for viejo in excedentes:
                 viejo.delete()
 
+# ==========================================
+# MÓDULO COMERCIAL: PROPUESTAS DE LICENCIAS
+# ==========================================
+
+class PropuestaLicencia(models.Model):
+    # 1. Regla Multi-tenant de tu equipo: Toda tabla cabecera DEBE apuntar al Tenant.
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE)
+    
+    # 2. La Empresa (el cliente) al que le hacemos la cotización/propuesta.
+    empresa = models.ForeignKey(
+        Empresa, 
+        on_delete=models.PROTECT, # Usamos PROTECT para que nadie borre un cliente si ya tiene propuestas.
+        related_name='propuestas'
+    )
+    
+    # 3. Datos básicos de la propuesta.
+    numero = models.CharField(max_length=30, unique=True, verbose_name="Número de Propuesta")
+    fecha = models.DateField(default=timezone.now)
+    
+    # 4. Los estados para saber si el gerente la aprobó o el cliente la rechazó.
+    ESTADOS = (
+        ('PENDIENTE', 'Pendiente'),
+        ('APROBADA', 'Aprobada'),
+        ('RECHAZADA', 'Rechazada'),
+    )
+    estado = models.CharField(max_length=15, choices=ESTADOS, default='PENDIENTE')
+    
+    observaciones = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"Propuesta {self.numero} - {self.empresa.nombre}"
+
+    # 5. El "Truco" del Total: En lugar de guardar el total en la base de datos, 
+    # sumamos mágicamente los subtotales de los detalles cada vez que se consulte.
+    @property
+    def total(self):
+        return sum(detalle.subtotal for detalle in self.detalles.all())
+
+
+class DetallePropuesta(models.Model):
+    # (Nota de buenas prácticas: En Python, los nombres de clases no llevan guion bajo. 
+    # Usamos DetallePropuesta en lugar de Detalle_Propuesta para seguir el estándar PEP8).
+    
+    # 6. La relación Maestro-Detalle. 'CASCADE' indica que si borran la propuesta, 
+    # sus detalles se eliminan automáticamente. El 'related_name' es vital para el cálculo del total.
+    propuesta = models.ForeignKey(
+        PropuestaLicencia, 
+        on_delete=models.CASCADE, 
+        related_name='detalles' 
+    )
+    
+    # 7. El producto/licencia que le estamos ofertando.
+    tipo_licencia = models.ForeignKey(
+        TipoLicencia, 
+        on_delete=models.PROTECT
+    )
+    
+    cantidad = models.PositiveIntegerField(default=1)
+    
+    precio_unitario = models.DecimalField(
+        max_digits=12, 
+        decimal_places=2, 
+        default=0,
+        help_text="Precio ofertado en la propuesta"
+    )
+
+    # 8. Subtotal calculado al vuelo.
+    @property
+    def subtotal(self):
+        return self.cantidad * self.precio_unitario
 class Factura(models.Model):
     proveedor = models.ForeignKey(
         Proveedor,

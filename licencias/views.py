@@ -21,9 +21,9 @@ from django.core.exceptions import PermissionDenied
 from django.db import transaction
  
 from empleados.models import Empleado, GerenciaDivision, GerenciaArea, Unidad
-from .models import Licencia, Asignacion, Tenant, Empresa, Proveedor, TipoLicencia
+from .models import Licencia, Asignacion, Tenant, Empresa, Proveedor, TipoLicencia, PropuestaLicencia, DetallePropuesta
 from .forms import (
-    EmpleadoForm, ProveedorForm, TipoLicenciaForm, LicenciaForm,
+    EmpleadoForm, ProveedorForm, TipoLicenciaForm, LicenciaForm, PropuestaForm, DetallePropuestaForm, DetallePropuestaFormSet, PropuestaEditForm
 )
 from bitacora.actions import (
     log_asignacion_licencia,
@@ -1033,6 +1033,88 @@ def catalogo_licencias(request):
         'puede_crear_tipo': puede_crear_tipo,
     })
 
+<<<<<<< HEAD
+
+# ==========================================
+# VISTAS DE PROPUESTAS COMERCIALES
+# ==========================================
+
+def crear_propuesta(request):
+    if request.method == 'POST':
+        propuesta_form = PropuestaForm(request.POST)
+
+        # Validamos primero la cabecera
+        if propuesta_form.is_valid():
+            # Preparamos el Maestro pero no lo guardamos en la BD todavía
+            propuesta = propuesta_form.save(commit=False)
+
+            # Le pasamos la información al Formset y lo amarramos al Maestro
+            detalle_formset = DetallePropuestaFormSet(request.POST, instance=propuesta)
+
+            if detalle_formset.is_valid():
+                # Si todo está bien, guardamos el Maestro...
+                propuesta.save()
+                # ... y mágicamente el Formset guarda TODAS las filas a la vez
+                detalle_formset.save()
+
+                messages.success(request, 'Propuesta comercial registrada con múltiples detalles.')
+                return redirect('lista_propuestas')
+    else:
+        # Pantalla vacía: Cargamos un formulario padre y un formset hijo
+        propuesta_form = PropuestaForm()
+        detalle_formset = DetallePropuestaFormSet()
+
+    return render(
+        request,
+        'licencias/crear_propuesta.html',
+        {
+            'propuesta_form': propuesta_form,
+            'detalle_formset': detalle_formset, # Ojo: ahora se llama detalle_formset
+        }
+    )
+
+# ==========================================
+# LISTA DE PROPUESTAS COMERCIALES
+# ==========================================
+def lista_propuestas(request):
+    # Traemos todas las propuestas de la base de datos, ordenadas por las más recientes
+    propuestas = PropuestaLicencia.objects.all().order_by('-id')
+    
+    return render(
+        request, 
+        'licencias/lista_propuestas.html', 
+        {'propuestas': propuestas}
+    )
+
+def editar_propuesta(request, pk):
+    # Buscamos la propuesta en la BD
+    propuesta = get_object_or_404(PropuestaLicencia, pk=pk)
+    
+    if request.method == 'POST':
+        # Usamos el form de EDICIÓN y le pasamos la instancia existente
+        propuesta_form = PropuestaEditForm(request.POST, instance=propuesta)
+        detalle_formset = DetallePropuestaFormSet(request.POST, instance=propuesta)
+
+        if propuesta_form.is_valid() and detalle_formset.is_valid():
+            propuesta_form.save()
+            detalle_formset.save()
+            messages.success(request, 'Propuesta comercial actualizada correctamente.')
+            return redirect('lista_propuestas')
+    else:
+        # Cargamos los datos actuales en los formularios
+        propuesta_form = PropuestaEditForm(instance=propuesta)
+        detalle_formset = DetallePropuestaFormSet(instance=propuesta)
+
+    return render(
+        request,
+        'licencias/editar_propuesta.html',
+        {
+            'propuesta_form': propuesta_form,
+            'detalle_formset': detalle_formset,
+            'propuesta': propuesta, # Pasamos el objeto por si necesitamos su ID
+        }
+    )
+=======
 from .models import (
     Factura,
     DetalleFactura,
@@ -1105,3 +1187,4 @@ def editar_factura(request, pk):
 
 def eliminar_factura(request, pk):
     return render(request, 'base.html')
+>>>>>>> main

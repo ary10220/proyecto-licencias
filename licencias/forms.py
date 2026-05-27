@@ -12,8 +12,13 @@ en `gestion_global/interfaces/forms/`.
 """
 
 from django import forms
+from django.forms import inlineformset_factory
 from empleados.models import Empleado
+<<<<<<< HEAD
+from .models import Proveedor, TipoLicencia, Licencia, PropuestaLicencia, DetallePropuesta
+=======
 from .models import Proveedor, TipoLicencia, Licencia, Factura, DetalleFactura
+>>>>>>> main
 
 
 class EmpleadoForm(forms.ModelForm):
@@ -100,6 +105,62 @@ class LicenciaForm(forms.ModelForm):
             'fecha_vencimiento': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
         }
 
+<<<<<<< HEAD
+
+class PropuestaForm(forms.ModelForm):
+    class Meta:
+        model = PropuestaLicencia
+        # No incluimos el total aquí porque se calcula solo
+        fields = [
+            'empresa',
+            'tenant',
+            'numero',
+            'fecha',
+            #'estado',
+            'observaciones'
+        ]
+        
+        widgets = {
+            'empresa': forms.Select(attrs={'class': 'form-select select2-busqueda'}),
+            'tenant': forms.Select(attrs={'class': 'form-select'}),
+            'numero': forms.TextInput(attrs={'class': 'form-control'}),
+            'fecha': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-control', 'type': 'date'}),
+            'estado': forms.Select(attrs={'class': 'form-select'}),
+            'observaciones': forms.Textarea(
+                attrs={'class': 'form-control', 'rows': 3}
+            ),
+        }
+
+# Formulario exclusivo para EDITAR (Aquí sí permitimos cambiar el estado)
+class PropuestaEditForm(forms.ModelForm):
+    class Meta:
+        model = PropuestaLicencia
+        fields = ['empresa', 'tenant', 'numero', 'fecha', 'estado', 'observaciones']
+        widgets = {
+            'empresa': forms.Select(attrs={'class': 'form-select select2-busqueda'}),
+            'tenant': forms.Select(attrs={'class': 'form-select'}),
+            'numero': forms.TextInput(attrs={'class': 'form-control'}),
+            'fecha': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-control', 'type': 'date'}),
+            'estado': forms.Select(attrs={'class': 'form-select fw-bold'}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }
+
+
+class DetallePropuestaForm(forms.ModelForm):
+    class Meta:
+        model = DetallePropuesta
+        # Ojo: No incluimos el campo 'propuesta' aquí.
+        # Ese campo lo llenaremos "por debajo de la mesa" en la vista (views.py)
+        fields = [
+            'tipo_licencia',
+            'cantidad',
+            'precio_unitario'
+        ]
+        
+        widgets = {
+            'tipo_licencia': forms.Select(attrs={'class': 'form-select select2-busqueda'}),
+            'cantidad': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
+=======
 class FacturaForm(forms.ModelForm):
 
     class Meta:
@@ -146,12 +207,27 @@ class DetalleFacturaForm(forms.ModelForm):
             'tipo_licencia': forms.Select(attrs={'class': 'form-select'}),
             'empresa': forms.Select(attrs={'class': 'form-select'}),
             'cantidad': forms.NumberInput(attrs={'class': 'form-control'}),
+>>>>>>> main
             'precio_unitario': forms.NumberInput(attrs={ 
                 'class': 'form-control',
                 'placeholder': '0.00',
                 'step': '0.01',
                 'min': '0'
             }),
+<<<<<<< HEAD
+        }
+
+# ==========================================
+# FORMSET: Fábrica de múltiples detalles
+# ==========================================
+DetallePropuestaFormSet = inlineformset_factory(
+    PropuestaLicencia,      # El modelo Padre (Maestro)
+    DetallePropuesta,       # El modelo Hijo (Detalle)
+    form=DetallePropuestaForm, # El molde que usará para cada fila
+    extra=1,                # Cuántas filas vacías mostrar por defecto al entrar
+    can_delete=True         # Permite que el usuario elimine una fila si se equivoca
+)
+=======
             'fecha_vencimiento': forms.DateInput(
                 attrs={
                     'class': 'form-control',
@@ -159,3 +235,4 @@ class DetalleFacturaForm(forms.ModelForm):
                 }
             ),
         }
+>>>>>>> main
