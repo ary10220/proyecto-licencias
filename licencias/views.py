@@ -1033,6 +1033,7 @@ def catalogo_licencias(request):
         'puede_crear_tipo': puede_crear_tipo,
     })
 
+<<<<<<< HEAD
 
 # ==========================================
 # VISTAS DE PROPUESTAS COMERCIALES
@@ -1113,3 +1114,77 @@ def editar_propuesta(request, pk):
             'propuesta': propuesta, # Pasamos el objeto por si necesitamos su ID
         }
     )
+=======
+from .models import (
+    Factura,
+    DetalleFactura,
+    Licencia
+)
+
+from .forms import (
+    FacturaForm,
+    DetalleFacturaForm
+)
+
+def crear_factura(request):
+
+    if request.method == 'POST':
+
+        factura_form = FacturaForm(request.POST)
+        detalle_form = DetalleFacturaForm(request.POST)
+
+        if factura_form.is_valid() and detalle_form.is_valid():
+
+            factura = factura_form.save()
+
+            detalle = detalle_form.save(commit=False)
+            detalle.factura = factura
+            detalle.save()
+
+            # ==========================
+            # CREACION AUTOMATICA STOCK
+            # ==========================
+
+            for i in range(detalle.cantidad):
+
+                Licencia.objects.create(
+                    tenant=factura.tenant,
+                    empresa=detalle.empresa,
+                    tipo=detalle.tipo_licencia,
+                    proveedor=factura.proveedor,
+                    fecha_compra=factura.fecha,
+                    fecha_vencimiento=detalle.fecha_vencimiento
+                )
+
+            messages.success(
+                request,
+                'Factura registrada correctamente.'
+            )
+
+            return redirect('lista_facturas')
+
+    else:
+
+        factura_form = FacturaForm()
+        detalle_form = DetalleFacturaForm()
+
+    return render(
+        request,
+        'licencias/editar_factura.html',
+        {
+            'factura_form': factura_form,
+            'detalle_form': detalle_form,
+        }
+    )
+
+def lista_facturas(request):
+    return render(request, 'base.html')
+
+
+def editar_factura(request, pk):
+    return render(request, 'base.html')
+
+
+def eliminar_factura(request, pk):
+    return render(request, 'base.html')
+>>>>>>> main

@@ -14,7 +14,11 @@ en `gestion_global/interfaces/forms/`.
 from django import forms
 from django.forms import inlineformset_factory
 from empleados.models import Empleado
+<<<<<<< HEAD
 from .models import Proveedor, TipoLicencia, Licencia, PropuestaLicencia, DetallePropuesta
+=======
+from .models import Proveedor, TipoLicencia, Licencia, Factura, DetalleFactura
+>>>>>>> main
 
 
 class EmpleadoForm(forms.ModelForm):
@@ -101,6 +105,7 @@ class LicenciaForm(forms.ModelForm):
             'fecha_vencimiento': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
         }
 
+<<<<<<< HEAD
 
 class PropuestaForm(forms.ModelForm):
     class Meta:
@@ -155,12 +160,61 @@ class DetallePropuestaForm(forms.ModelForm):
         widgets = {
             'tipo_licencia': forms.Select(attrs={'class': 'form-select select2-busqueda'}),
             'cantidad': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
+=======
+class FacturaForm(forms.ModelForm):
+
+    class Meta:
+        model = Factura
+
+        fields = [
+            'proveedor',
+            'tenant',
+            'numero',
+            'fecha',
+            'observaciones'
+        ]
+
+        widgets = {
+            'proveedor': forms.Select(attrs={'class': 'form-select'}),
+            'tenant': forms.Select(attrs={'class': 'form-select'}),
+            'numero': forms.TextInput(attrs={'class': 'form-control'}),
+            'fecha': forms.DateInput(
+                attrs={
+                    'class': 'form-control',
+                    'type': 'date'
+                }
+            ),
+            'observaciones': forms.Textarea(
+                attrs={'class': 'form-control'}
+            ),
+        }
+
+
+class DetalleFacturaForm(forms.ModelForm):
+
+    class Meta:
+        model = DetalleFactura
+
+        fields = [
+            'tipo_licencia',
+            'empresa',
+            'cantidad',
+            'precio_unitario',
+            'fecha_vencimiento'
+        ]
+
+        widgets = {
+            'tipo_licencia': forms.Select(attrs={'class': 'form-select'}),
+            'empresa': forms.Select(attrs={'class': 'form-select'}),
+            'cantidad': forms.NumberInput(attrs={'class': 'form-control'}),
+>>>>>>> main
             'precio_unitario': forms.NumberInput(attrs={ 
                 'class': 'form-control',
                 'placeholder': '0.00',
                 'step': '0.01',
                 'min': '0'
             }),
+<<<<<<< HEAD
         }
 
 # ==========================================
@@ -173,3 +227,12 @@ DetallePropuestaFormSet = inlineformset_factory(
     extra=1,                # Cuántas filas vacías mostrar por defecto al entrar
     can_delete=True         # Permite que el usuario elimine una fila si se equivoca
 )
+=======
+            'fecha_vencimiento': forms.DateInput(
+                attrs={
+                    'class': 'form-control',
+                    'type': 'date'
+                }
+            ),
+        }
+>>>>>>> main

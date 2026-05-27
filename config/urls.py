@@ -85,6 +85,12 @@ urlpatterns = [
          views.editar_tipo_licencia, name='editar_tipo_licencia'),
     path('catalogo-licencias/software/<int:pk>/eliminar/',
          views.eliminar_tipo_licencia, name='eliminar_tipo_licencia'),
+    
+    # Facturas de compra
+    path(
+    'facturas/',
+    views.lista_facturas,
+    name='lista_facturas'),
 
     # ==========================
     # PROPUESTAS COMERCIALES
@@ -93,6 +99,20 @@ urlpatterns = [
     path('propuestas/crear/', views.crear_propuesta, name='crear_propuesta'),
     path('propuestas/<int:pk>/editar/', views.editar_propuesta, name='editar_propuesta'),
 
+    path(
+    'facturas/crear/',
+    views.crear_factura,
+    name='crear_factura'),
+
+    path(
+    'factura/<int:pk>/editar/',
+    views.editar_factura,
+    name='editar_factura'),
+
+    path(
+    'factura/<int:pk>/eliminar/',
+    views.eliminar_factura,
+    name='eliminar_factura'),
     # ============================================================
     # GESTION GLOBAL (CU07/08/10/11/12) -- nuevo modulo
     # ============================================================
