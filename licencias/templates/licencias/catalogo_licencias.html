@@ -1,10 +1,11 @@
 {% extends 'base.html' %}
-{% block title %}Licencias{% endblock %}
+{% load static %}
+{% block title %}Gestionar Proveedores - Licencias{% endblock %}
 
 {% block content %}
 <style>
     .lic-shell { display: flex; flex-direction: column; gap: 1rem; }
-    .lic-module-nav { display: flex; flex-wrap: wrap; gap: 0.65rem; }
+    .lic-module-nav { display: flex; flex-wrap: wrap; gap: 0.65rem; margin-bottom: 0.5rem; }
     .lic-module-link {
         background: #fffdf9;
         border: 1px solid rgba(223, 110, 18, 0.18);
@@ -21,102 +22,137 @@
     }
     .lic-module-link:hover { background: #fff6ed; border-color: rgba(223, 110, 18, 0.34); color: #b65a11; }
     .lic-module-link.active { background: linear-gradient(180deg, #ef882d 0%, #df6e12 100%); border-color: #df6e12; box-shadow: 0 10px 22px rgba(223, 110, 18, 0.18); color: #fff; }
-    .lic-modal .modal-header { background: linear-gradient(180deg, #ef882d 0%, #df6e12 100%); border: 0; color: #fff; }
-    .lic-modal .modal-body { background: #fff8f2; max-height: calc(100vh - 210px); overflow-y: auto; }
-    .lic-modal .modal-footer { background: #fffdf9; border-top: 1px solid rgba(220,197,177,.5); bottom: 0; position: sticky; z-index: 3; }
-    @media (max-width: 767.98px) {
-        .lic-modal .modal-dialog { margin: 0.55rem; }
-        .lic-modal .modal-footer .btn { flex: 1 1 0; }
-    }
+    .lic-filter-card, .lic-table-card { background: #fff; border: 1px solid rgba(220, 197, 177, 0.45); border-radius: 10px; box-shadow: 0 10px 24px rgba(35,45,60,.05); }
+    .lic-filter-card { padding: 0.9rem; }
+    .lic-table th { background: #fff8f2; color: #6c7480; font-size: 0.74rem; font-weight: 800; text-transform: uppercase; }
+    .lic-actions { display: inline-flex; gap: 4px; }
+    .lic-actions form { margin: 0; }
+    .lic-kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: .8rem; }
+    .lic-kpi-card { background: #fff; border: 1px solid rgba(220, 197, 177, 0.45); border-radius: 10px; padding: .9rem 1.1rem; }
+    .lic-kpi-card .label { color: #6c7480; font-size: .72rem; font-weight: 800; text-transform: uppercase; }
+    .lic-kpi-card .value { color: #252b36; font-size: 1.7rem; font-weight: 800; line-height: 1.1; margin-top: .25rem; }
 </style>
+<link rel="stylesheet" href="{% static 'licencias/css/modulo.css' %}">
 
 <div class="lic-shell">
     <div class="page-header mb-0">
         <h2 class="page-title">
-            <span class="page-title-icon"><i class="fa-solid fa-key"></i></span>
-            <span class="page-title-text">Licencias</span>
+            <span class="page-title-icon"><i class="fa-solid fa-truck-fast"></i></span>
+            <span class="page-title-text">Gestionar Proveedores</span>
         </h2>
         <div class="page-actions">
-            {% if puede_crear_proveedor %}
-            <button class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNuevoProveedor">
-                <i class="fa-solid fa-plus me-2"></i>Nuevo Proveedor
+            {% if puede_importar %}
+            <button class="btn btn-outline-secondary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalImportarProveedores">
+                <i class="fa-solid fa-file-import me-1"></i>Importar
             </button>
             {% endif %}
-            {% if puede_crear_tipo %}
-            <button class="btn btn-outline-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNuevoTipo">
-                <i class="fa-solid fa-plus me-2"></i>Nuevo Tipo de Licencia
+            {% if puede_crear_proveedor %}
+            <button class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNuevoProveedor">
+                <i class="fa-solid fa-plus me-1"></i>Nuevo proveedor
             </button>
             {% endif %}
         </div>
     </div>
 
     <div class="lic-module-nav">
-        <a href="{% url 'dashboard_general' %}" class="lic-module-link"><i class="fa-solid fa-table-list"></i><span>Gestionar Licencias</span></a>
-        <a href="{% url 'catalogo_licencias' %}" class="lic-module-link active"><i class="fa-solid fa-tags"></i><span>Gestionar Proveedores</span></a>
-<<<<<<< HEAD
-        <a href="{% url 'lista_propuestas' %}" class="lic-module-link"><i class="fa-solid fa-file-signature"></i><span>Propuestas Comerciales</span></a>
-=======
-        <a href="{% url 'crear_factura' %}" class="btn btn-primary"><i class="fa-solid fa-file-invoice-dollar me-2"></i>Gestionar Compra</a>
->>>>>>> main
+        <a href="{% url 'gestionar_licencias' %}" class="lic-module-link">
+            <i class="fa-solid fa-table-list"></i><span>Gestionar Licencias</span>
+        </a>
+        <a href="{% url 'catalogo_licencias' %}" class="lic-module-link active">
+            <i class="fa-solid fa-truck-fast"></i><span>Gestionar Proveedores</span>
+        </a>
+        <a href="{% url 'asignaciones_licencias' %}" class="lic-module-link">
+            <i class="fa-solid fa-user-check"></i><span>Gestionar Asignaciones</span>
+        </a>
     </div>
 
-    <div class="row g-3">
-        <div class="col-12 col-lg-6">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white d-flex align-items-center justify-content-between">
-                    <h5 class="mb-0">Proveedores</h5>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-sm table-hover align-middle mb-0">
-                        <thead class="table-light">
-                            <tr><th>Nombre</th><th>Contacto</th><th class="text-end">Acciones</th></tr>
-                        </thead>
-                        <tbody>
-                            {% for p in proveedores %}
-                            <tr>
-                                <td><strong>{{ p.nombre }}</strong></td>
-                                <td class="text-muted small">{{ p.contacto|default:"-" }}</td>
-                                <td class="text-end">
-                                    <a href="{% url 'editar_proveedor' p.id %}" class="btn btn-sm btn-outline-primary py-0 px-2"><i class="fa-solid fa-pen"></i></a>
-                                    <form method="post" action="{% url 'eliminar_proveedor' p.id %}" class="d-inline" onsubmit="return confirm('Eliminar proveedor: {{ p.nombre|escapejs }}?');">{% csrf_token %}<button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2"><i class="fa-solid fa-trash"></i></button></form>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr><td colspan="3" class="text-center py-3 text-muted">Sin proveedores.</td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+    <div class="lic-kpi-grid">
+        <div class="lic-kpi-card">
+            <div class="label"><i class="fa-solid fa-truck-fast me-1"></i>Total proveedores</div>
+            <div class="value">{{ kpi_proveedores.total|default:0 }}</div>
+        </div>
+        <div class="lic-kpi-card">
+            <div class="label"><i class="fa-solid fa-circle-check me-1"></i>Activos</div>
+            <div class="value text-success">{{ kpi_proveedores.activos|default:0 }}</div>
+        </div>
+        <div class="lic-kpi-card">
+            <div class="label"><i class="fa-solid fa-ban me-1"></i>Inactivos</div>
+            <div class="value text-secondary">{{ kpi_proveedores.inactivos|default:0 }}</div>
+        </div>
+        <div class="lic-kpi-card">
+            <div class="label"><i class="fa-solid fa-envelope-circle-check me-1"></i>Sin correo</div>
+            <div class="value text-warning">{{ kpi_proveedores.sin_correo|default:0 }}</div>
+        </div>
+    </div>
+
+    <form method="get" class="lic-filter-card" data-provider-autosubmit>
+        <div class="row g-3 align-items-end">
+            <div class="col-12 col-lg-8">
+                <label class="form-label small fw-bold text-secondary">BUSCAR</label>
+                <input type="search" name="q" value="{{ q }}" class="form-control" placeholder="Nombre, NIT, contacto o correo">
+            </div>
+            <div class="col-12 col-lg-4">
+                <label class="form-label small fw-bold text-secondary">ESTADO</label>
+                <select name="estado" class="form-select">
+                    <option value="todos" {% if estado == 'todos' %}selected{% endif %}>Todos</option>
+                    <option value="activos" {% if estado == 'activos' %}selected{% endif %}>Activos</option>
+                    <option value="inactivos" {% if estado == 'inactivos' %}selected{% endif %}>Inactivos</option>
+                </select>
             </div>
         </div>
+    </form>
 
-        <div class="col-12 col-lg-6">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white d-flex align-items-center justify-content-between">
-                    <h5 class="mb-0">Software / Tipos de Licencia</h5>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-sm table-hover align-middle mb-0">
-                        <thead class="table-light">
-                            <tr><th>Nombre</th><th>Fabricante</th><th class="text-end">Acciones</th></tr>
-                        </thead>
-                        <tbody>
-                            {% for t in tipos_licencia %}
-                            <tr>
-                                <td><strong>{{ t.nombre }}</strong></td>
-                                <td class="text-muted small">{{ t.fabricante }}</td>
-                                <td class="text-end">
-                                    <a href="{% url 'editar_tipo_licencia' t.id %}" class="btn btn-sm btn-outline-primary py-0 px-2"><i class="fa-solid fa-pen"></i></a>
-                                    <form method="post" action="{% url 'eliminar_tipo_licencia' t.id %}" class="d-inline" onsubmit="return confirm('Eliminar tipo de licencia: {{ t.nombre|escapejs }}?');">{% csrf_token %}<button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2"><i class="fa-solid fa-trash"></i></button></form>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr><td colspan="3" class="text-center py-3 text-muted">Sin tipos de licencia.</td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+    <div class="lic-table-card">
+        <div class="px-3 py-2 d-flex justify-content-between align-items-center">
+            <strong>{{ proveedores|length }} proveedores</strong>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 lic-table">
+                <thead>
+                    <tr>
+                        <th>Proveedor</th>
+                        <th>NIT</th>
+                        <th>Contacto</th>
+                        <th>Correo</th>
+                        <th>Telefono</th>
+                        <th>Sitio web</th>
+                        <th>Estado</th>
+                        <th class="text-end" style="width:120px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in proveedores %}
+                    <tr>
+                        <td>
+                            <strong>{{ p.nombre }}</strong>
+                            {% if p.razon_social %}<small class="d-block text-muted">{{ p.razon_social }}</small>{% endif %}
+                        </td>
+                        <td><small>{{ p.nit|default:"-" }}</small></td>
+                        <td><small>{{ p.contacto|default:"-" }}</small></td>
+                        <td><small>{{ p.email|default:"-" }}</small></td>
+                        <td><small>{{ p.telefono|default:"-" }}</small></td>
+                        <td>
+                            {% if p.sitio_web %}<a href="{{ p.sitio_web }}" target="_blank" rel="noopener">Web</a>{% else %}<span class="text-muted">-</span>{% endif %}
+                        </td>
+                        <td>
+                            {% if p.activo %}<span class="badge bg-success">Activo</span>
+                            {% else %}<span class="badge bg-secondary">Inactivo</span>{% endif %}
+                        </td>
+                        <td class="text-end">
+                            <div class="lic-actions">
+                                <a href="{% url 'editar_proveedor' p.id %}" class="btn btn-sm btn-outline-info" title="Editar"><i class="fa-solid fa-pen"></i></a>
+                                <form method="post" action="{% url 'eliminar_proveedor' p.id %}" data-confirm-title="Eliminar proveedor" data-confirm="Eliminar el proveedor {{ p.nombre }}?" data-confirm-icon="warning" data-confirm-ok="Eliminar">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="8" class="text-center py-4 text-muted">Sin proveedores registrados.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
@@ -124,29 +160,28 @@
 {% if puede_crear_proveedor and proveedor_form %}
 <div class="modal fade lic-modal" id="modalNuevoProveedor" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content border-0 shadow">
-            <form method="POST" action="{% url 'catalogo_licencias' %}">
+        <div class="modal-content">
+            <form method="post" action="{% url 'catalogo_licencias' %}">
                 {% csrf_token %}
                 <input type="hidden" name="form_type" value="proveedor">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="fa-solid fa-building-user me-2"></i>Nuevo Proveedor</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <div class="modal-header" style="background: linear-gradient(180deg, #ef882d 0%, #df6e12 100%); color: #fff;">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-truck-fast me-2"></i>Nuevo proveedor</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body" style="background:#fff8f2;">
                     <div class="row g-3">
-                        {% if proveedor_form.non_field_errors %}<div class="col-12"><div class="alert alert-danger py-2 mb-2">{{ proveedor_form.non_field_errors }}</div></div>{% endif %}
                         {% for field in proveedor_form %}
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold text-secondary small">{{ field.label|upper }}</label>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-bold small text-secondary text-uppercase">{{ field.label }}</label>
                             {{ field }}
-                            {% if field.errors %}<div class="text-danger small mt-1 fw-bold">{{ field.errors|striptags }}</div>{% endif %}
+                            {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors|striptags }}</div>{% endif %}
                         </div>
                         {% endfor %}
                     </div>
                 </div>
-                <div class="modal-footer border-0">
-                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Guardar</button>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar proveedor</button>
                 </div>
             </form>
         </div>
@@ -154,32 +189,24 @@
 </div>
 {% endif %}
 
-{% if puede_crear_tipo and tipo_form %}
-<div class="modal fade lic-modal" id="modalNuevoTipo" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content border-0 shadow">
-            <form method="POST" action="{% url 'catalogo_licencias' %}">
+{% if puede_importar %}
+<div class="modal fade lic-modal" id="modalImportarProveedores" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'catalogo_licencias' %}" enctype="multipart/form-data">
                 {% csrf_token %}
-                <input type="hidden" name="form_type" value="tipo">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="fa-solid fa-microchip me-2"></i>Nuevo Tipo de Licencia</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <input type="hidden" name="form_type" value="importar_proveedores">
+                <div class="modal-header" style="background: linear-gradient(180deg, #ef882d 0%, #df6e12 100%); color: #fff;">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-file-import me-2"></i>Importar proveedores</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
-                <div class="modal-body">
-                    <div class="row g-3">
-                        {% if tipo_form.non_field_errors %}<div class="col-12"><div class="alert alert-danger py-2 mb-2">{{ tipo_form.non_field_errors }}</div></div>{% endif %}
-                        {% for field in tipo_form %}
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold text-secondary small">{{ field.label|upper }}</label>
-                            {{ field }}
-                            {% if field.errors %}<div class="text-danger small mt-1 fw-bold">{{ field.errors|striptags }}</div>{% endif %}
-                        </div>
-                        {% endfor %}
-                    </div>
+                <div class="modal-body" style="background:#fff8f2;">
+                    <input type="file" name="archivo_proveedores" class="form-control" accept=".csv,.xlsx,.xls" required>
+                    <div class="form-text mt-2">Columnas reconocidas: nombre, razon_social, nit, contacto, email/correo, telefono, direccion, sitio_web, activo.</div>
                 </div>
-                <div class="modal-footer border-0">
-                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Guardar</button>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Importar</button>
                 </div>
             </form>
         </div>
@@ -188,12 +215,28 @@
 {% endif %}
 
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
+    document.addEventListener('DOMContentLoaded', () => {
         {% if modal_abierto == 'proveedor' %}
-        new bootstrap.Modal(document.getElementById('modalNuevoProveedor')).show();
-        {% elif modal_abierto == 'tipo' %}
-        new bootstrap.Modal(document.getElementById('modalNuevoTipo')).show();
+            new bootstrap.Modal(document.getElementById('modalNuevoProveedor')).show();
         {% endif %}
+
+        const form = document.querySelector('[data-provider-autosubmit]');
+        if (!form) return;
+        let timer = null;
+        function submitSoon(delay) {
+            window.clearTimeout(timer);
+            timer = window.setTimeout(() => form.submit(), delay);
+        }
+        form.querySelectorAll('select').forEach((select) => select.addEventListener('change', () => submitSoon(60)));
+        form.querySelectorAll('input[type="search"]').forEach((input) => {
+            input.addEventListener('input', () => submitSoon(450));
+            input.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    submitSoon(0);
+                }
+            });
+        });
     });
 </script>
 {% endblock %}

@@ -1,0 +1,213 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Nueva asignacion - Licencias{% endblock %}
+
+{% block content %}
+<style>
+    .lic-shell { display: flex; flex-direction: column; gap: 1rem; }
+    .lic-module-nav { display: flex; flex-wrap: wrap; gap: 0.65rem; margin-bottom: 0.5rem; }
+    .lic-module-link {
+        background: #fffdf9;
+        border: 1px solid rgba(223, 110, 18, 0.18);
+        border-radius: 8px;
+        color: #6d7480;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        font-size: 0.92rem;
+        font-weight: 700;
+        padding: 0.7rem 1rem;
+        text-decoration: none;
+        transition: all 0.18s ease;
+    }
+    .lic-module-link:hover { background: #fff6ed; border-color: rgba(223, 110, 18, 0.34); color: #b65a11; }
+    .lic-module-link.active { background: linear-gradient(180deg, #ef882d 0%, #df6e12 100%); border-color: #df6e12; box-shadow: 0 10px 22px rgba(223, 110, 18, 0.18); color: #fff; }
+
+    .lic-step-card {
+        background: #fff;
+        border: 1px solid rgba(220, 197, 177, 0.45);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    .lic-step-card .card-header {
+        background: #fff8f2;
+        border-bottom: 1px solid rgba(220, 197, 177, 0.45);
+        padding: 0.85rem 1rem;
+    }
+    .lic-step-card .card-header h5 {
+        margin: 0;
+        color: #b65a11;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .lic-step-card .step-num {
+        background: linear-gradient(180deg, #ef882d 0%, #df6e12 100%);
+        color: #fff;
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 0.95rem;
+    }
+</style>
+<link rel="stylesheet" href="{% static 'licencias/css/modulo.css' %}">
+
+<div class="lic-shell">
+    {# Header con titulo + boton volver #}
+    <div class="page-header mb-0">
+        <h2 class="page-title">
+            <span class="page-title-icon"><i class="fa-solid fa-people-arrows"></i></span>
+            <span class="page-title-text">Nueva asignacion de licencia</span>
+        </h2>
+        <div class="page-actions">
+            <a href="{% url 'asignaciones_licencias' %}" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-arrow-left me-1"></i>Volver
+            </a>
+        </div>
+    </div>
+
+    {# Tabs internos del modulo Licencias #}
+    <div class="lic-module-nav">
+        <a href="{% url 'gestionar_licencias' %}" class="lic-module-link">
+            <i class="fa-solid fa-table-list"></i><span>Gestionar Licencias</span>
+        </a>
+        <a href="{% url 'catalogo_licencias' %}" class="lic-module-link">
+            <i class="fa-solid fa-truck-fast"></i><span>Gestionar Proveedores</span>
+        </a>
+        <a href="{% url 'asignaciones_licencias' %}" class="lic-module-link active">
+            <i class="fa-solid fa-user-check"></i><span>Gestionar Asignaciones</span>
+        </a>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+
+        {# Paso 1: Tenant #}
+        <div class="lic-step-card mb-3">
+            <div class="card-header">
+                <h5><span class="step-num">1</span>Tenant</h5>
+            </div>
+            <div class="card-body p-3">
+                <select id="select-tenant" class="form-select">
+                    <option value="">--- Selecciona un tenant ---</option>
+                    {% for t in tenants %}
+                    <option value="{{ t.id }}">{{ t.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        {# Paso 2: Empresa #}
+        <div class="lic-step-card mb-3">
+            <div class="card-header">
+                <h5><span class="step-num">2</span>Empresa</h5>
+            </div>
+            <div class="card-body p-3">
+                <select id="select-empresa" class="form-select" disabled>
+                    <option value="">--- Primero selecciona tenant ---</option>
+                </select>
+            </div>
+        </div>
+
+        {# Paso 3: Licencia disponible #}
+        <div class="lic-step-card mb-3">
+            <div class="card-header">
+                <h5><span class="step-num">3</span>Licencia disponible</h5>
+            </div>
+            <div class="card-body p-3">
+                <select name="licencia_id" id="select-licencia" class="form-select" disabled required>
+                    <option value="">--- Primero selecciona empresa ---</option>
+                </select>
+                <div class="form-text small mt-2">
+                    Solo aparecen licencias no asignadas y no vencidas de la empresa elegida.
+                </div>
+            </div>
+        </div>
+
+        {# Paso 4: Empleado #}
+        <div class="lic-step-card mb-3">
+            <div class="card-header">
+                <h5><span class="step-num">4</span>Empleado destinatario</h5>
+            </div>
+            <div class="card-body p-3">
+                <select name="empleado_id" id="select-empleado" class="form-select" disabled required>
+                    <option value="">--- Primero selecciona empresa ---</option>
+                </select>
+                <div class="form-text small mt-2">
+                    Solo aparecen empleados activos de la empresa.
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mb-4">
+            <a href="{% url 'asignaciones_licencias' %}" class="btn btn-outline-secondary px-4">Cancelar</a>
+            <button type="submit" class="btn btn-primary px-4" id="btn-asignar" disabled>
+                <i class="fa-solid fa-check me-2"></i>Asignar licencia
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+(function(){
+    const selTenant   = document.getElementById('select-tenant');
+    const selEmpresa  = document.getElementById('select-empresa');
+    const selLicencia = document.getElementById('select-licencia');
+    const selEmpleado = document.getElementById('select-empleado');
+    const btnAsignar  = document.getElementById('btn-asignar');
+
+    function setOptions(sel, options, placeholderText) {
+        const opts = [`<option value="">${placeholderText}</option>`];
+        for (const o of options) {
+            opts.push(`<option value="${o.id}">${o.label || o.nombre}</option>`);
+        }
+        sel.innerHTML = opts.join('');
+        sel.disabled = options.length === 0;
+        chequearForm();
+    }
+    function chequearForm() {
+        btnAsignar.disabled = !(selLicencia.value && selEmpleado.value);
+    }
+
+    selTenant.addEventListener('change', async () => {
+        selEmpresa.innerHTML = '<option value="">--- Cargando... ---</option>'; selEmpresa.disabled = true;
+        selLicencia.innerHTML = '<option value="">--- Primero selecciona empresa ---</option>'; selLicencia.disabled = true;
+        selEmpleado.innerHTML = '<option value="">--- Primero selecciona empresa ---</option>'; selEmpleado.disabled = true;
+        chequearForm();
+        if (!selTenant.value) { setOptions(selEmpresa, [], '--- Primero selecciona tenant ---'); return; }
+        try {
+            const r = await fetch(`/ajax/cargar-empresas/?tenant_id=${encodeURIComponent(selTenant.value)}`);
+            setOptions(selEmpresa, await r.json(), '--- Selecciona empresa ---');
+        } catch (e) { console.error(e); }
+    });
+
+    selEmpresa.addEventListener('change', async () => {
+        if (!selEmpresa.value) {
+            setOptions(selLicencia, [], '--- Primero selecciona empresa ---');
+            setOptions(selEmpleado, [], '--- Primero selecciona empresa ---');
+            return;
+        }
+        selLicencia.innerHTML = '<option value="">--- Cargando... ---</option>';
+        selEmpleado.innerHTML = '<option value="">--- Cargando... ---</option>';
+        try {
+            const [licRes, empRes] = await Promise.all([
+                fetch(`/licencias/ajax/licencias-disponibles/?empresa_id=${encodeURIComponent(selEmpresa.value)}`),
+                fetch(`/licencias/ajax/empleados-empresa/?empresa_id=${encodeURIComponent(selEmpresa.value)}`),
+            ]);
+            const lics = await licRes.json();
+            const emps = await empRes.json();
+            setOptions(selLicencia, lics, lics.length ? '--- Selecciona licencia ---' : '(sin licencias disponibles)');
+            setOptions(selEmpleado, emps, emps.length ? '--- Selecciona empleado ---' : '(sin empleados activos)');
+        } catch (e) { console.error(e); }
+    });
+
+    selLicencia.addEventListener('change', chequearForm);
+    selEmpleado.addEventListener('change', chequearForm);
+})();
+</script>
+{% endblock %}

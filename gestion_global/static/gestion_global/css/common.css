@@ -95,3 +95,362 @@
     transition: none;
   }
 }
+
+
+/* ============================================================
+   ERP-STYLE: Consistencia global de botones, alturas, espaciados
+   ============================================================ */
+
+/* === Page header: nav arriba, acciones abajo === */
+.page-header {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid rgba(220, 197, 177, 0.45);
+}
+.page-title {
+  align-items: center;
+  display: flex;
+  font-size: 1.35rem;
+  font-weight: 800;
+  gap: 0.6rem;
+  margin: 0;
+}
+.page-title-icon {
+  align-items: center;
+  background: linear-gradient(135deg, var(--color-principal) 0%, var(--color-principal-dark) 100%);
+  border-radius: 10px;
+  color: #fff;
+  display: inline-flex;
+  height: 38px;
+  justify-content: center;
+  width: 38px;
+}
+.page-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* === Action bar: linea 2 de acciones bajo el nav === */
+.gg-actions-bar {
+  align-items: center;
+  background: #fffbf6;
+  border: 1px solid rgba(220, 197, 177, 0.45);
+  border-radius: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+  padding: 0.55rem 0.8rem;
+}
+.gg-actions-bar > .left { margin-right: auto; color: #6c7480; font-size: 0.85rem; font-weight: 700; }
+
+/* === Botones uniformes === */
+.gg-shell .btn,
+.gg-shell .module-nav-link {
+  border-radius: 8px;
+  font-weight: 700;
+  min-height: 38px;
+  padding-left: 0.85rem;
+  padding-right: 0.85rem;
+}
+.gg-shell .btn-sm {
+  min-height: 30px;
+  padding-left: 0.6rem;
+  padding-right: 0.6rem;
+}
+
+/* === Module nav (tabs) === */
+.module-nav {
+  background: #fffbf6;
+  border: 1px solid rgba(220, 197, 177, 0.45);
+  border-radius: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px;
+}
+.module-nav-link {
+  align-items: center;
+  background: transparent;
+  border-radius: 7px;
+  color: #6c7480;
+  display: inline-flex;
+  font-size: 0.86rem;
+  font-weight: 700;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 12px;
+  text-decoration: none;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+.module-nav-link:hover {
+  background: rgba(223, 110, 18, 0.08);
+  color: var(--color-principal-dark);
+}
+.module-nav-link.active {
+  background: var(--color-principal);
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(120, 53, 10, 0.22);
+}
+.module-nav-link.active i { color: #fff; }
+
+/* === Cards uniformes === */
+.gg-shell .card { border-radius: 12px; }
+.gg-shell .card-header { background: #fff !important; border-bottom: 1px solid #f0e0d0; }
+
+/* === KPI cards (dashboard / asignaciones) === */
+.gg-kpi-card {
+  background: #fff;
+  border: 1px solid rgba(220, 197, 177, 0.45);
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  height: 100%;
+  display: flex; flex-direction: column; gap: 4px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.gg-kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(120, 53, 10, 0.12); }
+.gg-kpi-card .kpi-label { color: #6c7480; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+.gg-kpi-card .kpi-value { color: #252b36; font-size: 1.7rem; font-weight: 800; line-height: 1.1; }
+.gg-kpi-card .kpi-icon { color: var(--color-principal); font-size: 1.4rem; }
+.gg-kpi-card.is-warn  .kpi-value { color: #b8860b; }
+.gg-kpi-card.is-danger .kpi-value { color: #c0392b; }
+.gg-kpi-card.is-ok    .kpi-value { color: #1e8449; }
+
+/* === Inputs uniformes === */
+.gg-shell .form-control, .gg-shell .form-select {
+  border-radius: 8px;
+  min-height: 38px;
+}
+.gg-shell .form-control-sm, .gg-shell .form-select-sm {
+  min-height: 30px;
+}
+
+/* === Tablas uniformes === */
+.gg-shell .table thead th { background: #fff8f2 !important; color: #6c7480; font-size: 0.74rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; border-color: #f0e0d0; }
+.gg-shell .table tbody tr { transition: background 0.14s ease; }
+.gg-shell .table tbody tr:hover { background: rgba(223, 110, 18, 0.04); }
+.gg-shell .gg-status-badge { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.4px; padding: 3px 8px; }
+
+/* === Botones de accion en tabla (no se superponen) === */
+.gg-actions { display: inline-flex; flex-wrap: nowrap; gap: 4px; justify-content: flex-end; }
+.gg-actions .btn { padding: 0.18rem 0.5rem; }
+.gg-actions form { margin: 0; }
+
+/* === Filter bar consistente === */
+.gg-filter-card.gg-filter-bar {
+  align-items: end;
+  background: #fffbf6;
+  border: 1px solid rgba(220, 197, 177, 0.45);
+  border-radius: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+  padding: 0.7rem 0.9rem;
+}
+.gg-filter-card.gg-filter-bar > div { flex: 1 1 180px; min-width: 160px; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .page-header { flex-direction: column; align-items: stretch; }
+  .page-actions { justify-content: flex-end; }
+  .module-nav { overflow-x: auto; flex-wrap: nowrap; }
+  .module-nav-link { white-space: nowrap; }
+}
+
+
+/* ============================================================
+   PULIDO FINAL: jerarquia de botones + alerts + responsive
+   ============================================================ */
+
+/* === Jerarquia de botones uniforme === */
+/* PRIMARIO (naranja) - Nueva / Crear / Aprobar / Continuar */
+.gg-shell .btn-primary {
+  background: linear-gradient(135deg, var(--color-principal) 0%, var(--color-principal-dark) 100%);
+  border: none;
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(223, 110, 18, 0.25);
+}
+.gg-shell .btn-primary:hover {
+  background: linear-gradient(135deg, var(--color-principal-dark) 0%, #934109 100%);
+  color: #fff;
+}
+
+/* SECUNDARIO (gris claro) - Exportar / Ver / Volver */
+.gg-shell .btn-outline-secondary {
+  background: #fff;
+  border: 1px solid #d5d5d5;
+  color: #5a6470;
+}
+.gg-shell .btn-outline-secondary:hover {
+  background: #f8f9fa;
+  border-color: #b0b0b0;
+  color: #252b36;
+}
+
+/* INFORMATIVO (azul) - Vista previa / Dashboard / Info */
+.gg-shell .btn-outline-info {
+  background: #fff;
+  border: 1px solid #5dade2;
+  color: #1f6c97;
+}
+.gg-shell .btn-outline-info:hover {
+  background: #ebf5fc;
+  color: #154f73;
+}
+
+/* CRITICO (rojo) - Eliminar / Deshabilitar */
+.gg-shell .btn-outline-danger {
+  background: #fff;
+  border: 1px solid #e74c3c;
+  color: #c0392b;
+}
+.gg-shell .btn-outline-danger:hover {
+  background: #fdedeb;
+  color: #922b21;
+}
+
+/* OK (verde) - Aprobar / Reactivar */
+.gg-shell .btn-outline-success {
+  background: #fff;
+  border: 1px solid #27ae60;
+  color: #1e8449;
+}
+.gg-shell .btn-outline-success:hover {
+  background: #e9f7ef;
+  color: #145a32;
+}
+
+/* ATENCION (ambar) - Anular / Rechazar */
+.gg-shell .btn-outline-warning {
+  background: #fff;
+  border: 1px solid #f39c12;
+  color: #b8860b;
+}
+.gg-shell .btn-outline-warning:hover {
+  background: #fef5e7;
+  color: #875a07;
+}
+
+/* === Action buttons en TABLA (mas grandes y separados) === */
+.gg-shell .gg-actions {
+  display: inline-flex;
+  gap: 6px;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+.gg-shell .gg-actions .btn {
+  align-items: center;
+  border-radius: 6px;
+  display: inline-flex;
+  font-size: 0.85rem;
+  height: 32px;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 0.55rem;
+  width: auto;
+}
+.gg-shell .gg-actions .btn i { font-size: 0.9rem; }
+
+/* === Header 3-lineas (Title+Estado | Nav | Actions) === */
+.gg-header-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+/* Linea 1: titulo + badge estado */
+.gg-title-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid rgba(220, 197, 177, 0.45);
+}
+.gg-title-row .page-title { margin: 0; }
+.gg-title-row .badge { font-size: 0.78rem; padding: 6px 12px; }
+.gg-title-row .back-link {
+  align-items: center;
+  color: #6c7480;
+  display: inline-flex;
+  font-size: 0.85rem;
+  font-weight: 700;
+  gap: 6px;
+  margin-left: auto;
+  text-decoration: none;
+}
+.gg-title-row .back-link:hover { color: var(--color-principal-dark); }
+
+/* === Alerts limpias bajo el header === */
+.gg-shell .alert {
+  border-radius: 10px;
+  border-width: 0;
+  font-size: 0.9rem;
+  padding: 0.8rem 1rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+}
+.gg-shell .alert-info {
+  background: #e7f3fb;
+  color: #154f73;
+}
+.gg-shell .alert-warning {
+  background: #fff4e0;
+  color: #8a5a00;
+}
+.gg-shell .alert-danger {
+  background: #fdecea;
+  color: #922b21;
+}
+
+/* === Tablas: columnas con anchos consistentes === */
+.gg-shell .table { vertical-align: middle; }
+.gg-shell .table tbody td { padding-top: 0.6rem; padding-bottom: 0.6rem; }
+
+/* Status badges grandes y legibles */
+.gg-shell .gg-status-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* === Responsive: <=992px (tablets) === */
+@media (max-width: 992px) {
+  .gg-shell .page-actions { width: 100%; justify-content: flex-end; }
+  .gg-shell .gg-actions-bar { padding: 0.6rem 0.75rem; }
+  .gg-shell .gg-actions-bar .left { width: 100%; }
+}
+
+/* === Responsive: <=576px (movil) === */
+@media (max-width: 576px) {
+  .gg-shell .gg-actions { gap: 4px; }
+  .gg-shell .gg-actions .btn { padding: 0 0.4rem; }
+  .gg-shell .gg-kpi-card .kpi-value { font-size: 1.3rem; }
+  .gg-shell .module-nav-link span { display: none; } /* solo icono en movil */
+  .gg-shell .module-nav-link { padding: 6px 10px; }
+}
+
+/* === Asegurar que filtros no se ahogen === */
+.gg-shell .gg-filter-card.gg-filter-bar > div { flex: 1 1 200px; min-width: 180px; }
+
+/* === Card uniforme: shadow y border consistente === */
+.gg-shell .card {
+  border: 1px solid rgba(220, 197, 177, 0.35) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+.gg-shell .card.shadow-sm { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06); }
+

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}{{ titulo }}{% endblock %}
 
@@ -11,14 +12,16 @@
     .lic-form-actions { background:#fffdf9; bottom:0; position:sticky; z-index:2; }
     @media (max-width: 767.98px) { .lic-form-actions .btn { flex:1 1 0; } }
 </style>
+<link rel="stylesheet" href="{% static 'licencias/css/modulo.css' %}">
 <div class="container-fluid max-w-7xl mx-auto">
     <div class="page-header mb-3">
         <h2 class="page-title"><span class="page-title-icon"><i class="fa-solid fa-key"></i></span><span class="page-title-text">Licencias</span></h2>
     </div>
 
     <div class="lic-module-nav">
-        <a href="{% url 'dashboard_general' %}" class="lic-module-link "><i class="fa-solid fa-table-list"></i><span>Gestionar Licencias</span></a>
-        <a href="{% url 'catalogo_licencias' %}" class="lic-module-link active"><i class="fa-solid fa-tags"></i><span>Gestionar Proveedores</span></a>
+        <a href="{% url 'gestionar_licencias' %}" class="lic-module-link "><i class="fa-solid fa-table-list"></i><span>Gestionar Licencias</span></a>
+        <a href="{% url 'catalogo_licencias' %}" class="lic-module-link active"><i class="fa-solid fa-truck-fast"></i><span>Gestionar Proveedores</span></a>
+        <a href="{% url 'asignaciones_licencias' %}" class="lic-module-link"><i class="fa-solid fa-user-check"></i><span>Gestionar Asignaciones</span></a>
     </div>
 
     <div class="d-flex justify-content-between align-items-center mb-4">

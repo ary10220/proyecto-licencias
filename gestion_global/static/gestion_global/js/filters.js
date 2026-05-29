@@ -9,6 +9,7 @@
     forms.forEach(function (form) {
         var search = form.querySelector('input[type="search"]');
         var selects = form.querySelectorAll('select');
+        var inputs = form.querySelectorAll('input:not([type="hidden"]):not([type="search"])');
         var timer = null;
         var controller = null;
 
@@ -108,6 +109,11 @@
 
         selects.forEach(function (select) {
             select.addEventListener('change', submitFilter);
+        });
+
+        inputs.forEach(function (input) {
+            var eventName = input.type === 'date' || input.type === 'checkbox' || input.type === 'radio' ? 'change' : 'input';
+            input.addEventListener(eventName, submitSoon);
         });
     });
 })();

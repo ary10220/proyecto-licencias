@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
+{% load static %}
  
-{% block title %}Dashboard - {{ titulo }}{% endblock %}
+{% block title %}Gestionar Licencias - {{ titulo }}{% endblock %}
  
 {% block content %}
         <style>
@@ -30,10 +31,11 @@
             .lic-modal .modal-footer .btn { flex: 1 1 0; }
         }
     </style>
+    <link rel="stylesheet" href="{% static 'licencias/css/modulo.css' %}">
 
     <div class="lic-shell">
         <div class="page-header mb-0">
-            <h2 class="page-title"><span class="page-title-icon"><i class="fa-solid fa-key"></i></span><span class="page-title-text">Licencias</span></h2>
+            <h2 class="page-title"><span class="page-title-icon"><i class="fa-solid fa-key"></i></span><span class="page-title-text">Gestionar Licencias</span></h2>
             <div class="page-actions">
                 {% csrf_token %}
                 <button class="btn btn-sm btn-danger shadow-sm d-none me-3" id="btnBorrarMasivo" onclick="confirmarBorradoMasivo()">
@@ -63,8 +65,9 @@
         </div>
 
         <div class="lic-module-nav">
-            <a href="{% url 'dashboard_general' %}" class="lic-module-link active"><i class="fa-solid fa-table-list"></i><span>Gestionar Licencias</span></a>
-            <a href="{% url 'catalogo_licencias' %}" class="lic-module-link"><i class="fa-solid fa-tags"></i><span>Gestionar Proveedores</span></a>
+            <a href="{% url 'gestionar_licencias' %}" class="lic-module-link active"><i class="fa-solid fa-table-list"></i><span>Gestionar Licencias</span></a>
+            <a href="{% url 'catalogo_licencias' %}" class="lic-module-link"><i class="fa-solid fa-truck-fast"></i><span>Gestionar Proveedores</span></a>
+            <a href="{% url 'asignaciones_licencias' %}" class="lic-module-link"><i class="fa-solid fa-user-check"></i><span>Gestionar Asignaciones</span></a>
         </div>
 
     <!-- KPIs -->
@@ -127,48 +130,52 @@
         </div>
     </div>
  
-    <div class="card p-3 shadow-sm border-0 content-card">
-        
-        <!-- BARRA DE FILTROS: ahora con 4 columnas incluyendo Tenant -->
-        <div class="row mb-3">
-            <div class="col-md-3 mb-2 mb-md-0">
-                <div class="input-group">
-                    <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
-                    <input type="text" id="buscadorTabla" class="form-control border-start-0" placeholder="Buscar por nombre, licencia o dominio...">
-                </div>
+    <form method="get" action="{% url 'gestionar_licencias' %}" class="content-card" data-lic-autosubmit>
+        <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-6 col-xl-3">
+                <label class="form-label small fw-bold text-secondary">BUSCAR</label>
+                <input type="search" name="q" value="{{ q }}" class="form-control" placeholder="Licencia, proveedor o factura">
             </div>
- 
-            <div class="col-md-3 mb-2 mb-md-0">
-                <div class="input-group">
-                    <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-layer-group text-secondary"></i></span>
-                    <select id="filtroTenant" class="form-select border-start-0 bg-light fw-bold" style="color: #df6e12;">
-                        <option value="todos">Todos los Grupos</option>
-                        {% for tenant in tenants %}
-                        <option value="{{ tenant.nombre|lower }}">{{ tenant.nombre }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
+            <div class="col-12 col-md-6 col-xl-2">
+                <label class="form-label small fw-bold text-secondary">PROVEEDOR</label>
+                <select name="proveedor" class="form-select">
+                    <option value="">Todos</option>
+                    {% for p in proveedores %}
+                    <option value="{{ p.id }}" {% if proveedor_filtro == p.id|stringformat:"s" %}selected{% endif %}>{{ p.nombre }}</option>
+                    {% endfor %}
+                </select>
             </div>
-            
-            <div class="col-md-3 mb-2 mb-md-0">
-                <div class="input-group">
-                    <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-building text-secondary"></i></span>
-                    <select id="filtroEmpresa" class="form-select border-start-0 bg-light fw-bold" style="color: #df6e12;">
-                        <option value="todas">Todas las Empresas</option>
-                    </select>
-                </div>
+            <div class="col-12 col-md-6 col-xl-2">
+                <label class="form-label small fw-bold text-secondary">TIPO</label>
+                <select name="tipo" class="form-select">
+                    <option value="">Todos</option>
+                    {% for t in tipos_licencia %}
+                    <option value="{{ t.id }}" {% if tipo_filtro == t.id|stringformat:"s" %}selected{% endif %}>{{ t.nombre }}</option>
+                    {% endfor %}
+                </select>
             </div>
- 
-            <div class="col-md-3">
-                <div class="input-group">
-                    <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-microchip text-secondary"></i></span>
-                    <select id="filtroFabricante" class="form-select border-start-0 bg-light fw-bold" style="color: #df6e12;">
-                        <option value="todos">Todos los Software</option>
-                    </select>
-                </div>
+            <div class="col-12 col-md-6 col-xl-2">
+                <label class="form-label small fw-bold text-secondary">ESTADO</label>
+                <select name="estado" class="form-select">
+                    <option value="">Todos</option>
+                    {% for value,label in estados_licencia %}
+                    <option value="{{ value }}" {% if estado_filtro == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                    <option value="POR_VENCER" {% if estado_filtro == 'POR_VENCER' %}selected{% endif %}>Por vencer (30 dias)</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-3 col-xl-1">
+                <label class="form-label small fw-bold text-secondary">P. MIN</label>
+                <input type="number" name="precio_min" value="{{ precio_min }}" class="form-control" min="0" step="0.01">
+            </div>
+            <div class="col-6 col-md-3 col-xl-1">
+                <label class="form-label small fw-bold text-secondary">P. MAX</label>
+                <input type="number" name="precio_max" value="{{ precio_max }}" class="form-control" min="0" step="0.01">
             </div>
         </div>
- 
+    </form>
+
+    <div class="card p-3 shadow-sm border-0 content-card gg-table-card">
         <div class="table-responsive">
             <table class="table table-hover align-middle table-sm" id="tablaLicencias">
                 <thead class="table-light">
@@ -177,8 +184,9 @@
                             <input class="form-check-input border-secondary" type="checkbox" id="checkAll" onchange="toggleCheckAll(this)" title="Seleccionar todas">
                         </th>
                         <th>Licencia / Proveedor</th>
-                        <th>Empresa</th>
                         <th>Estado</th>
+                        <th class="text-end">Precio</th>
+                        <th>Origen</th>
                         <th>Usuario</th>
                         <th>Vencimiento</th>
                         <th class="text-center">Acciones</th> 
@@ -187,9 +195,10 @@
                 <tbody>
                     {% for licencia in licencias %}
                     <tr class="fila-licencia" 
-                        data-estado="{% if licencia.usuario_activo %}asignada{% else %}{% if licencia.estado == 'VENCIDA' %}vencida{% else %}disponible{% endif %}{% endif %}"
+                        data-estado="{{ licencia.estado|lower }}"
                         data-tenant="{{ licencia.tenant.nombre|default:'-'|lower }}"
                         data-empresa="{{ licencia.empresa.nombre|default:'-'|lower }}"
+                        data-proveedor="{{ licencia.proveedor.nombre|default:'-'|lower }}"
                         data-fabricante="{{ licencia.tipo.fabricante|default:'otros'|lower }}"
                         data-alerta="{% if licencia.fecha_vencimiento < hoy %}vencida{% elif licencia.fecha_vencimiento <= limite_30_dias %}urgente{% else %}ok{% endif %}">
                         
@@ -205,19 +214,31 @@
                         </td>
                         
                         <td>
-                            {{ licencia.tenant.nombre }}<br>
-                            <small class="text-muted" style="font-size: 0.75rem;">{{ licencia.empresa.nombre|default:"-" }}</small>
-                        </td>
-                        
-                        <td>
                             {% if licencia.usuario_activo %}
                                 <span class="status-badge bg-asignada">Asignada</span>
                             {% else %}
                                 {% if licencia.estado == 'VENCIDA' %}
                                     <span class="status-badge bg-vencida">Vencida</span>
+                                {% elif licencia.estado == 'SUSPENDIDA' %}
+                                    <span class="status-badge bg-vencida">Suspendida</span>
+                                {% elif licencia.estado == 'PENDIENTE_ACTIVACION' %}
+                                    <span class="status-badge bg-vencida">Pendiente</span>
+                                {% elif licencia.estado == 'REVOCADA' %}
+                                    <span class="status-badge bg-vencida">Revocada</span>
                                 {% else %}
                                     <span class="status-badge bg-disponible">Libre</span>
                                 {% endif %}
+                            {% endif %}
+                        </td>
+
+                        <td class="text-end fw-bold">
+                            {{ licencia.tipo.moneda }} {{ licencia.tipo.precio_venta|floatformat:2 }}
+                        </td>
+
+                        <td>
+                            {{ licencia.get_origen_display }}
+                            {% if licencia.factura_origen %}
+                                <small class="text-muted d-block">{{ licencia.factura_origen.numero }}</small>
                             {% endif %}
                         </td>
                         
@@ -254,11 +275,6 @@
                                     <i class="fa-solid fa-pen"></i>
                                 </a>
  
-                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 ms-1" data-bs-toggle="modal" data-bs-target="#modalHistorial{{ licencia.id }}" title="Ver Historial">
-                                    <i class="fa-solid fa-eye"></i>
-                                </button>
-                                {% include 'licencias/_partials/modal_historial.html' %}
-                                
                                 {% if licencia.usuario_activo %}
                                     <button type="button" 
                                             class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" 
@@ -268,7 +284,7 @@
                                             title="Quitar Licencia">
                                             <i class="fa-solid fa-arrow-rotate-left"></i>
                                     </button>
-                                {% else %}
+                                {% elif licencia.puede_asignarse %}
                                     <button type="button" class="btn btn-sm btn-outline-success py-0 px-2 ms-1" data-bs-toggle="modal" data-bs-target="#modalAsignar{{ licencia.id }}" title="Asignar Licencia">
                                         <i class="fa-solid fa-user-plus"></i>
                                     </button>
@@ -278,7 +294,7 @@
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="7" class="text-center py-5 text-muted">No hay licencias registradas.</td></tr>
+                    <tr><td colspan="8" class="text-center py-5 text-muted">No hay licencias registradas.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -366,6 +382,36 @@
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="{% static 'facturacion/js/comercial_filters.js' %}"></script>
+    <script>
+        (function(){
+            const form = document.querySelector('[data-lic-autosubmit]');
+            if (!form) return;
+            let timer = null;
+            function submitSoon(delay) {
+                window.clearTimeout(timer);
+                timer = window.setTimeout(function() {
+                    form.submit();
+                }, delay);
+            }
+            form.querySelectorAll('select, input[type="date"], input[type="number"]').forEach(function(control) {
+                control.addEventListener('change', function() {
+                    submitSoon(60);
+                });
+            });
+            form.querySelectorAll('input[type="search"]').forEach(function(control) {
+                control.addEventListener('input', function() {
+                    submitSoon(450);
+                });
+                control.addEventListener('keydown', function(event) {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        submitSoon(0);
+                    }
+                });
+            });
+        })();
+    </script>
  
     <script>
         var estadoActual = 'todos';
@@ -425,9 +471,24 @@
             if (errorLicencia === "si") { $('#modalNuevaLicencia').modal('show'); }
         });
  
-        // Funciones de filtrado
-        function filtrarEstado(estado) { estadoActual = estado; alertaActual = 'todas'; aplicarFiltros(); }
-        function filtrarAlerta(alerta) { alertaActual = alerta; estadoActual = 'todos'; aplicarFiltros(); }
+        // KPIs: ahora aplican el filtro principal para recalcular tabla y metricas.
+        function aplicarEstadoServidor(valor) {
+            const form = document.querySelector('[data-lic-autosubmit]');
+            const estado = form ? form.querySelector('select[name="estado"]') : null;
+            if (!form || !estado) return;
+            estado.value = valor || '';
+            form.submit();
+        }
+        function filtrarEstado(estado) {
+            if (estado === 'asignada') aplicarEstadoServidor('ASIGNADA');
+            else if (estado === 'disponible') aplicarEstadoServidor('DISPONIBLE');
+            else aplicarEstadoServidor('');
+        }
+        function filtrarAlerta(alerta) {
+            if (alerta === 'vencida') aplicarEstadoServidor('VENCIDA');
+            else if (alerta === 'urgente') aplicarEstadoServidor('POR_VENCER');
+            else aplicarEstadoServidor('');
+        }
  
         $("#buscadorTabla").on("keyup", aplicarFiltros);
         $("#filtroTenant").on("change", aplicarFiltros);

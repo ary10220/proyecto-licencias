@@ -51,6 +51,8 @@ urlpatterns = [
     path('inicio/', views.inicio, name='inicio'),
     path('dashboard/', views.dashboard, name='dashboard_general'),
     path('dashboard/<int:tenant_id>/', views.dashboard, name='dashboard_tenant'),
+    path('licencias/', views.gestionar_licencias, name='gestionar_licencias'),
+    path('licencias/tenant/<int:tenant_id>/', views.gestionar_licencias, name='gestionar_licencias_tenant'),
 
     # Sincronizacion / Reportes
     path('sincronizar/', views.sincronizar_m365, name='sincronizar'),
@@ -64,6 +66,10 @@ urlpatterns = [
     path('licencias/eliminar-masivo/', views.eliminar_licencias_masivo, name='eliminar_licencias_masivo'),
     path('licencia/<int:licencia_id>/asignar/', views.asignar_licencia, name='asignar_licencia'),
     path('licencia/<int:licencia_id>/liberar/', views.liberar_licencia, name='liberar_licencia'),
+    path('licencias/asignaciones/', views.asignaciones_licencias, name='asignaciones_licencias'),
+    path('licencias/asignaciones/masivo/', views.asignar_licencias_masivo, name='asignar_licencias_masivo'),
+    path('licencias/asignaciones/<int:asignacion_id>/liberar/', views.liberar_asignacion, name='liberar_asignacion'),
+    path('licencias/asignaciones/<int:asignacion_id>/eliminar/', views.eliminar_asignacion, name='eliminar_asignacion'),
 
     # Token de desbloqueo
     path('desbloqueo-seguro/', views.validar_token_bloqueo, name='validar_token_bloqueo'),
@@ -77,6 +83,10 @@ urlpatterns = [
 
     # Catalogo de licenciamiento (Proveedor + TipoLicencia siguen en licencias/)
     path('catalogo-licencias/', views.catalogo_licencias, name='catalogo_licencias'),
+    path('licencias/asignaciones/nueva/', views.nueva_asignacion, name='nueva_asignacion'),
+    path('licencias/ajax/licencias-disponibles/', views.ajax_licencias_disponibles, name='ajax_licencias_disponibles'),
+    path('licencias/ajax/empleados-empresa/',    views.ajax_empleados_empresa,    name='ajax_empleados_empresa'),
+    path('licencias/panel/',        views.licencias_dashboard,    name='licencias_dashboard'),
     path('catalogo-licencias/proveedor/<int:pk>/editar/',
          views.editar_proveedor, name='editar_proveedor'),
     path('catalogo-licencias/proveedor/<int:pk>/eliminar/',
@@ -86,33 +96,9 @@ urlpatterns = [
     path('catalogo-licencias/software/<int:pk>/eliminar/',
          views.eliminar_tipo_licencia, name='eliminar_tipo_licencia'),
     
-    # Facturas de compra
-    path(
-    'facturas/',
-    views.lista_facturas,
-    name='lista_facturas'),
+    # Modulo comercial: cotizaciones / propuestas / facturacion
+    path('facturacion/', include('facturacion.interfaces.urls')),
 
-    # ==========================
-    # PROPUESTAS COMERCIALES
-    # ==========================
-    path('propuestas/', views.lista_propuestas, name='lista_propuestas'),
-    path('propuestas/crear/', views.crear_propuesta, name='crear_propuesta'),
-    path('propuestas/<int:pk>/editar/', views.editar_propuesta, name='editar_propuesta'),
-
-    path(
-    'facturas/crear/',
-    views.crear_factura,
-    name='crear_factura'),
-
-    path(
-    'factura/<int:pk>/editar/',
-    views.editar_factura,
-    name='editar_factura'),
-
-    path(
-    'factura/<int:pk>/eliminar/',
-    views.eliminar_factura,
-    name='eliminar_factura'),
     # ============================================================
     # GESTION GLOBAL (CU07/08/10/11/12) -- nuevo modulo
     # ============================================================
@@ -124,6 +110,7 @@ urlpatterns = [
 
     # Endpoints AJAX (cascada Tenant -> Empresa -> Division -> Area -> Unidad)
     path('ajax/cargar-empresas/', views.cargar_empresas, name='ajax_cargar_empresas'),
+    path('ajax/cargar-empleados/', views.cargar_empleados, name='ajax_cargar_empleados'),
     path('ajax/cargar-divisiones/', views.cargar_divisiones, name='ajax_cargar_divisiones'),
     path('ajax/cargar-areas/', views.cargar_areas, name='ajax_cargar_areas'),
     path('ajax/cargar-unidades/', views.cargar_unidades, name='ajax_cargar_unidades'),

@@ -1,0 +1,355 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}{% if modo == 'editar' %}Editar{% else %}Nueva{% endif %} cotizacion{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'gestion_global/css/common.css' %}">
+<link rel="stylesheet" href="{% static 'facturacion/css/comercial.css' %}">
+
+<div class="gg-shell">
+    <div class="page-header">
+        <h2 class="page-title">
+            <span class="page-title-icon"><i class="fa-solid fa-file-signature"></i></span>
+            <span class="page-title-text">
+                {% if modo == 'editar' %}Editar cotizacion{% else %}Nueva cotizacion{% endif %}
+            </span>
+        </h2>
+        <div class="page-actions">
+            <a href="{% url 'lista_cotizaciones' %}" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-arrow-left me-1"></i>Volver
+            </a>
+        </div>
+    </div>
+
+    <div class="module-nav mb-3">
+        <a href="{% url 'lista_cotizaciones' %}" class="module-nav-link active">
+            <i class="fa-solid fa-file-signature"></i><span>Cotizaciones</span>
+        </a>
+        <a href="{% url 'lista_facturas' %}" class="module-nav-link">
+            <i class="fa-solid fa-file-invoice-dollar"></i><span>Facturas</span>
+        </a>
+    </div>
+
+    <form method="POST" id="cotizacion-form">
+        {% csrf_token %}
+
+        {% if propuesta_form.non_field_errors or detalle_formset.non_form_errors %}
+        <div class="alert alert-danger">
+            {{ propuesta_form.non_field_errors }}
+            {{ detalle_formset.non_form_errors }}
+        </div>
+        {% endif %}
+
+        <div class="quote-form-layout mb-3">
+            <div class="d-flex flex-column gap-3">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <h5 class="mb-0 fw-bold text-primary">
+                            <i class="fa-solid fa-clipboard-list me-2"></i>Datos comerciales
+                        </h5>
+                        <span class="quote-inline-help">
+                            {% if modo == 'crear' %}Numero auto-generado al guardar{% else %}{{ propuesta.numero }}{% endif %}
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <div class="quote-field-grid">
+                            <div>
+                                <label class="form-label quote-section-label">{{ propuesta_form.tenant.label }}</label>
+                                {{ propuesta_form.tenant }}
+                                {% if propuesta_form.tenant.errors %}<div class="text-danger small mt-1 fw-bold">{{ propuesta_form.tenant.errors|striptags }}</div>{% endif %}
+                            </div>
+                            <div>
+                                <label class="form-label quote-section-label">{{ propuesta_form.empresa.label }}</label>
+                                {{ propuesta_form.empresa }}
+                                {% if propuesta_form.empresa.errors %}<div class="text-danger small mt-1 fw-bold">{{ propuesta_form.empresa.errors|striptags }}</div>{% endif %}
+                            </div>
+                            <div>
+                                <label class="form-label quote-section-label">{{ propuesta_form.fecha.label }}</label>
+                                {{ propuesta_form.fecha }}
+                                {% if propuesta_form.fecha.errors %}<div class="text-danger small mt-1 fw-bold">{{ propuesta_form.fecha.errors|striptags }}</div>{% endif %}
+                            </div>
+                            <div>
+                                <label class="form-label quote-section-label">{{ propuesta_form.numero.label }}</label>
+                                {{ propuesta_form.numero }}
+                                {% if propuesta_form.numero.errors %}<div class="text-danger small mt-1 fw-bold">{{ propuesta_form.numero.errors|striptags }}</div>{% endif %}
+                            </div>
+                            {% if propuesta_form.estado %}
+                            <div>
+                                <label class="form-label quote-section-label">{{ propuesta_form.estado.label }}</label>
+                                {{ propuesta_form.estado }}
+                                {% if propuesta_form.estado.errors %}<div class="text-danger small mt-1 fw-bold">{{ propuesta_form.estado.errors|striptags }}</div>{% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <h5 class="mb-0 fw-bold text-primary">
+                            <i class="fa-solid fa-list-check me-2"></i>Licencias cotizadas
+                        </h5>
+                        <button type="button" class="btn btn-sm btn-outline-success" id="btn-agregar-linea">
+                            <i class="fa-solid fa-plus me-1"></i>Agregar licencia
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        {{ detalle_formset.management_form }}
+                        <div class="table-responsive">
+                            <table class="table align-middle mb-0 quote-products-table" id="detalle-table">
+                                <thead class="table-light text-secondary small text-uppercase">
+                                    <tr>
+                                        <th>Producto / licencia</th>
+                                        <th style="width:80px;">Cant.</th>
+                                        <th style="width:120px;">Precio unit.</th>
+                                        <th style="width:130px;">Inicio</th>
+                                        <th style="width:130px;">Fin</th>
+                                        <th style="width:90px;">Desc %</th>
+                                        <th style="width:110px;">Desc monto</th>
+                                        <th style="width:120px;" class="text-end">Subtotal</th>
+                                        <th style="width:60px;" class="text-center">Quitar</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="detalle-tbody">
+                                    {% for form in detalle_formset %}
+                                    <tr class="detalle-row" data-detalle-row>
+                                        <td>{{ form.id }}{{ form.tipo_licencia }}{% if form.tipo_licencia.errors %}<div class="text-danger small mt-1">{{ form.tipo_licencia.errors|striptags }}</div>{% endif %}</td>
+                                        <td>{{ form.cantidad }}{% if form.cantidad.errors %}<div class="text-danger small mt-1">{{ form.cantidad.errors|striptags }}</div>{% endif %}</td>
+                                        <td>{{ form.precio_unitario }}{% if form.precio_unitario.errors %}<div class="text-danger small mt-1">{{ form.precio_unitario.errors|striptags }}</div>{% endif %}</td>
+                                        <td>{{ form.fecha_inicio_uso }}{% if form.fecha_inicio_uso.errors %}<div class="text-danger small mt-1">{{ form.fecha_inicio_uso.errors|striptags }}</div>{% endif %}</td>
+                                        <td>{{ form.fecha_fin_uso }}{% if form.fecha_fin_uso.errors %}<div class="text-danger small mt-1">{{ form.fecha_fin_uso.errors|striptags }}</div>{% endif %}</td>
+                                        <td>{{ form.descuento_porcentaje }}</td>
+                                        <td>{{ form.descuento_monto }}</td>
+                                        <td class="text-end fw-bold detalle-subtotal">$ 0.00</td>
+                                        <td class="text-center">{% if form.DELETE %}{{ form.DELETE }}{% endif %}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex flex-column gap-3">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0 fw-bold text-primary">
+                            <i class="fa-solid fa-percent me-2"></i>Condiciones y observaciones
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="quote-field-grid">
+                            <div>
+                                <label class="form-label quote-section-label">{{ propuesta_form.descuento_porcentaje.label }}</label>
+                                {{ propuesta_form.descuento_porcentaje }}
+                                {% if propuesta_form.descuento_porcentaje.help_text %}<div class="form-text small">{{ propuesta_form.descuento_porcentaje.help_text }}</div>{% endif %}
+                                {% if propuesta_form.descuento_porcentaje.errors %}<div class="text-danger small mt-1 fw-bold">{{ propuesta_form.descuento_porcentaje.errors|striptags }}</div>{% endif %}
+                            </div>
+                            <div>
+                                <label class="form-label quote-section-label">{{ propuesta_form.descuento_monto.label }}</label>
+                                {{ propuesta_form.descuento_monto }}
+                                {% if propuesta_form.descuento_monto.help_text %}<div class="form-text small">{{ propuesta_form.descuento_monto.help_text }}</div>{% endif %}
+                                {% if propuesta_form.descuento_monto.errors %}<div class="text-danger small mt-1 fw-bold">{{ propuesta_form.descuento_monto.errors|striptags }}</div>{% endif %}
+                            </div>
+                            <div class="quote-field-full">
+                                <label class="form-label quote-section-label">{{ propuesta_form.impuesto_porcentaje.label }}</label>
+                                {{ propuesta_form.impuesto_porcentaje }}
+                                {% if propuesta_form.impuesto_porcentaje.help_text %}<div class="form-text small">{{ propuesta_form.impuesto_porcentaje.help_text }}</div>{% endif %}
+                                {% if propuesta_form.impuesto_porcentaje.errors %}<div class="text-danger small mt-1 fw-bold">{{ propuesta_form.impuesto_porcentaje.errors|striptags }}</div>{% endif %}
+                            </div>
+                            <div class="quote-field-full">
+                                <label class="form-label quote-section-label">{{ propuesta_form.observaciones.label }}</label>
+                                {{ propuesta_form.observaciones }}
+                                {% if propuesta_form.observaciones.errors %}<div class="text-danger small mt-1 fw-bold">{{ propuesta_form.observaciones.errors|striptags }}</div>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0 fw-bold text-primary">
+                            <i class="fa-solid fa-calculator me-2"></i>Totales calculados
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="quote-total-panel">
+                            <div class="quote-total-row">
+                                <span class="text-muted">Subtotal bruto</span>
+                                <strong id="t-subtotal-bruto">$ 0.00</strong>
+                            </div>
+                            <div class="quote-total-row">
+                                <span class="text-muted">Descuento global</span>
+                                <strong class="text-danger" id="t-desc-global">- $ 0.00</strong>
+                            </div>
+                            <div class="quote-total-row">
+                                <span class="text-muted">Subtotal con descuento</span>
+                                <strong id="t-subtotal-desc">$ 0.00</strong>
+                            </div>
+                            <div class="quote-total-row">
+                                <span class="text-muted">Impuesto</span>
+                                <strong id="t-impuesto">$ 0.00</strong>
+                            </div>
+                            <div class="quote-total-row">
+                                <span class="fw-bold">TOTAL</span>
+                                <strong class="quote-total-final" id="t-total">$ 0.00</strong>
+                            </div>
+                        </div>
+                        <div class="quote-inline-help mt-2">Los montos se recalculan al modificar productos, descuentos o impuestos.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="quote-save-bar mb-4">
+            <a href="{% url 'lista_cotizaciones' %}" class="btn btn-outline-secondary px-4">Cancelar</a>
+            <button type="submit" class="btn btn-primary px-4">
+                <i class="fa-solid fa-floppy-disk me-2"></i>Guardar cotizacion
+            </button>
+        </div>
+    </form>
+
+</div>
+
+<script>
+(function(){
+    // ===== Opciones del select tipo_licencia (las clonamos de la primera fila si existe) =====
+    function clonarSelectTipo() {
+        const primero = document.querySelector('select[name$="-tipo_licencia"]');
+        if (!primero) return '';
+        return primero.innerHTML;
+    }
+    const tipoOptions = clonarSelectTipo();
+
+    // ===== Filtro Tenant -> Empresa =====
+    const tenantSelect  = document.querySelector('#id_tenant');
+    const empresaSelect = document.querySelector('#id_empresa');
+    async function cargarEmpresas(tenantId, mantener) {
+        if (!empresaSelect || !tenantId) {
+            if (empresaSelect) empresaSelect.innerHTML = '<option value="">--- Selecciona un tenant primero ---</option>';
+            return;
+        }
+        const selActual = mantener || empresaSelect.value;
+        try {
+            const r = await fetch(`/ajax/cargar-empresas/?tenant_id=${encodeURIComponent(tenantId)}`);
+            const d = await r.json();
+            const opts = ['<option value="">--- Selecciona empresa ---</option>'];
+            for (const e of d) {
+                const sel = (String(e.id) === String(selActual)) ? ' selected' : '';
+                opts.push(`<option value="${e.id}"${sel}>${e.nombre}</option>`);
+            }
+            empresaSelect.innerHTML = opts.join('');
+        } catch(e) { console.error(e); }
+    }
+    if (tenantSelect) tenantSelect.addEventListener('change', () => cargarEmpresas(tenantSelect.value, null));
+
+    // ===== Helpers de calculo =====
+    function num(el) { return parseFloat(el && el.value ? el.value : '0') || 0; }
+
+    async function autocompletarPrecio(row) {
+        const tipoSel = row.querySelector('select[name$="-tipo_licencia"]');
+        const precInp = row.querySelector('input[name$="-precio_unitario"]');
+        if (!tipoSel || !precInp || !tipoSel.value) return;
+        try {
+            const r = await fetch(`/facturacion/ajax/precio-licencia/?tipo_id=${encodeURIComponent(tipoSel.value)}`);
+            if (!r.ok) return;
+            const d = await r.json();
+            if (!parseFloat(precInp.value || '0')) precInp.value = d.precio_venta;
+        } catch(e) {}
+    }
+
+    function actualizarSubtotal(row) {
+        const cant = num(row.querySelector('input[name$="-cantidad"]'));
+        const prec = num(row.querySelector('input[name$="-precio_unitario"]'));
+        const dPct = num(row.querySelector('input[name$="-descuento_porcentaje"]'));
+        const dMon = num(row.querySelector('input[name$="-descuento_monto"]'));
+        const bruto = cant * prec;
+        const desc = (bruto * dPct / 100) + dMon;
+        const sub = Math.max(0, bruto - desc);
+        const cell = row.querySelector('.detalle-subtotal');
+        if (cell) cell.textContent = '$ ' + sub.toFixed(2);
+        actualizarTotal();
+    }
+
+    function actualizarTotal() {
+        let bruto = 0;
+        document.querySelectorAll('[data-detalle-row]').forEach(row => {
+            const del = row.querySelector('input[name$="-DELETE"]');
+            if (del && del.checked) return;
+            const cant = num(row.querySelector('input[name$="-cantidad"]'));
+            const prec = num(row.querySelector('input[name$="-precio_unitario"]'));
+            const dPct = num(row.querySelector('input[name$="-descuento_porcentaje"]'));
+            const dMon = num(row.querySelector('input[name$="-descuento_monto"]'));
+            const b = cant * prec;
+            const desc = (b * dPct / 100) + dMon;
+            bruto += Math.max(0, b - desc);
+        });
+        const descPct = num(document.querySelector('#id_descuento_porcentaje'));
+        const descMon = num(document.querySelector('#id_descuento_monto'));
+        const impPct  = num(document.querySelector('#id_impuesto_porcentaje'));
+        const descGlobal = (bruto * descPct / 100) + descMon;
+        const subDesc = Math.max(0, bruto - descGlobal);
+        const impuesto = subDesc * impPct / 100;
+        const total = subDesc + impuesto;
+        document.getElementById('t-subtotal-bruto').textContent = '$ ' + bruto.toFixed(2);
+        document.getElementById('t-desc-global').textContent = '- $ ' + descGlobal.toFixed(2);
+        document.getElementById('t-subtotal-desc').textContent = '$ ' + subDesc.toFixed(2);
+        document.getElementById('t-impuesto').textContent = '$ ' + impuesto.toFixed(2);
+        document.getElementById('t-total').textContent = '$ ' + total.toFixed(2);
+    }
+
+    // ===== Cablear eventos a una fila =====
+    function cablearFila(row) {
+        const tipoSel = row.querySelector('select[name$="-tipo_licencia"]');
+        const inputs = row.querySelectorAll('input[name$="-cantidad"], input[name$="-precio_unitario"], input[name$="-descuento_porcentaje"], input[name$="-descuento_monto"]');
+        if (tipoSel) {
+            tipoSel.addEventListener('change', async () => { await autocompletarPrecio(row); actualizarSubtotal(row); });
+        }
+        inputs.forEach(inp => inp.addEventListener('input', () => actualizarSubtotal(row)));
+        const del = row.querySelector('input[name$="-DELETE"]');
+        if (del) del.addEventListener('change', actualizarTotal);
+        actualizarSubtotal(row);
+    }
+
+    // ===== Agregar nueva fila dinamicamente =====
+    const btnAgregar = document.getElementById('btn-agregar-linea');
+    const tbody = document.getElementById('detalle-tbody');
+    const totalFormsInput = document.querySelector('input[name="detalles-TOTAL_FORMS"]');
+
+    if (btnAgregar && tbody && totalFormsInput) {
+        btnAgregar.addEventListener('click', () => {
+            const idx = parseInt(totalFormsInput.value, 10);
+            // Construir la fila HTML directamente (mas confiable que usar <template> dada la complejidad del select)
+            const html = `
+                <tr class="detalle-row" data-detalle-row>
+                    <td>
+                        <input type="hidden" name="detalles-${idx}-id" id="id_detalles-${idx}-id">
+                        <select name="detalles-${idx}-tipo_licencia" class="form-select" id="id_detalles-${idx}-tipo_licencia">${tipoOptions}</select>
+                    </td>
+                    <td><input type="number" name="detalles-${idx}-cantidad" class="form-control" min="1" value="1" id="id_detalles-${idx}-cantidad"></td>
+                    <td><input type="number" name="detalles-${idx}-precio_unitario" class="form-control" step="0.01" min="0" placeholder="Auto" id="id_detalles-${idx}-precio_unitario"></td>
+                    <td><input type="date" name="detalles-${idx}-fecha_inicio_uso" class="form-control" id="id_detalles-${idx}-fecha_inicio_uso"></td>
+                    <td><input type="date" name="detalles-${idx}-fecha_fin_uso" class="form-control" id="id_detalles-${idx}-fecha_fin_uso"></td>
+                    <td><input type="number" name="detalles-${idx}-descuento_porcentaje" class="form-control" step="0.01" min="0" max="100" value="0" id="id_detalles-${idx}-descuento_porcentaje"></td>
+                    <td><input type="number" name="detalles-${idx}-descuento_monto" class="form-control" step="0.01" min="0" value="0" id="id_detalles-${idx}-descuento_monto"></td>
+                    <td class="text-end fw-bold detalle-subtotal">$ 0.00</td>
+                    <td class="text-center"><input type="checkbox" name="detalles-${idx}-DELETE" id="id_detalles-${idx}-DELETE"></td>
+                </tr>
+            `;
+            tbody.insertAdjacentHTML('beforeend', html);
+            totalFormsInput.value = idx + 1;
+            const newRow = tbody.lastElementChild;
+            cablearFila(newRow);
+        });
+    }
+
+    // ===== Inicializar filas existentes =====
+    document.querySelectorAll('[data-detalle-row]').forEach(cablearFila);
+    ['#id_descuento_porcentaje', '#id_descuento_monto', '#id_impuesto_porcentaje'].forEach(s => {
+        const el = document.querySelector(s);
+        if (el) el.addEventListener('input', actualizarTotal);
+    });
+})();
+</script>
+{% endblock %}

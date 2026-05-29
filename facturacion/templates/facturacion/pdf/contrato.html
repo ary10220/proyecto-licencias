@@ -1,0 +1,114 @@
+{% extends 'facturacion/pdf/_base.html' %}
+
+{% block doc_body %}
+{% with numero="CONT-"|add:propuesta.numero fecha=propuesta.fecha %}{% endwith %}
+
+<h2 style="text-align: center; color: #df6e12; font-size: 16pt; margin: 20px 0 14px;">
+    CONTRATO DE PRESTACION DE SERVICIOS DE LICENCIAMIENTO
+</h2>
+
+<p style="text-align: justify; font-size: 10pt; margin-bottom: 12px;">
+    En la ciudad de Santa Cruz de la Sierra, Bolivia, a los {{ propuesta.fecha|date:"d \d\e F \d\e Y" }},
+    entre <strong>MAMAYA TECH LTDA.</strong>, en adelante <strong>EL PROVEEDOR</strong>,
+    y <strong>{{ propuesta.empresa.nombre }}</strong> perteneciente al grupo corporativo
+    <strong>{{ propuesta.tenant.nombre }}</strong>, en adelante <strong>EL CLIENTE</strong>,
+    se celebra el presente contrato bajo las siguientes clausulas:
+</p>
+
+<h4 style="margin-top: 16px; color: #df6e12; font-size: 10.5pt;">PRIMERA: OBJETO DEL CONTRATO</h4>
+<p style="font-size: 9.5pt;">
+    EL PROVEEDOR se compromete a entregar y EL CLIENTE a adquirir las licencias de software
+    detalladas a continuacion bajo las condiciones comerciales pactadas.
+</p>
+
+<table class="items-table">
+    <thead>
+        <tr>
+            <th style="width: 40%;">Producto / Licencia</th>
+            <th style="width: 12%;" class="text-center">Cantidad</th>
+            <th style="width: 23%;" class="text-center">Vigencia</th>
+            <th style="width: 12%;" class="text-right">P. Unit.</th>
+            <th style="width: 13%;" class="text-right">Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for d in propuesta.detalles.all %}
+        <tr>
+            <td>
+                <div class="item-name">{{ d.tipo_licencia.nombre }}</div>
+                {% if d.tipo_licencia.fabricante %}<div class="item-desc">{{ d.tipo_licencia.fabricante }}</div>{% endif %}
+            </td>
+            <td class="text-center">{{ d.cantidad }}</td>
+            <td class="text-center">
+                {% if d.fecha_inicio_uso %}<small>{{ d.fecha_inicio_uso|date:"d/m/Y" }}<br>al {{ d.fecha_fin_uso|date:"d/m/Y" }}</small>{% else %}A definir{% endif %}
+            </td>
+            <td class="text-right">Bs. {{ d.precio_unitario|floatformat:2 }}</td>
+            <td class="text-right"><strong>Bs. {{ d.subtotal_con_descuento|floatformat:2 }}</strong></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<table class="totales-table">
+    <tr>
+        <td class="label">Subtotal:</td>
+        <td class="value">Bs. {{ propuesta.subtotal_con_descuento|floatformat:2 }}</td>
+    </tr>
+    <tr>
+        <td class="label">Impuesto ({{ propuesta.impuesto_porcentaje }}%):</td>
+        <td class="value">Bs. {{ propuesta.impuesto_calculado|floatformat:2 }}</td>
+    </tr>
+    <tr class="total-row">
+        <td class="label" style="color:#fff;">VALOR TOTAL DEL CONTRATO</td>
+        <td class="value">Bs. {{ propuesta.total|floatformat:2 }}</td>
+    </tr>
+</table>
+
+<h4 style="margin-top: 14px; color: #df6e12; font-size: 10.5pt;">SEGUNDA: VIGENCIA</h4>
+<p style="font-size: 9.5pt;">
+    Las licencias seran activas durante el periodo especificado en cada linea del detalle.
+    Toda renovacion debera tramitarse antes del vencimiento.
+</p>
+
+<h4 style="margin-top: 10px; color: #df6e12; font-size: 10.5pt;">TERCERA: SOPORTE Y SERVICIO</h4>
+<p style="font-size: 9.5pt;">
+    EL PROVEEDOR garantiza soporte tecnico durante la vigencia del contrato a traves de
+    los canales oficiales (email, telefono, mesa de ayuda).
+</p>
+
+<h4 style="margin-top: 10px; color: #df6e12; font-size: 10.5pt;">CUARTA: CONDICIONES COMERCIALES</h4>
+<p style="font-size: 9.5pt;">
+    El pago se realizara segun la facturacion generada a partir de esta cotizacion.
+    Cualquier modificacion debera constar por escrito y ser firmada por ambas partes.
+</p>
+
+<h4 style="margin-top: 10px; color: #df6e12; font-size: 10.5pt;">QUINTA: CONFIDENCIALIDAD</h4>
+<p style="font-size: 9.5pt;">
+    Las partes acuerdan mantener absoluta confidencialidad sobre la informacion comercial,
+    tecnica y operativa que se intercambie en el marco del presente contrato.
+</p>
+
+<h4 style="margin-top: 10px; color: #df6e12; font-size: 10.5pt;">SEXTA: ACEPTACION</h4>
+<p style="font-size: 9.5pt;">
+    Las partes aceptan el presente contrato en todos sus terminos y condiciones,
+    firmando en señal de conformidad.
+</p>
+
+<table style="width: 100%; margin-top: 40px;">
+    <tr>
+        <td style="width: 45%; text-align: center; vertical-align: top; padding: 0 14px;">
+            <div style="border-top: 1.5px solid #252b36; padding-top: 8px;">
+                <small style="color:#888; font-size:7.5pt;">EL PROVEEDOR</small><br>
+                <strong>MAMAYA TECH LTDA.</strong>
+            </div>
+        </td>
+        <td style="width: 10%;"></td>
+        <td style="width: 45%; text-align: center; vertical-align: top; padding: 0 14px;">
+            <div style="border-top: 1.5px solid #252b36; padding-top: 8px;">
+                <small style="color:#888; font-size:7.5pt;">EL CLIENTE</small><br>
+                <strong>{{ propuesta.empresa.nombre }}</strong>
+            </div>
+        </td>
+    </tr>
+</table>
+{% endblock %}

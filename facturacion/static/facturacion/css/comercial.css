@@ -1,0 +1,239 @@
+.commercial-filter-bar > div {
+  flex: 1 1 190px;
+}
+
+.commercial-filter-bar .commercial-filter-wide {
+  flex-basis: 260px;
+}
+
+.commercial-doc-actions {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.commercial-doc-actions .btn {
+  min-width: 38px;
+}
+
+.commercial-doc-actions .btn-primary-soft {
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  color: #b45309;
+}
+
+.commercial-doc-actions .btn-primary-soft:hover {
+  background: #ffedd5;
+  color: #7c2d12;
+}
+
+.commercial-history-card .history-toolbar {
+  align-items: end;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(240px, 1fr) 180px;
+}
+
+.commercial-history-card .history-row.is-hidden {
+  display: none;
+}
+
+.commercial-history-card .history-desc {
+  color: #475467;
+  max-width: 760px;
+}
+
+.quote-form-layout {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.85fr);
+}
+
+.quote-field-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.quote-field-full {
+  grid-column: 1 / -1;
+}
+
+.quote-section-label {
+  color: #667085;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.quote-total-panel {
+  background: #f8fafc;
+  border: 1px solid #e4e7ec;
+  border-radius: 8px;
+  padding: 0.85rem;
+}
+
+.quote-total-row {
+  align-items: center;
+  border-bottom: 1px solid #e4e7ec;
+  display: flex;
+  justify-content: space-between;
+  padding: 0.38rem 0;
+}
+
+.quote-total-row:last-child {
+  border-bottom: 0;
+}
+
+.quote-total-final {
+  color: #0d6efd;
+  font-size: 1.35rem;
+  font-weight: 900;
+}
+
+.quote-products-table th,
+.quote-products-table td {
+  white-space: nowrap;
+}
+
+.quote-products-table td:first-child,
+.quote-products-table th:first-child {
+  min-width: 280px;
+  white-space: normal;
+}
+
+.quote-inline-help {
+  color: #667085;
+  font-size: 0.78rem;
+}
+
+.quote-save-bar {
+  align-items: center;
+  background: #fff;
+  border: 1px solid rgba(220, 197, 177, 0.45);
+  border-radius: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  padding: 0.75rem;
+}
+
+.gg-shell .table-responsive {
+  max-width: 100%;
+}
+
+.gg-shell .table-responsive table {
+  min-width: 0;
+}
+
+@media (max-width: 1199.98px) {
+  .quote-form-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .quote-field-grid,
+  .commercial-history-card .history-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .gg-shell .module-nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 0.25rem;
+    scrollbar-width: thin;
+  }
+
+  .gg-shell .module-nav-link {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .gg-shell .module-nav-link span {
+    display: inline;
+  }
+
+  .gg-shell .gg-title-row {
+    align-items: flex-start;
+  }
+
+  .gg-shell .gg-title-row .back-link {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .gg-shell .gg-actions-bar {
+    align-items: stretch;
+    justify-content: flex-start;
+  }
+
+  .gg-shell .gg-actions-bar > .btn,
+  .gg-shell .gg-actions-bar > a.btn {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .commercial-doc-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+
+  .commercial-doc-actions .btn,
+  .commercial-doc-actions a,
+  .commercial-doc-actions button {
+    justify-content: center;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .quote-save-bar {
+    align-items: stretch;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .quote-save-bar .btn,
+  .quote-save-bar a,
+  .quote-save-bar button,
+  .gg-shell form > .d-flex.justify-content-end .btn,
+  .gg-shell form > .d-flex.justify-content-end a,
+  .gg-shell form > .d-flex.justify-content-end button,
+  .gg-shell .card-footer.d-flex .btn,
+  .gg-shell .card-footer.d-flex a,
+  .gg-shell .card-footer.d-flex button {
+    margin: 0 !important;
+    width: 100%;
+  }
+
+  .gg-shell form > .d-flex.justify-content-end,
+  .gg-shell .card-footer.d-flex {
+    align-items: stretch !important;
+    display: grid !important;
+    grid-template-columns: 1fr;
+    justify-content: stretch !important;
+  }
+
+  .quote-products-table,
+  .gg-shell .gg-table-card table,
+  .gg-shell .table-responsive > table {
+    min-width: 760px;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .commercial-doc-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .quote-total-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+}

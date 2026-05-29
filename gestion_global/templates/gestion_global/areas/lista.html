@@ -62,7 +62,7 @@
         <div class="gg-actions">
         <a href="{% url 'gestion_global:editar_area' a.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar"><i class="fa-solid fa-pen"></i></a>
         {% if a.activo %}
-        <form method="post" action="{% url 'gestion_global:eliminar_area' a.id %}" class="d-inline" onsubmit="return confirm('Inactivar area: {{ a.nombre|escapejs }}?');">{% csrf_token %}<button type="submit" class="btn btn-sm btn-outline-warning py-0 px-2" title="Inactivar"><i class="fa-solid fa-ban"></i></button></form>
+        <form method="post" action="{% url 'gestion_global:eliminar_area' a.id %}" class="d-inline" data-confirm-title="Inactivar area" data-confirm="Se inactivara el area {{ a.nombre }}." data-confirm-icon="warning" data-confirm-ok="Inactivar">{% csrf_token %}<button type="submit" class="btn btn-sm btn-outline-warning py-0 px-2" title="Inactivar"><i class="fa-solid fa-ban"></i></button></form>
         {% else %}
         <form method="post" action="{% url 'gestion_global:reactivar_area' a.id %}" class="d-inline">{% csrf_token %}<button type="submit" class="btn btn-sm btn-outline-success py-0 px-2" title="Reactivar"><i class="fa-solid fa-rotate-left"></i></button></form>
         {% endif %}

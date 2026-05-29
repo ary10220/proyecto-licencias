@@ -42,6 +42,19 @@ from .empleados import (  # noqa: F401
     log_reactivar_empleado,
 )
 
+from .facturacion import (  # noqa: F401
+    log_propuesta_crear,
+    log_propuesta_editar,
+    log_propuesta_aprobar,
+    log_propuesta_rechazar,
+    log_propuesta_eliminar,
+    log_factura_crear,
+    log_factura_editar,
+    log_factura_anular,
+    log_factura_eliminar,
+    log_factura_generar_stock,
+)
+
 from .configuracion import (  # noqa: F401
     log_area_crear,
     log_division_crear,

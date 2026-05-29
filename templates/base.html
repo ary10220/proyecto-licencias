@@ -957,6 +957,9 @@
                 <a href="{% url 'dashboard_general' %}" class="{% if request.resolver_match.url_name == 'dashboard_general' or request.resolver_match.url_name == 'dashboard_tenant' %}active{% endif %}">
                     <i class="fa-solid fa-chart-pie"></i> <span>Dashboard</span>
                 </a>
+                <a href="{% url 'gestionar_licencias' %}" class="{% if request.resolver_match.url_name == 'gestionar_licencias' or request.resolver_match.url_name == 'gestionar_licencias_tenant' or request.resolver_match.url_name == 'catalogo_licencias' or request.resolver_match.url_name == 'asignaciones_licencias' or request.resolver_match.url_name == 'editar_licencia' %}active{% endif %}">
+                    <i class="fa-solid fa-key"></i> <span>Licencias</span>
+                </a>
                 {% endif %}
  
                 {% if perms.empleados.view_empleado %}
@@ -972,10 +975,10 @@
                 </a>
                 {% endif %}
 
-                {% if perms.licencias.view_proveedor or perms.licencias.view_tipolicencia %}
-                <a href="{% url 'catalogo_licencias' %}"
-                   class="{% if request.resolver_match.url_name == 'catalogo_licencias' %}active{% endif %}">
-                    <i class="fa-solid fa-tags"></i> <span>Catálogo de Licencias</span>
+                {% if perms.facturacion.view_propuestalicencia or perms.facturacion.view_factura %}
+                <a href="{% if perms.facturacion.view_propuestalicencia %}{% url 'lista_cotizaciones' %}{% else %}{% url 'lista_facturas' %}{% endif %}"
+                   class="{% if request.path|slice:':13' == '/facturacion/' %}active{% endif %}">
+                    <i class="fa-solid fa-file-invoice-dollar"></i> <span>Facturacion</span>
                 </a>
                 {% endif %}
 
@@ -1105,6 +1108,36 @@
                     },
                 });
             });
+        })();
+    </script>
+
+    <script>
+        // Confirmaciones de acciones criticas con el mismo lenguaje visual del sistema.
+        (() => {
+            document.addEventListener('submit', (event) => {
+                const form = event.target;
+                if (!(form instanceof HTMLFormElement)) return;
+                const message = form.getAttribute('data-confirm');
+                if (!message || form.getAttribute('data-confirmed') === '1') return;
+                if (typeof Swal === 'undefined') return;
+
+                event.preventDefault();
+                Swal.fire({
+                    title: form.getAttribute('data-confirm-title') || 'Confirmar accion',
+                    text: message,
+                    icon: form.getAttribute('data-confirm-icon') || 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#df6e12',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: form.getAttribute('data-confirm-ok') || 'Confirmar',
+                    cancelButtonText: form.getAttribute('data-confirm-cancel') || 'Cancelar',
+                    reverseButtons: true,
+                }).then((result) => {
+                    if (!result.isConfirmed) return;
+                    form.setAttribute('data-confirmed', '1');
+                    form.submit();
+                });
+            }, true);
         })();
     </script>
  
@@ -1277,6 +1310,7 @@
             }, true);
 
             document.addEventListener('submit', (event) => {
+                if (event.defaultPrevented) return;
                 const form = event.target;
                 if (!(form instanceof HTMLFormElement)) return;
                 if (form.target === '_blank') return;

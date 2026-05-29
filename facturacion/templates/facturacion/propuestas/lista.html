@@ -1,0 +1,177 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Cotizaciones{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'gestion_global/css/common.css' %}">
+<link rel="stylesheet" href="{% static 'facturacion/css/comercial.css' %}">
+
+<div class="gg-shell">
+    <div class="gg-header-block">
+        <div class="gg-title-row">
+            <h2 class="page-title">
+                <span class="page-title-icon"><i class="fa-solid fa-file-signature"></i></span>
+                Cotizaciones
+            </h2>
+        </div>
+
+        <div class="module-nav">
+            <a href="{% url 'lista_cotizaciones' %}" class="module-nav-link {% if facturacion_active == 'propuestas' %}active{% endif %}">
+                <i class="fa-solid fa-file-signature"></i><span>Cotizaciones</span>
+            </a>
+            <a href="{% url 'lista_facturas' %}" class="module-nav-link {% if facturacion_active == 'facturas' %}active{% endif %}">
+                <i class="fa-solid fa-file-invoice-dollar"></i><span>Facturas</span>
+            </a>
+        </div>
+
+        <div class="gg-actions-bar">
+            <div class="left">{{ propuestas|length }} resultados</div>
+            {% if puede_crear %}
+            <a href="{% url 'crear_cotizacion' %}" class="btn btn-primary">
+                <i class="fa-solid fa-plus me-1"></i>Nueva cotizacion
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <form method="get" class="gg-filter-card gg-filter-bar commercial-filter-bar" data-gg-autofilter data-commercial-filter-form>
+        <div>
+            <label class="form-label small fw-bold text-secondary">TENANT</label>
+            <select name="tenant" class="form-select">
+                <option value="">Todos</option>
+                {% for tenant in tenants %}
+                {% with tenant_id=tenant.id|stringformat:"s" %}
+                <option value="{{ tenant.id }}" {% if tenant_filtro == tenant_id %}selected{% endif %}>{{ tenant.nombre }}</option>
+                {% endwith %}
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="form-label small fw-bold text-secondary">EMPRESA</label>
+            <select name="empresa" class="form-select">
+                <option value="">Todas</option>
+                {% for empresa in empresas %}
+                {% with empresa_id=empresa.id|stringformat:"s" %}
+                <option value="{{ empresa.id }}" data-tenant="{{ empresa.tenant_id }}" {% if empresa_filtro == empresa_id %}selected{% endif %}>{{ empresa.nombre }}</option>
+                {% endwith %}
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="form-label small fw-bold text-secondary">LICENCIA</label>
+            <select name="tipo" class="form-select">
+                <option value="">Todas</option>
+                {% for tipo in tipos_licencia %}
+                {% with tipo_id=tipo.id|stringformat:"s" %}
+                <option value="{{ tipo.id }}" {% if tipo_filtro == tipo_id %}selected{% endif %}>{{ tipo.nombre }}</option>
+                {% endwith %}
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="form-label small fw-bold text-secondary">ESTADO</label>
+            <select name="estado" class="form-select">
+                <option value="todos" {% if estado == 'todos' %}selected{% endif %}>Todos</option>
+                <option value="BORRADOR" {% if estado == 'BORRADOR' %}selected{% endif %}>Borrador</option>
+                <option value="PENDIENTE" {% if estado == 'PENDIENTE' %}selected{% endif %}>Pendiente</option>
+                <option value="APROBADA" {% if estado == 'APROBADA' %}selected{% endif %}>Aprobada</option>
+                <option value="RECHAZADA" {% if estado == 'RECHAZADA' %}selected{% endif %}>Rechazada</option>
+                <option value="FACTURADA" {% if estado == 'FACTURADA' %}selected{% endif %}>Facturada</option>
+                <option value="ANULADA" {% if estado == 'ANULADA' %}selected{% endif %}>Anulada</option>
+            </select>
+        </div>
+        <div>
+            <label class="form-label small fw-bold text-secondary">DESDE</label>
+            <input type="date" name="fecha_desde" value="{{ fecha_desde }}" class="form-control">
+        </div>
+        <div>
+            <label class="form-label small fw-bold text-secondary">HASTA</label>
+            <input type="date" name="fecha_hasta" value="{{ fecha_hasta }}" class="form-control">
+        </div>
+        <button type="submit" class="btn btn-outline-secondary gg-filter-submit">
+            <i class="fa-solid fa-filter me-1"></i>Filtrar
+        </button>
+    </form>
+
+    <div class="card gg-table-card">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Numero</th>
+                        <th>Empresa</th>
+                        <th>Tenant</th>
+                        <th>Fecha</th>
+                        <th>Estado</th>
+                        <th class="text-end">Total</th>
+                        <th class="text-end" style="width:240px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in propuestas %}
+                    <tr>
+                        <td class="fw-bold text-primary">{{ p.numero }}</td>
+                        <td>{{ p.empresa.nombre }}</td>
+                        <td><span class="badge bg-secondary gg-status-badge">{{ p.tenant.nombre }}</span></td>
+                        <td><small>{{ p.fecha|date:"d/m/Y" }}</small></td>
+                        <td>
+                            {% if p.estado == 'BORRADOR' %}<span class="badge bg-secondary gg-status-badge">Borrador</span>
+                            {% elif p.estado == 'PENDIENTE' %}<span class="badge bg-warning text-dark gg-status-badge">Pendiente</span>
+                            {% elif p.estado == 'APROBADA' %}<span class="badge bg-success gg-status-badge">Aprobada</span>
+                            {% elif p.estado == 'RECHAZADA' %}<span class="badge bg-danger gg-status-badge">Rechazada</span>
+                            {% elif p.estado == 'FACTURADA' %}<span class="badge bg-info text-dark gg-status-badge">Facturada</span>
+                            {% elif p.estado == 'ANULADA' %}<span class="badge bg-danger gg-status-badge">Anulada</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end fw-bold">$ {{ p.total|floatformat:2 }}</td>
+                        <td>
+                            <div class="gg-actions">
+                                <a href="{% url 'detalle_cotizacion' p.id %}" class="btn btn-outline-secondary" title="Ver detalle">
+                                    <i class="fa-solid fa-eye"></i>
+                                </a>
+                                {% if p.estado == 'BORRADOR' or p.estado == 'PENDIENTE' %}
+                                <a href="{% url 'editar_cotizacion' p.id %}" class="btn btn-outline-info" title="Editar">
+                                    <i class="fa-solid fa-pen"></i>
+                                </a>
+                                {% endif %}
+                                <a href="#" data-pdf-url="{% url 'pdf_cotizacion' p.id %}" data-pdf-title="Cotizacion {{ p.numero }}" class="btn btn-outline-info" title="Vista previa PDF"><i class="fa-solid fa-file-pdf"></i></a>
+                                {% if p.estado == 'PENDIENTE' %}
+                                <form method="post" action="{% url 'aprobar_cotizacion' p.id %}" data-confirm-title="Aprobar cotizacion" data-confirm="Aprobar la cotizacion {{ p.numero }}?" data-confirm-icon="question" data-confirm-ok="Aprobar">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-success" title="Aprobar"><i class="fa-solid fa-check"></i></button>
+                                </form>
+                                <form method="post" action="{% url 'rechazar_cotizacion' p.id %}" data-confirm-title="Rechazar cotizacion" data-confirm="Rechazar la cotizacion {{ p.numero }}?" data-confirm-icon="warning" data-confirm-ok="Rechazar">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-warning" title="Rechazar"><i class="fa-solid fa-ban"></i></button>
+                                </form>
+                                {% endif %}
+                                {% if p.estado == 'APROBADA' %}
+                                <a href="{% url 'emitir_factura_desde_cotizacion' p.id %}" class="btn btn-outline-success" title="Emitir factura">
+                                    <i class="fa-solid fa-file-invoice-dollar"></i>
+                                </a>
+                                <a href="#" data-pdf-url="{% url 'pdf_contrato' p.id %}" data-pdf-title="Contrato {{ p.numero }}" class="btn btn-outline-info" title="Contrato PDF">
+                                    <i class="fa-solid fa-file-contract"></i>
+                                </a>
+                                {% endif %}
+                                {% if p.estado == 'BORRADOR' or p.estado == 'PENDIENTE' or p.estado == 'RECHAZADA' %}
+                                <form method="post" action="{% url 'eliminar_cotizacion' p.id %}" data-confirm-title="Eliminar cotizacion" data-confirm="Eliminar la cotizacion {{ p.numero }}? Esta accion no se puede deshacer." data-confirm-icon="warning" data-confirm-ok="Eliminar">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-danger" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center py-4 text-muted">No hay cotizaciones registradas.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% include 'facturacion/_partials/modal_pdf.html' %}
+<script src="{% static 'facturacion/js/comercial_filters.js' %}"></script>
+<script src="{% static 'gestion_global/js/filters.js' %}"></script>
+{% endblock %}

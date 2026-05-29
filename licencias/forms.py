@@ -1,24 +1,20 @@
 """
 Formularios del modulo licencias/.
 
-Despues de la migracion a `gestion_global`, este archivo solo contiene:
-  - EmpleadoForm        (sera migrado a `empleados/` cuando se haga CU09)
-  - ProveedorForm       (catalogo de licenciamiento, no migra)
-  - TipoLicenciaForm    (catalogo de licenciamiento, no migra)
+Despues de la migracion a `gestion_global`, este archivo contiene:
+  - EmpleadoForm        (operativo de empleados, vive aca por compat)
+  - ProveedorForm       (catalogo de licenciamiento)
+  - TipoLicenciaForm    (catalogo de licenciamiento, ahora con precios centralizados)
   - LicenciaForm        (operativo de licencias)
 
-Los formularios de Tenant, Empresa, Division, Area, Unidad viven ahora
-en `gestion_global/interfaces/forms/`.
+Los formularios de Tenant, Empresa, Division, Area, Unidad viven en
+`gestion_global/interfaces/forms/`.
 """
 
 from django import forms
-from django.forms import inlineformset_factory
+from django.db.models import Q
 from empleados.models import Empleado
-<<<<<<< HEAD
-from .models import Proveedor, TipoLicencia, Licencia, PropuestaLicencia, DetallePropuesta
-=======
-from .models import Proveedor, TipoLicencia, Licencia, Factura, DetalleFactura
->>>>>>> main
+from .models import Proveedor, TipoLicencia, Licencia
 
 
 class EmpleadoForm(forms.ModelForm):
@@ -52,11 +48,23 @@ class EmpleadoForm(forms.ModelForm):
 class ProveedorForm(forms.ModelForm):
     class Meta:
         model = Proveedor
-        fields = ['nombre', 'contacto', 'telefono']
+        fields = [
+            'nombre', 'razon_social', 'nit',
+            'contacto', 'email', 'telefono',
+            'direccion', 'sitio_web',
+            'observaciones', 'activo',
+        ]
         widgets = {
-            'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Proveedor Inc.'}),
-            'contacto': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Ejecutivo de Cuenta (email)'}),
-            'telefono': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: +591 70000000'}),
+            'nombre':       forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre comercial'}),
+            'razon_social': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Razon social legal'}),
+            'nit':          forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'NIT / RUC'}),
+            'contacto':     forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Persona de contacto'}),
+            'email':        forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'comercial@proveedor.com'}),
+            'telefono':     forms.TextInput(attrs={'class': 'form-control', 'placeholder': '+591 70000000'}),
+            'direccion':    forms.TextInput(attrs={'class': 'form-control'}),
+            'sitio_web':    forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://...'}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'activo':       forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
     def clean_nombre(self):
@@ -72,10 +80,28 @@ class ProveedorForm(forms.ModelForm):
 class TipoLicenciaForm(forms.ModelForm):
     class Meta:
         model = TipoLicencia
-        fields = ['nombre', 'fabricante']
+        fields = [
+            'codigo', 'nombre', 'fabricante', 'descripcion',
+            'precio_compra', 'precio_venta', 'moneda',
+            'proveedor_default', 'stock_minimo', 'duracion_dias',
+            'observaciones', 'activo',
+        ]
         widgets = {
+            'codigo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'M365-BB'}),
             'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Microsoft 365 E3'}),
             'fabricante': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Microsoft'}),
+            'descripcion': forms.Textarea(attrs={
+                'class': 'form-control', 'rows': 2,
+                'placeholder': 'Descripcion comercial visible en cotizaciones'
+            }),
+            'precio_compra': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
+            'precio_venta':  forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
+            'moneda': forms.Select(attrs={'class': 'form-select'}),
+            'proveedor_default': forms.Select(attrs={'class': 'form-select'}),
+            'stock_minimo': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
+            'duracion_dias': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'activo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
     def clean(self):
@@ -94,145 +120,65 @@ class TipoLicenciaForm(forms.ModelForm):
 class LicenciaForm(forms.ModelForm):
     class Meta:
         model = Licencia
-        fields = ['tenant', 'empresa', 'tipo', 'proveedor', 'fecha_compra', 'fecha_activacion', 'fecha_vencimiento']
+        fields = [
+            'tenant', 'empresa', 'tipo', 'proveedor',
+            'estado_operativo', 'fecha_compra', 'fecha_inicio',
+            'fecha_activacion', 'fecha_vencimiento', 'observaciones',
+        ]
         widgets = {
             'tenant': forms.Select(attrs={'class': 'form-select select2-busqueda'}),
             'empresa': forms.Select(attrs={'class': 'form-select select2-busqueda'}),
             'tipo': forms.Select(attrs={'class': 'form-select select2-busqueda'}),
             'proveedor': forms.Select(attrs={'class': 'form-select select2-busqueda'}),
+            'estado_operativo': forms.Select(attrs={'class': 'form-select'}),
             'fecha_compra': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'fecha_inicio': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'fecha_activacion': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'fecha_vencimiento': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-        }
-
-<<<<<<< HEAD
-
-class PropuestaForm(forms.ModelForm):
-    class Meta:
-        model = PropuestaLicencia
-        # No incluimos el total aquí porque se calcula solo
-        fields = [
-            'empresa',
-            'tenant',
-            'numero',
-            'fecha',
-            #'estado',
-            'observaciones'
-        ]
-        
-        widgets = {
-            'empresa': forms.Select(attrs={'class': 'form-select select2-busqueda'}),
-            'tenant': forms.Select(attrs={'class': 'form-select'}),
-            'numero': forms.TextInput(attrs={'class': 'form-control'}),
-            'fecha': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-control', 'type': 'date'}),
-            'estado': forms.Select(attrs={'class': 'form-select'}),
-            'observaciones': forms.Textarea(
-                attrs={'class': 'form-control', 'rows': 3}
-            ),
-        }
-
-# Formulario exclusivo para EDITAR (Aquí sí permitimos cambiar el estado)
-class PropuestaEditForm(forms.ModelForm):
-    class Meta:
-        model = PropuestaLicencia
-        fields = ['empresa', 'tenant', 'numero', 'fecha', 'estado', 'observaciones']
-        widgets = {
-            'empresa': forms.Select(attrs={'class': 'form-select select2-busqueda'}),
-            'tenant': forms.Select(attrs={'class': 'form-select'}),
-            'numero': forms.TextInput(attrs={'class': 'form-control'}),
-            'fecha': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-control', 'type': 'date'}),
-            'estado': forms.Select(attrs={'class': 'form-select fw-bold'}),
             'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['tipo'].queryset = TipoLicencia.objects.filter(activo=True).order_by('fabricante', 'nombre')
+        self.fields['proveedor'].queryset = Proveedor.objects.filter(activo=True).order_by('nombre')
+        self.fields['estado_operativo'].choices = Licencia.ESTADOS_OPERATIVOS
 
-class DetallePropuestaForm(forms.ModelForm):
-    class Meta:
-        model = DetallePropuesta
-        # Ojo: No incluimos el campo 'propuesta' aquí.
-        # Ese campo lo llenaremos "por debajo de la mesa" en la vista (views.py)
-        fields = [
-            'tipo_licencia',
-            'cantidad',
-            'precio_unitario'
-        ]
-        
-        widgets = {
-            'tipo_licencia': forms.Select(attrs={'class': 'form-select select2-busqueda'}),
-            'cantidad': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
-=======
-class FacturaForm(forms.ModelForm):
+        tenant_qs = self.fields['tenant'].queryset
+        if self.instance.pk and self.instance.tenant_id:
+            tenant_qs = tenant_qs.filter(Q(activo=True) | Q(pk=self.instance.tenant_id))
+        else:
+            tenant_qs = tenant_qs.filter(activo=True)
+        self.fields['tenant'].queryset = tenant_qs.order_by('nombre')
 
-    class Meta:
-        model = Factura
+        tenant_id = None
+        if self.is_bound:
+            tenant_id = self.data.get(self.add_prefix('tenant')) or self.data.get('tenant')
+        elif self.instance.pk and self.instance.tenant_id:
+            tenant_id = self.instance.tenant_id
 
-        fields = [
-            'proveedor',
-            'tenant',
-            'numero',
-            'fecha',
-            'observaciones'
-        ]
+        if tenant_id:
+            self.fields['empresa'].queryset = self.fields['empresa'].queryset.filter(
+                tenant_id=tenant_id,
+                activo=True,
+            ).order_by('nombre')
+        else:
+            self.fields['empresa'].queryset = self.fields['empresa'].queryset.none()
 
-        widgets = {
-            'proveedor': forms.Select(attrs={'class': 'form-select'}),
-            'tenant': forms.Select(attrs={'class': 'form-select'}),
-            'numero': forms.TextInput(attrs={'class': 'form-control'}),
-            'fecha': forms.DateInput(
-                attrs={
-                    'class': 'form-control',
-                    'type': 'date'
-                }
-            ),
-            'observaciones': forms.Textarea(
-                attrs={'class': 'form-control'}
-            ),
-        }
-
-
-class DetalleFacturaForm(forms.ModelForm):
-
-    class Meta:
-        model = DetalleFactura
-
-        fields = [
-            'tipo_licencia',
-            'empresa',
-            'cantidad',
-            'precio_unitario',
-            'fecha_vencimiento'
-        ]
-
-        widgets = {
-            'tipo_licencia': forms.Select(attrs={'class': 'form-select'}),
-            'empresa': forms.Select(attrs={'class': 'form-select'}),
-            'cantidad': forms.NumberInput(attrs={'class': 'form-control'}),
->>>>>>> main
-            'precio_unitario': forms.NumberInput(attrs={ 
-                'class': 'form-control',
-                'placeholder': '0.00',
-                'step': '0.01',
-                'min': '0'
-            }),
-<<<<<<< HEAD
-        }
-
-# ==========================================
-# FORMSET: Fábrica de múltiples detalles
-# ==========================================
-DetallePropuestaFormSet = inlineformset_factory(
-    PropuestaLicencia,      # El modelo Padre (Maestro)
-    DetallePropuesta,       # El modelo Hijo (Detalle)
-    form=DetallePropuestaForm, # El molde que usará para cada fila
-    extra=1,                # Cuántas filas vacías mostrar por defecto al entrar
-    can_delete=True         # Permite que el usuario elimine una fila si se equivoca
-)
-=======
-            'fecha_vencimiento': forms.DateInput(
-                attrs={
-                    'class': 'form-control',
-                    'type': 'date'
-                }
-            ),
-        }
->>>>>>> main
+    def clean(self):
+        cleaned_data = super().clean()
+        tenant = cleaned_data.get('tenant')
+        empresa = cleaned_data.get('empresa')
+        fecha_inicio = cleaned_data.get('fecha_inicio')
+        fecha_vencimiento = cleaned_data.get('fecha_vencimiento')
+        estado_operativo = cleaned_data.get('estado_operativo')
+        if tenant and empresa and empresa.tenant_id != tenant.id:
+            self.add_error('empresa', 'La empresa seleccionada no pertenece al tenant indicado.')
+        if fecha_inicio and fecha_vencimiento and fecha_vencimiento < fecha_inicio:
+            self.add_error('fecha_vencimiento', 'La fecha de vencimiento no puede ser anterior al inicio.')
+        if self.instance.pk and self.instance.asignaciones.filter(activo=True).exists():
+            if estado_operativo in {Licencia.ESTADO_DISPONIBLE, Licencia.ESTADO_REVOCADA}:
+                self.add_error('estado_operativo', 'Libera la asignacion activa antes de marcarla disponible o revocada.')
+        elif estado_operativo == Licencia.ESTADO_ASIGNADA:
+            self.add_error('estado_operativo', 'Para marcar como asignada debes usar el flujo de asignacion.')
+        return cleaned_data
