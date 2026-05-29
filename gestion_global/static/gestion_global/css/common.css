@@ -1,9 +1,13 @@
 .gg-filter-bar {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) 180px auto auto;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 0.75rem;
   align-items: end;
 }
+
+/* Si el form tiene boton submit visible, lo ponemos al final con ancho auto */
+.gg-filter-bar .gg-filter-submit { grid-column: -2; }
+.gg-filter-bar .btn-outline-secondary { grid-column: -1; }
 
 .gg-filter-card {
   background: #fff;
