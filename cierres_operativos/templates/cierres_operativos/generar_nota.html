@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Cierre Operativo: Confirmar Alquiler</h2>
+    <p class="text-muted">Estás por confirmar la propuesta comercial <strong>{{ propuesta.codigo_propuesta }}</strong>.</p>
+    
+    <div class="card my-3">
+        <div class="card-body">
+            <h5>Resumen de la Propuesta</h5>
+            <p><strong>Empresa:</strong> {{ propuesta.empresa.nombre }}</p>
+            <p><strong>Monto Total de Licencias:</strong> ${{ propuesta.monto_total }}</p>
+        </div>
+    </div>
+
+    <form method="post" class="needs-validation" novalidate>
+        {% csrf_token %}
+        
+        <div class="mb-3">
+            {{ form.nro_nota.label_tag }}
+            {{ form.nro_nota }}
+        </div>
+        
+        <div class="mb-3">
+            {{ form.fecha_vencimiento_pago.label_tag }}
+            {{ form.fecha_vencimiento_pago }}
+        </div>
+
+        <div class="mb-3">
+            {{ form.empleados_notificar.label_tag }}
+            {{ form.empleados_notificar }}
+            <small class="form-text text-muted">{{ form.empleados_notificar.help_text }}</small>
+        </div>
+
+        <button type="submit" class="btn btn-success">Confirmar Cierre y Activar Alertas</button>
+        <a href="#" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}
