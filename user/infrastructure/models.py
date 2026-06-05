@@ -41,6 +41,11 @@ class PerfilUsuario(models.Model):
     cargo = models.ForeignKey(Cargo, on_delete=models.SET_NULL, null=True, blank=True)
     foto = models.FileField(upload_to='perfiles/', blank=True, null=True)
     must_change_password = models.BooleanField(default=False)
+    recibir_alertas_vencimiento = models.BooleanField(
+        default=False,
+        verbose_name='Recibir alertas de vencimiento de licencias',
+        help_text='Si esta marcado, este usuario recibira emails cuando haya licencias proximas a vencer.',
+    )
 
     class Meta:
         verbose_name = "Perfil de usuario"

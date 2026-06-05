@@ -1,0 +1,683 @@
+╔═══════════════════════════════════════════════════════════════════════════╗
+║  MAPA DE FUNCIONES POR CASO DE USO — CICLO 1, 2 y 4                          ║
+║  Casos: CU01–CU12 + CU18–CU23 (18 casos)                                    ║
+║  Proyecto: Gestión de Licencias (Django)                                     ║
+║  Propósito: insumo para diagramas de secuencia UML                           ║
+║  Generado: 2026-05-29  —  Archivo de TRABAJO (no documentación oficial)      ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+NOTAS GENERALES (leer antes de dibujar):
+  • Las URLs NO están todas en config/urls.py. Cada app modular tiene su urls.py,
+    montado desde config/urls.py:
+        - user/interfaces/urls.py       → montado como 'user/'         (config/urls.py:109)   → CU03, CU04, CU05
+        - bitacora/interfaces/urls.py   → montado como 'bitacora/'      (config/urls.py:108)   → CU06
+        - gestion_global/interfaces/urls.py → 'gestion-global/' ns      (config/urls.py:105)   → CU07,08,10,11,12
+        - facturacion/interfaces/urls.py → 'facturacion/'               (config/urls.py:100)   → CU19,20,21,22
+        - config/urls.py directo        → CU01, CU02 (login/logout), CU09 (empleados), CU18 (proveedor)
+  • Arquitectura por capas (Clean Architecture):
+        URL → Vista → Form / Use Case (application/use_cases/) → Repositorio (infrastructure/repositories/) / ORM
+            → Bitácora (bitacora/actions/* → log_event) → Template
+  • Todos los nombres de funciones/clases son EXACTOS del código fuente.
+  • Lo NO implementado se declara explícitamente (ver CU05 y CU23).
+  • Este archivo NO incluye CU13–CU17 (están en docs/mapa_secuencias_cu13_cu17.txt).
+
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║  CICLO 1 — AUTENTICACIÓN Y SEGURIDAD (CU01–CU06)                             ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+═══════════════════════════════════════════════════════════
+CU01 — INICIAR SESIÓN
+═══════════════════════════════════════════════════════════
+
+Actor: Usuario del sistema
+Resumen: Autenticación con credenciales válidas (Django nativo + django-axes + bitácora por signal).
+
+FLUJO PRINCIPAL
+──────────────────────────────────
+1. URL: GET/POST /accounts/login/
+      (archivo: config/urls.py, línea 25  → name='login')
+2. Vista: auth_views.LoginView.as_view()   ← Django NATIVO (NO hay vista custom)
+      (archivo: config/urls.py, línea 25)
+3. Form: AuthenticationForm  (Django nativo)
+4. Seguridad — django-axes (bloqueo por intentos fallidos):
+      - Backend AxesStandaloneBackend + AxesMiddleware (config/settings.py)
+      - Al bloquear, signal user_locked_out → preparar_desbloqueo(sender, request, username, **kwargs)
+        (archivo: licencias/signals.py, línea 23)
+        marca flags de sesión 'usuario_bloqueado_nombre' / 'enviar_token_pendiente' (flujo de desbloqueo por token)
+5. Bitácora (registro de login): signal user_logged_in → login(sender, request, user, **kwargs)
+      (archivo: bitacora/interfaces/signals.py, línea 27)
+      → log_event(...)  (archivo: bitacora/application/use_cases/log_event.py, línea 10)
+      → get_client_ip(request)  (mismo archivo, línea 36)
+      → modelo Bitacora.objects.create(...)  (archivo: bitacora/infrastructure/models.py, línea 7)
+6. Template: registration/login.html  (Django nativo)
+7. Response: redirect al dashboard / next
+
+NOTA: el cambio de contraseña forzado usa ForcedPasswordChangeView (config/urls.py:44) cuando
+      PerfilUsuario.must_change_password = True (flujo aparte, post-login).
+
+
+═══════════════════════════════════════════════════════════
+CU02 — CERRAR SESIÓN
+═══════════════════════════════════════════════════════════
+
+Actor: Usuario autenticado
+Resumen: cierre de sesión simple (Django nativo) + registro en bitácora por signal.
+
+FLUJO PRINCIPAL
+──────────────────────────────────
+1. URL: POST /logout/
+      (archivo: config/urls.py, línea 26  → name='logout')
+2. Vista: auth_views.LogoutView.as_view()   ← Django NATIVO
+      (archivo: config/urls.py, línea 26)
+3. Bitácora: signal user_logged_out → logout(sender, request, user, **kwargs)
+      (archivo: bitacora/interfaces/signals.py, línea 37)  → log_event(accion=LOGOUT, modulo=Autenticacion)
+4. Response: redirect a login
+
+
+═══════════════════════════════════════════════════════════
+CU03 — GESTIONAR USUARIO (CRUD)
+═══════════════════════════════════════════════════════════
+
+Actor: Administrador
+Base: user/interfaces/views/usuarios.py ; URLs: user/interfaces/urls.py (montado en 'user/')
+Use cases: user/application/use_cases/usuarios.py ; Repo: user/infrastructure/repositories/usuarios.py
+Modelo: User (Django) + PerfilUsuario (user/infrastructure/models.py, línea 31)
+Bitácora: log_usuario_* (bitacora/actions/usuarios.py)
+
+FLUJO — LISTAR USUARIOS
+──────────────────────────────────
+1. URL: GET /user/                      (archivo: user/interfaces/urls.py, línea 6  → name='lista_usuarios')
+2. Vista: lista_usuarios(request)       (archivo: user/interfaces/views/usuarios.py, línea 16)
+      - exigir permiso 'auth.view_user'
+3. Use Case: uc_listar_usuarios()       (archivo: user/application/use_cases/usuarios.py, línea 33)
+4. Repo/ORM: repo.list_usuarios()       (archivo: user/infrastructure/repositories/usuarios.py)
+5. Template: user/usuarios/lista.html
+6. Bitácora: NINGUNA (lectura)
+
+FLUJO — CREAR USUARIO
+──────────────────────────────────
+1. URL: GET/POST /user/crear/           (archivo: user/interfaces/urls.py, línea 7  → name='crear_usuario')
+2. Vista: crear_usuario(request)        (archivo: user/interfaces/views/usuarios.py, línea 29)  [perm 'auth.add_user']
+3. Form: UserForm(request.POST).is_valid()  (archivo: user/interfaces/forms/usuarios.py)
+      - valida email/username únicos; crea PerfilUsuario con must_change_password=True
+4. Use Case: uc_crear_usuario(request, form)  (archivo: user/application/use_cases/usuarios.py, línea 37)
+5. Bitácora: log_usuario_crear(request, usuario)  (archivo: bitacora/actions/usuarios.py, línea 31)
+6. Template: user/usuarios/form.html  → Response: redirect a lista
+
+FLUJO — EDITAR USUARIO
+──────────────────────────────────
+1. URL: GET/POST /user/editar/<int:user_id>/  (archivo: user/interfaces/urls.py, línea 8  → name='editar_usuario')
+2. Vista: editar_usuario(request, user_id)    (archivo: user/interfaces/views/usuarios.py, línea 54)  [perm 'auth.change_user']
+3. Form: UserForm(request.POST, instance=usuario)  (evita auto-desactivarse)
+4. Use Case: uc_editar_usuario(request, form)  (archivo: user/application/use_cases/usuarios.py, línea 43)
+5. Aux: update_session_auth_hash() si cambia su propia contraseña
+6. Bitácora: log_usuario_editar(request, usuario, password_changed=...)  (bitacora/actions/usuarios.py, línea 40)
+7. Template: user/usuarios/form.html
+
+FLUJO — RESETEAR CONTRASEÑA (envío de email)
+──────────────────────────────────
+1. URL: POST /user/reset-password/<int:user_id>/  (archivo: user/interfaces/urls.py, línea 10  → name='reset_password_usuario')
+2. Vista: reset_password_usuario(request, user_id)  (archivo: user/interfaces/views/usuarios.py, línea 81)
+3. Use Case: uc_reset_password_usuario(request, usuario)  (archivo: user/application/use_cases/usuarios.py, línea 56)
+      - default_token_generator.make_token(usuario); rate-limit ~20s; send_mail
+4. Bitácora: log_usuario_reset_password(request, usuario, email)  (bitacora/actions/usuarios.py, línea 59)
+5. Response: JsonResponse (AJAX) o redirect
+
+FLUJO — ACTIVAR / INACTIVAR (toggle)
+──────────────────────────────────
+1. URL: POST /user/toggle/<int:user_id>/  (archivo: user/interfaces/urls.py, línea 9  → name='toggle_usuario')
+2. Vista: toggle_usuario(request, user_id)  (archivo: user/interfaces/views/usuarios.py, línea 105)
+      - valida que no se desactive a sí mismo
+3. Use Case: uc_toggle_usuario(request, usuario)  (archivo: user/application/use_cases/usuarios.py, línea 49)
+4. Repo: repo.toggle_usuario_activo(usuario)  (alterna is_active)  (user/infrastructure/repositories/usuarios.py)
+5. Bitácora: log_usuario_toggle(request, usuario, estado)  (REACTIVAR/BAJA)  (bitacora/actions/usuarios.py, línea 50)
+
+
+═══════════════════════════════════════════════════════════
+CU04 — GESTIONAR ROLES (CRUD)
+═══════════════════════════════════════════════════════════
+
+Actor: Administrador
+Modelo: Group (django.contrib.auth.models.Group)  — NO hay modelo Rol custom
+Base: user/interfaces/views/roles.py ; Use cases: user/application/use_cases/roles.py
+Bitácora: log_rol_* (bitacora/actions/usuarios.py)
+
+FLUJO — LISTAR ROLES
+──────────────────────────────────
+1. URL: GET /user/roles/                 (archivo: user/interfaces/urls.py, línea 11  → name='lista_roles')
+2. Vista: lista_roles(request)           (archivo: user/interfaces/views/roles.py, línea 14)  [perm 'auth.view_group']
+3. Repo: repo.list_roles()  → Template: user/roles/lista.html
+
+FLUJO — CREAR ROL
+──────────────────────────────────
+1. URL: GET/POST /user/roles/crear/      (archivo: user/interfaces/urls.py, línea 12  → name='crear_rol')
+2. Vista: crear_rol(request)             (archivo: user/interfaces/views/roles.py, línea 27)  [perm 'auth.add_group']
+3. Form: GroupForm(request.POST)  (campos name + permissions; permisos agrupados por módulo)
+4. Use Case: uc_crear_rol(request, form)  (archivo: user/application/use_cases/roles.py, línea 14)
+5. Bitácora: log_rol_crear(request, rol)  (bitacora/actions/usuarios.py, línea 68)
+6. Template: user/roles/form.html
+
+FLUJO — VER DETALLE DE ROL
+──────────────────────────────────
+1. URL: GET /user/roles/detalle/<int:group_id>/  (archivo: user/interfaces/urls.py, línea 13  → name='detalle_rol')
+2. Vista: detalle_rol(request, group_id)  (archivo: user/interfaces/views/roles.py, línea 80)
+3. Template: user/roles/detalle.html
+
+FLUJO — EDITAR ROL
+──────────────────────────────────
+1. URL: GET/POST /user/roles/editar/<int:group_id>/  (archivo: user/interfaces/urls.py, línea 14  → name='editar_rol')
+2. Vista: editar_rol(request, group_id)  (archivo: user/interfaces/views/roles.py, línea 52)  [perm 'auth.change_group']
+3. Form: GroupForm(request.POST, instance=rol)
+4. Use Case: uc_editar_rol(request, form)  (archivo: user/application/use_cases/roles.py, línea 20)
+5. Bitácora: log_rol_editar(request, rol)  (bitacora/actions/usuarios.py, línea 77)
+
+FLUJO — ELIMINAR ROL
+──────────────────────────────────
+1. URL: POST /user/roles/eliminar/<int:group_id>/  (archivo: user/interfaces/urls.py, línea 15  → name='eliminar_rol')
+2. Vista: eliminar_rol(request, group_id)  (archivo: user/interfaces/views/roles.py, línea 97)  [perm 'auth.delete_group']
+3. Use Case: uc_eliminar_rol(request, rol)  (archivo: user/application/use_cases/roles.py, línea 26)
+4. Bitácora: log_rol_eliminar(request, nombre, total_permisos)  (bitacora/actions/usuarios.py, línea 86)
+
+
+═══════════════════════════════════════════════════════════
+CU05 — GESTIONAR PERMISOS
+═══════════════════════════════════════════════════════════
+
+Actor: Administrador
+
+⚠ ESTADO: PARCIAL — NO hay vista/CRUD propio para permisos.
+   • Modelo: Permission (django.contrib.auth.models.Permission) — modelo NATIVO de Django.
+   • Los permisos se asignan ÚNICAMENTE dentro del flujo de CREAR/EDITAR ROL (CU04),
+     vía el campo GroupForm.permissions (archivo: user/interfaces/forms/roles.py).
+   • Para administración directa de permisos individuales se usa el Django ADMIN nativo
+     (/admin/auth/permission/). No hay endpoints custom.
+
+Funciones auxiliares de presentación (agrupan/traducen permisos para el form de roles):
+   • obtener_permisos_por_modulo()  (archivo: user/interfaces/views/base.py)
+   • etiqueta_permiso()             (archivo: user/interfaces/views/base.py)
+   • constante ROLE_PERMISSION_GROUPS  (archivo: user/interfaces/forms/roles.py)
+
+
+═══════════════════════════════════════════════════════════
+CU06 — VISUALIZAR BITÁCORA
+═══════════════════════════════════════════════════════════
+
+Actor: Administrador / Auditor
+Base: bitacora/interfaces/views/ (vistas CUSTOM, no usa Django admin)
+Modelo: Bitacora (archivo: bitacora/infrastructure/models.py, línea 7)
+   campos: usuario(FK User, null), accion, modulo, descripcion, fecha(auto), ip
+
+FLUJO — LISTAR / FILTRAR BITÁCORA
+──────────────────────────────────
+1. URL: GET /bitacora/                  (archivo: bitacora/interfaces/urls.py, línea 6  → name='lista_bitacora')
+2. Vista: lista_bitacora(request)       (archivo: bitacora/interfaces/views/bitacora.py, línea 26)  [perm 'bitacora.view_bitacora']
+3. Filtros: BitacoraFiltro (dataclass) + filtro_desde_request() + aplicar_filtros()
+      (archivo: bitacora/application/use_cases/filtrar_eventos.py)
+4. Use Case: uc_listar_bitacora(filtro, is_superuser, username, page, per_page=10)
+      (archivo: bitacora/application/use_cases/listar_eventos.py, línea 24)
+      - NO-superuser solo ve sus propios eventos
+      - _enriquecer_evento() agrega modulo_label / descripcion_label (resolver_modulo, limpiar_descripcion → bitacora/domain/services.py)
+5. Repo/ORM: repo.query_eventos()  (archivo: bitacora/infrastructure/repositories/bitacora.py)
+6. Template: bitacora/lista.html  (incluye bitacora/filtros.html y bitacora/tabla_eventos.html)
+
+FLUJO — VER DETALLE DE EVENTO
+──────────────────────────────────
+1. URL: GET /bitacora/evento/<int:evento_id>/  (archivo: bitacora/interfaces/urls.py, línea 7  → name='detalle_bitacora')
+2. Vista: detalle_evento(request, evento_id)  (archivo: bitacora/interfaces/views/bitacora.py, línea 52)
+3. Use Case: uc_ver_detalle_evento(evento_id, is_superuser, username)  (archivo: bitacora/application/use_cases/ver_detalle.py, línea 17)
+4. Template: bitacora/detalle.html
+
+FLUJO — OPCIONES DE FILTROS (AJAX)
+──────────────────────────────────
+1. URL: GET /bitacora/api/opciones-filtros/  (archivo: bitacora/interfaces/urls.py, línea 8  → name='bitacora_opciones_filtros')
+2. Vista: opciones_filtros(request)  (archivo: bitacora/interfaces/views/filtros.py, línea 19)
+3. Response: JsonResponse con usuarios / acciones / módulos (constantes ACCIONES, MODULOS en bitacora/domain/services.py)
+
+NOTA DE ESCRITURA (cómo se llenan los eventos): la función central es
+   log_event(request, usuario, accion, modulo, descripcion, extra)
+   (archivo: bitacora/application/use_cases/log_event.py, línea 10)
+   y los wrappers log_* en bitacora/actions/*.py la invocan desde cada CU.
+
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║  CICLO 2 — ENTIDADES ORGANIZACIONALES (CU07–CU12)                           ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+PATRÓN COMÚN gestion_global (aplica a CU07, CU08, CU10, CU11, CU12):
+   Cada "feature" tiene su archivo en gestion_global/interfaces/views/<feature>.py con CINCO vistas
+   en las MISMAS líneas: lista_*(request) línea 26, crear_*(request) línea 62,
+   editar_*(request, pk) línea 81, eliminar_*(request, pk) línea 101, reactivar_*(request, pk) línea 114.
+   Capas: Form (gestion_global/interfaces/forms/<feature>.py) → Use Case
+   (gestion_global/application/use_cases/<feature>.py: uc_listar_/uc_crear_/uc_editar_/uc_eliminar_/uc_reactivar_)
+   → Repo (gestion_global/infrastructure/repositories/<feature>.py: list_*, get_*, set_*_activa/_activo)
+   → Bitácora log_* (bitacora/actions/configuracion.py) → Template gestion_global/<feature>/(lista|form).html
+   Reglas: ELIMINAR = soft-delete (activo=False), validando que NO haya hijos activos;
+           REACTIVAR valida que el PADRE esté activo.
+
+═══════════════════════════════════════════════════════════
+CU07 — GESTIONAR EMPRESA CLIENTE (CRUD)
+═══════════════════════════════════════════════════════════
+
+Actor: Administrador
+Modelo: Empresa (archivo: licencias/models.py, línea 43) — campos: tenant(FK), nombre, activo
+Vistas: gestion_global/interfaces/views/empresas.py ; Use cases: .../application/use_cases/empresas.py
+Form: EmpresaForm (gestion_global/interfaces/forms/empresas.py) ; Repo: .../repositories/empresas.py
+
+FLUJO — LISTAR
+1. URL: GET /gestion-global/empresas/            (gestion_global/interfaces/urls.py, línea 17 → name='gestion_global:lista_empresas')
+2. Vista: lista_empresas(request)                (empresas.py, línea 26)  → uc_listar_empresas() → list_empresas()
+3. Template: gestion_global/empresas/lista.html
+FLUJO — CREAR
+1. URL: GET/POST /gestion-global/empresas/crear/ (urls.py, línea 18 → name='crear_empresa')
+2. Vista: crear_empresa(request)                 (empresas.py, línea 62)  → EmpresaForm → uc_crear_empresa()
+3. Bitácora: log_empresa_crear()                 (bitacora/actions/configuracion.py)
+FLUJO — EDITAR
+1. URL: GET/POST /gestion-global/empresas/editar/<int:pk>/  (urls.py, línea 19 → name='editar_empresa')
+2. Vista: editar_empresa(request, pk)            (empresas.py, línea 81)  → uc_editar_empresa() (get_empresa)
+3. Bitácora: log_empresa_editar()
+FLUJO — ELIMINAR (soft)
+1. URL: POST /gestion-global/empresas/eliminar/<int:pk>/    (urls.py, línea 20 → name='eliminar_empresa')
+2. Vista: eliminar_empresa(request, pk)          (empresas.py, línea 101) → uc_eliminar_empresa()
+      VALIDA: no eliminar si Empleado activo en la empresa → activo=False
+3. Bitácora: log_empresa_eliminar()
+FLUJO — REACTIVAR
+1. URL: POST /gestion-global/empresas/reactivar/<int:pk>/   (urls.py, línea 21 → name='reactivar_empresa')
+2. Vista: reactivar_empresa(request, pk)         (empresas.py, línea 114) → uc_reactivar_empresa()
+      VALIDA: el tenant padre debe estar activo
+3. Bitácora: log_empresa_reactivar()
+
+
+═══════════════════════════════════════════════════════════
+CU08 — GESTIONAR UNIDADES (CRUD)
+═══════════════════════════════════════════════════════════
+
+Actor: Administrador
+Modelo: Unidad (archivo: empleados/models.py) — campos: area(FK), nombre, activo
+Vistas: gestion_global/interfaces/views/unidades.py (mismo patrón de 5 vistas: 26/62/81/101/114)
+Use cases: .../use_cases/unidades.py ; Form: UnidadForm ; Repo: .../repositories/unidades.py
+URLs (gestion_global/interfaces/urls.py): lista 45, crear 46, editar 47, eliminar 48, reactivar 49
+
+  • LISTAR   → lista_unidades (uc_listar_unidades / list_unidades) → unidades/lista.html
+  • CREAR    → crear_unidad (UnidadForm, uc_crear_unidad)       → log_unidad_crear()
+  • EDITAR   → editar_unidad (uc_editar_unidad, get_unidad)     → log_unidad_editar()
+  • ELIMINAR → eliminar_unidad (uc_eliminar_unidad; valida Empleado activo en unidad; activo=False) → log_unidad_eliminar()
+  • REACTIVAR→ reactivar_unidad (uc_reactivar_unidad; valida area padre activa)                     → log_unidad_reactivar()
+  (logs en bitacora/actions/configuracion.py)
+
+
+═══════════════════════════════════════════════════════════
+CU09 — GESTIONAR EMPLEADO (CRUD con filtros multitenant)
+═══════════════════════════════════════════════════════════
+
+Actor: Administrador
+⚠ UBICACIÓN: NO está en gestion_global. Vive en licencias/views.py (lógica INLINE, sin use case).
+Modelo: Empleado (archivo: empleados/models.py) — FKs multitenant: empresa, division, area, unidad;
+   campos: nombre_completo, ci, email_principal, centro_de_costos, puesto, pais, ciudad, oficina, activo.
+Form: EmpleadoForm (licencias/forms.py) ; Bitácora: bitacora/actions/empleados.py
+
+FLUJO — LISTAR + CREAR (inline en la lista)
+──────────────────────────────────
+1. URL: GET/POST /empleados/             (archivo: config/urls.py, línea 79  → name='lista_empleados')
+2. Vista: lista_empleados(request)       (archivo: licencias/views.py, línea 663)
+      - GET: Empleado.objects.all().select_related('empresa','area','division')  [perm 'empleados.view_empleado']
+      - POST: EmpleadoForm(request.POST) → form.save() + log_crear_empleado()  [perm 'empleados.add_empleado']
+3. Form: EmpleadoForm (valida CI y email únicos)
+4. Bitácora: log_crear_empleado(request, empleado)  (archivo: bitacora/actions/empleados.py, línea 12)
+5. Template: empleados.html
+
+FLUJO — EDITAR
+──────────────────────────────────
+1. URL: GET/POST /empleado/<int:empleado_id>/editar/  (archivo: config/urls.py, línea 80  → name='editar_empleado')
+2. Vista: editar_empleado(request, empleado_id)  (archivo: licencias/views.py, línea 692)  [perm 'empleados.change_empleado']
+3. Form: EmpleadoForm(request.POST, instance=empleado)  (get_object_or_404)
+4. Bitácora: log_editar_empleado()  (archivo: bitacora/actions/empleados.py, línea 21)
+5. Template: editar_empleado.html
+
+FLUJO — BAJA (desactiva + libera licencias en cascada)
+──────────────────────────────────
+1. URL: POST /empleado/<int:empleado_id>/baja/  (archivo: config/urls.py, línea 81  → name='baja_empleado')
+2. Vista: baja_empleado(request, empleado_id)  (archivo: licencias/views.py, línea 718)  [perm 'empleados.change_empleado']
+      - empleado.activo = False
+      - por cada Asignacion activa del empleado: estado='LIBERADA', activo=False, fecha_retiro=now()
+      - licencia.estado_operativo = Licencia.ESTADO_DISPONIBLE
+3. Bitácora: log_baja_empleado(request, empleado, licencias_liberadas=...)  (archivo: bitacora/actions/empleados.py, línea 30)
+
+FLUJO — REACTIVAR
+──────────────────────────────────
+1. URL: POST /empleado/<int:empleado_id>/reactivar/  (archivo: config/urls.py, línea 82  → name='reactivar_empleado')
+2. Vista: reactivar_empleado(request, empleado_id)  (archivo: licencias/views.py, línea 757)
+      - empleado.activo = True  (NO reactiva las asignaciones liberadas)
+3. Bitácora: log_reactivar_empleado()  (archivo: bitacora/actions/empleados.py, línea 40)
+
+Endpoints AJAX de cascada (apoyo a formularios multitenant):
+   cargar_empresas/empleados/divisiones/areas/unidades  (config/urls.py, líneas 112–116)
+
+
+═══════════════════════════════════════════════════════════
+CU10 — GESTIONAR ÁREAS (CRUD desde gestion_global)
+═══════════════════════════════════════════════════════════
+
+Actor: Administrador
+Modelo: GerenciaArea (archivo: empleados/models.py) — campos: empresa(FK), division(FK opcional), codigo, nombre, activo
+Vistas: gestion_global/interfaces/views/areas.py (mismo patrón: 26/62/81/101/114)
+Use cases: .../use_cases/areas.py ; Form: AreaForm ; Repo: .../repositories/areas.py
+URLs (gestion_global/interfaces/urls.py): lista 31, crear 32, editar 33, eliminar 34, reactivar 35
+Permisos: empleados.{view,add,change,delete}_gerenciaarea
+
+  • LISTAR   → lista_areas (uc_listar_areas / list_areas) → areas/lista.html
+  • CREAR    → crear_area (AreaForm, uc_crear_area)       → log_area_crear()
+  • EDITAR   → editar_area (uc_editar_area, get_area)      → log_area_editar()
+  • ELIMINAR → eliminar_area (uc_eliminar_area; valida unidades activas Y empleados activos; activo=False) → log_area_eliminar()
+  • REACTIVAR→ reactivar_area (uc_reactivar_area; valida empresa y division padre activas)                 → log_area_reactivar()
+  (logs en bitacora/actions/configuracion.py)
+
+
+═══════════════════════════════════════════════════════════
+CU11 — GESTIONAR DIVISIONES (CRUD desde gestion_global)
+═══════════════════════════════════════════════════════════
+
+Actor: Administrador
+Modelo: GerenciaDivision (archivo: empleados/models.py) — campos: empresa(FK), codigo, nombre, activo
+Vistas: gestion_global/interfaces/views/divisiones.py (mismo patrón: 26/62/81/101/114)
+Use cases: .../use_cases/divisiones.py ; Form: DivisionForm ; Repo: .../repositories/divisiones.py
+URLs (gestion_global/interfaces/urls.py): lista 38, crear 39, editar 40, eliminar 41, reactivar 42
+Permisos: empleados.{view,add,change,delete}_gerenciadivision
+
+  • LISTAR   → lista_divisiones (uc_listar_divisiones / list_divisiones) → divisiones/lista.html
+  • CREAR    → crear_division (DivisionForm, uc_crear_division)          → log_division_crear()
+  • EDITAR   → editar_division (uc_editar_division, get_division)        → log_division_editar()
+  • ELIMINAR → eliminar_division (uc_eliminar_division; valida areas activas Y empleados activos; activo=False) → log_division_eliminar()
+  • REACTIVAR→ reactivar_division (uc_reactivar_division; valida empresa padre activa)                          → log_division_reactivar()
+  (logs en bitacora/actions/configuracion.py)
+
+
+═══════════════════════════════════════════════════════════
+CU12 — GESTIONAR TENANT (CRUD)
+═══════════════════════════════════════════════════════════
+
+Actor: Administrador (superusuario)
+Modelo: Tenant (archivo: licencias/models.py, línea 6) — campos: nombre(unique), activo
+Vistas: gestion_global/interfaces/views/tenants.py (mismo patrón: 26/62/81/101/114)
+Use cases: .../use_cases/tenants.py ; Form: TenantForm ; Repo: .../repositories/tenants.py
+URLs (gestion_global/interfaces/urls.py): lista 24, crear 25, editar 26, eliminar 27, reactivar 28
+Permisos: licencias.{view,add,change,delete}_tenant
+
+  • LISTAR   → lista_tenants (uc_listar_tenants / list_tenants) → tenants/lista.html
+  • CREAR    → crear_tenant (TenantForm, uc_crear_tenant)       → log_tenant_crear()
+  • EDITAR   → editar_tenant (uc_editar_tenant, get_tenant)     → log_tenant_editar()
+  • ELIMINAR → eliminar_tenant (uc_eliminar_tenant; valida que NO tenga empresas activas; activo=False) → log_tenant_eliminar()
+  • REACTIVAR→ reactivar_tenant (uc_reactivar_tenant; sin dependencia de padre)                         → log_tenant_reactivar()
+  (logs en bitacora/actions/configuracion.py)
+
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║  CICLO 4 — COMPRAS Y PROPUESTAS (CU18–CU23)                                 ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+═══════════════════════════════════════════════════════════
+CU18 — GESTIONAR PROVEEDOR (CRUD)
+═══════════════════════════════════════════════════════════
+
+Actor: Administrador
+⚠ UBICACIÓN: vive en licencias/ (catálogo de licenciamiento), no en facturacion/.
+Modelo: Proveedor (archivo: licencias/models.py, línea 15)
+Form: ProveedorForm (licencias/forms.py) ; Use cases: licencias/application/use_cases/catalogo.py
+Repo: licencias/infrastructure/repositories/catalogo.py (get_proveedor) ; Bitácora: bitacora/actions/configuracion.py
+
+FLUJO — CREAR (desde el catálogo)
+──────────────────────────────────
+1. URL: GET/POST /catalogo-licencias/   (archivo: config/urls.py, línea 85  → name='catalogo_licencias')
+2. Vista: catalogo_licencias(request)   (archivo: licencias/views.py, línea 1302)
+      - POST con form_type='proveedor' → ProveedorForm(request.POST, prefix='proveedor')
+3. Use Case: uc_crear_proveedor(request=request, form=form)  (archivo: licencias/application/use_cases/catalogo.py)
+4. Persistencia: proveedor_form.save()
+5. Bitácora: log_proveedor_crear(request, proveedor)  (archivo: bitacora/actions/configuracion.py)
+6. Template: licencias/catalogo_licencias.html  → redirect a 'catalogo_licencias'
+
+FLUJO — EDITAR
+──────────────────────────────────
+1. URL: GET/POST /catalogo-licencias/proveedor/<int:pk>/editar/  (archivo: config/urls.py, línea 90  → name='editar_proveedor')
+2. Vista: editar_proveedor(request, pk)  (archivo: licencias/views.py, línea 878)
+3. Form: ProveedorForm(request.POST, instance=proveedor)  (repo.get_proveedor(pk))
+4. Use Case: uc_editar_proveedor(request=request, form=form, proveedor=proveedor)
+5. Bitácora: log_proveedor_editar(request, proveedor)
+6. Template: licencias/editar_catalogo.html
+
+FLUJO — ELIMINAR (soft-delete)
+──────────────────────────────────
+1. URL: POST /catalogo-licencias/proveedor/<int:pk>/eliminar/  (archivo: config/urls.py, línea 92  → name='eliminar_proveedor')
+2. Vista: eliminar_proveedor(request, pk)  (archivo: licencias/views.py, línea 918)
+3. Use Case: uc_eliminar_proveedor(request=request, proveedor=proveedor)  → proveedor.activo = False
+4. Bitácora: log_proveedor_eliminar(request, label)
+
+
+═══════════════════════════════════════════════════════════
+CU19 — GESTIONAR COMPRA / FACTURA (genera inventario de licencias)
+═══════════════════════════════════════════════════════════
+
+Actor: Administrador / Comercial
+Base: facturacion/interfaces/views/facturas.py ; URLs: facturacion/interfaces/urls.py
+Use cases: facturacion/application/use_cases/facturas.py
+Modelos: Factura (facturacion/infrastructure/models.py, línea 202), DetalleFactura (línea 303)
+Forms: FacturaForm, FacturaFiscalForm, DetalleFacturaForm ; Bitácora: bitacora/actions/facturacion.py + use_cases/facturas.py
+
+FLUJO — LISTAR FACTURAS
+1. URL: GET /facturacion/facturas/                 (urls.py, línea 18 → name='lista_facturas')
+2. Vista: lista_facturas(request)                  (facturas.py, línea 30) → uc_listar_facturas() → repo.list_facturas()
+3. Template: facturacion/facturas/lista.html
+
+FLUJO — SELECCIONAR COTIZACIÓN (paso previo a emitir)
+1. URL: GET /facturacion/facturas/seleccionar-cotizacion/  (urls.py, línea 19 → name='seleccionar_cotizacion')
+2. Vista: seleccionar_cotizacion(request)          (facturas.py, línea 197)  (lista propuestas APROBADAS)
+3. Template: facturacion/facturas/seleccionar_cotizacion.html
+
+★ FLUJO CRÍTICO — EMITIR FACTURA DESDE PROPUESTA (creación automática de inventario)
+──────────────────────────────────
+1. URL: GET/POST /facturacion/facturas/emitir/<int:propuesta_id>/  (urls.py, línea 20 → name='emitir_factura_desde_cotizacion')
+2. Vista: emitir_factura_desde_propuesta(request, propuesta_id)  (facturas.py, línea 145)
+      - POST: razon_social, nit, direccion_fiscal, metodo_pago, observaciones
+3. Use Case: uc_emitir_factura_desde_propuesta(request, propuesta, ...)  (application/use_cases/facturas.py)
+      a. crea Factura
+      b. por cada DetallePropuesta crea DetalleFactura(...) (copia tipo_licencia, cantidad, precio, fecha_vencimiento)
+      c. cantidad = uc_generar_stock_factura(request=request, factura=factura)
+            → recorre los DetalleFactura y llama detalle.crear_stock()
+      d. log_factura_crear(request, factura) + log_factura_generar_stock(request, factura, cantidad)
+      e. marca la propuesta como FACTURADA
+4. ★ DetalleFactura.crear_stock()  (archivo: facturacion/infrastructure/models.py, línea 349)
+      return Licencia.objects.bulk_create([
+          Licencia(tenant=factura.tenant, empresa=factura.empresa, tipo=tipo_licencia,
+                   proveedor=factura.proveedor, estado_operativo=Licencia.ESTADO_DISPONIBLE,
+                   origen=Licencia.ORIGEN_FACTURA, factura_origen=factura, detalle_factura_origen=self,
+                   fecha_compra=factura.fecha, fecha_inicio=..., fecha_activacion=...,
+                   fecha_vencimiento=self.fecha_vencimiento, observaciones="Generada... desde factura ...")
+          for _ in range(self.cantidad)
+      ])
+5. Template: facturacion/facturas/emitir_desde_propuesta.html
+
+FLUJO — EDITAR DATOS FISCALES
+1. URL: GET/POST /facturacion/facturas/<int:pk>/editar/  (urls.py, línea 21 → name='editar_factura')
+2. Vista: editar_factura(request, pk)              (facturas.py, línea 95) → FacturaFiscalForm
+3. Use Case: uc_editar_datos_fiscales_factura(request=request, factura_form=...)  → log_factura_editar()
+4. Template: facturacion/facturas/form_fiscal.html
+
+FLUJO — ANULAR
+1. URL: POST /facturacion/facturas/<int:pk>/anular/    (urls.py, línea 22 → name='anular_factura')
+2. Vista: anular_factura(request, pk)              (facturas.py, línea 121) → uc_anular_factura()
+      NOTA: NO revierte ni elimina las licencias ya generadas.
+3. Bitácora: log_factura_anular()  (bitacora/actions/facturacion.py)
+
+FLUJO — ELIMINAR
+1. URL: POST /facturacion/facturas/<int:pk>/eliminar/  (urls.py, línea 23 → name='eliminar_factura')
+2. Vista: eliminar_factura(request, pk)            (facturas.py, línea 131) → uc_eliminar_factura()
+      VALIDA: solo si stock_generado=False.
+3. Bitácora: log_factura_eliminar()
+
+FLUJO — DETALLE (lectura) / PDF
+   • detalle_factura(request, pk)  (facturas.py, línea 227 ; URL urls.py:28) → facturacion/facturas/detalle.html
+   • pdf_factura(request, pk)      (facturas.py, línea 243 ; URL urls.py:32) → factura_pdf_response() (facturacion/services/pdf.py) → facturacion/pdf/factura.html
+
+
+═══════════════════════════════════════════════════════════
+CU20 — GESTIONAR PROPUESTA COMERCIAL (CRUD)
+═══════════════════════════════════════════════════════════
+
+Actor: Comercial / Administrador
+Base: facturacion/interfaces/views/propuestas.py ; Use cases: facturacion/application/use_cases/propuestas.py
+Modelo: PropuestaLicencia (facturacion/infrastructure/models.py, línea 22) — auto-numera PROP-YYYY-NNNN
+Forms: PropuestaForm, PropuestaEditForm, PropuestaAdminForm ; Bitácora: bitacora/actions/facturacion.py
+Estados editables: BORRADOR, PENDIENTE.
+
+FLUJO — LISTAR
+1. URL: GET /facturacion/cotizaciones/             (urls.py, línea 10 → name='lista_cotizaciones')
+2. Vista: lista_propuestas(request)                (propuestas.py, línea 40) → uc_listar_propuestas() → repo.list_propuestas()
+3. Template: facturacion/propuestas/lista.html
+
+FLUJO — CREAR
+1. URL: GET/POST /facturacion/cotizaciones/crear/  (urls.py, línea 11 → name='crear_cotizacion')
+2. Vista: crear_propuesta(request)                 (propuestas.py, línea 75)
+3. Forms: PropuestaForm(request.POST) + DetallePropuestaFormSet(request.POST)   (ver CU21)
+4. Use Case: uc_crear_propuesta(request, propuesta_form, detalle_formset)
+5. Bitácora: log_propuesta_crear(request, propuesta)
+6. Template: facturacion/propuestas/form.html
+
+FLUJO — EDITAR
+1. URL: GET/POST /facturacion/cotizaciones/<int:pk>/editar/  (urls.py, línea 12 → name='editar_cotizacion')
+2. Vista: editar_propuesta(request, pk)            (propuestas.py, línea 101)
+      - APROBADA → solo datos administrativos (PropuestaAdminForm)
+      - BORRADOR/PENDIENTE → edición completa (PropuestaEditForm + DetallePropuestaFormSet)
+3. Use Case: uc_editar_propuesta(request, propuesta_form, detalle_formset)  → log_propuesta_editar()
+4. Template: facturacion/propuestas/form.html
+
+FLUJO — ELIMINAR
+1. URL: POST /facturacion/cotizaciones/<int:pk>/eliminar/  (urls.py, línea 15 → name='eliminar_cotizacion')
+2. Vista: eliminar_propuesta(request, pk)          (propuestas.py, línea 172) → uc_eliminar_propuesta()
+      VALIDA: no eliminar si estado in {APROBADA, FACTURADA, ANULADA}
+3. Bitácora: log_propuesta_eliminar()
+
+FLUJO — DETALLE (lectura) / PDF
+   • detalle_cotizacion(request, pk)  (propuestas.py, línea 182 ; URL urls.py:27) → facturacion/propuestas/detalle.html
+   • pdf_cotizacion(request, pk)      (propuestas.py, línea 200 ; URL urls.py:31) → cotizacion_pdf_response() (services/pdf.py)
+   • pdf_contrato(request, pk)        (propuestas.py, línea 212 ; URL urls.py:33) → contrato_pdf_response()   (solo APROBADA/FACTURADA)
+
+
+═══════════════════════════════════════════════════════════
+CU21 — GESTIONAR DETALLE DE PROPUESTA
+═══════════════════════════════════════════════════════════
+
+Actor: Comercial (dentro del alta/edición de propuesta — CU20)
+Modelo: DetallePropuesta (facturacion/infrastructure/models.py, línea 133)
+Form/Formset: facturacion/interfaces/forms/propuestas.py
+
+MECANISMO
+──────────────────────────────────
+1. Formset: DetallePropuestaFormSet = inlineformset_factory(PropuestaLicencia, DetallePropuesta, ...)
+      (archivo: facturacion/interfaces/forms/propuestas.py)  config: extra=1, can_delete=True, min_num=1, validate_min=True
+2. Form de línea: DetallePropuestaForm
+      - auto-rellena precio desde TipoLicencia.precio_venta si viene vacío
+      - valida coherencia de fechas y cantidad >= 1
+3. Apoyo AJAX (precio al elegir tipo):
+      URL: GET /facturacion/ajax/precio-licencia/?tipo_id=<id>  (urls.py, línea 35 → name='precio_licencia')
+      Vista: precio_licencia(request)  (archivo: facturacion/interfaces/views/ajax.py)
+      Response: JSON {precio_venta, descripcion, proveedor_default}
+4. Persistencia: el formset se guarda DENTRO de los use cases de propuesta:
+      uc_crear_propuesta / uc_editar_propuesta → detalle_formset.instance = propuesta; detalle_formset.save()
+      (archivo: facturacion/application/use_cases/propuestas.py)
+
+NOTA: CU21 no tiene URL/vista propia de CRUD; se gestiona como formset embebido en CU20.
+
+
+═══════════════════════════════════════════════════════════
+CU22 — APROBAR O RECHAZAR PROPUESTA
+═══════════════════════════════════════════════════════════
+
+Actor: Aprobador / Administrador
+Base: facturacion/interfaces/views/propuestas.py ; Use cases: facturacion/application/use_cases/propuestas.py
+
+Máquina de estados:
+   BORRADOR → PENDIENTE → (APROBADA → FACTURADA)
+                       └→ RECHAZADA
+
+FLUJO — APROBAR
+──────────────────────────────────
+1. URL: POST /facturacion/cotizaciones/<int:pk>/aprobar/  (urls.py, línea 13 → name='aprobar_cotizacion')
+2. Vista: aprobar_propuesta(request, pk)  (propuestas.py, línea 152)  (repo.get_propuesta(pk))
+3. Use Case: uc_aprobar_propuesta(request=request, propuesta=propuesta)  → PENDIENTE → APROBADA
+      VALIDA: solo desde estado PENDIENTE
+4. Bitácora: log_propuesta_aprobar(request, propuesta)
+
+FLUJO — RECHAZAR
+──────────────────────────────────
+1. URL: POST /facturacion/cotizaciones/<int:pk>/rechazar/  (urls.py, línea 14 → name='rechazar_cotizacion')
+2. Vista: rechazar_propuesta(request, pk)  (propuestas.py, línea 162)
+3. Use Case: uc_rechazar_propuesta(request=request, propuesta=propuesta)  → PENDIENTE → RECHAZADA
+      VALIDA: solo desde estado PENDIENTE
+4. Bitácora: log_propuesta_rechazar(request, propuesta)
+
+
+═══════════════════════════════════════════════════════════
+CU23 — AUDITAR CONSISTENCIA DE INVENTARIO
+═══════════════════════════════════════════════════════════
+
+Actor: Administrador / Auditor
+
+⚠ ESTADO: NO IMPLEMENTADO.
+   • No existe vista, use case, selector ni management command de auditoría/reconciliación.
+   • Búsqueda de "auditar / consistencia / reconciliar / verificar inventario" → sin resultados funcionales
+     (los únicos matches son comentarios y mensajes de error de validación, no una rutina de auditoría).
+
+Infraestructura existente que serviría para implementarlo a futuro:
+   • Factura.stock_generado (bool)             (archivo: facturacion/infrastructure/models.py, línea 244)
+   • Licencia.factura_origen (FK Factura)      (archivo: licencias/models.py)
+   • Licencia.detalle_factura_origen (FK DetalleFactura)  (archivo: licencias/models.py)
+   • Relación inversa licencias_generadas en Factura / DetalleFactura
+   Con esto una rutina futura podría comparar:  sum(DetalleFactura.cantidad)  vs  count(Licencia con origen=FACTURA)
+   por cada factura, y reportar discrepancias.
+
+
+═══════════════════════════════════════════════════════════
+RESUMEN DE ESTADO DE IMPLEMENTACIÓN (18 CUs)
+═══════════════════════════════════════════════════════════
+
+  CICLO 1 — Autenticación y seguridad
+  CU01  Iniciar sesión .................... IMPLEMENTADO   (Django LoginView nativo + django-axes + bitácora por signal)
+  CU02  Cerrar sesión .................... IMPLEMENTADO   (Django LogoutView nativo + bitácora por signal)
+  CU03  Gestionar usuario (CRUD) ......... IMPLEMENTADO   (listar/crear/editar/reset-pass/toggle)
+  CU04  Gestionar roles (CRUD) ........... IMPLEMENTADO   (sobre Group de Django)
+  CU05  Gestionar permisos ............... PARCIAL        (sin CRUD propio: vía GroupForm.permissions + Django admin nativo)
+  CU06  Visualizar bitácora .............. IMPLEMENTADO   (vistas custom: listar/detalle/filtros AJAX)
+
+  CICLO 2 — Entidades organizacionales
+  CU07  Gestionar empresa cliente ........ IMPLEMENTADO   (gestion_global, 5 vistas + soft-delete)
+  CU08  Gestionar unidades ............... IMPLEMENTADO   (gestion_global, 5 vistas + soft-delete)
+  CU09  Gestionar empleado ............... IMPLEMENTADO   (en licencias/views.py, inline; baja libera licencias en cascada)
+  CU10  Gestionar áreas .................. IMPLEMENTADO   (gestion_global, GerenciaArea)
+  CU11  Gestionar divisiones ............. IMPLEMENTADO   (gestion_global, GerenciaDivision)
+  CU12  Gestionar tenant ................. IMPLEMENTADO   (gestion_global, Tenant)
+
+  CICLO 4 — Compras y propuestas
+  CU18  Gestionar proveedor (CRUD) ....... IMPLEMENTADO   (en licencias/catálogo; eliminar = soft-delete)
+  CU19  Gestionar compra/factura ......... IMPLEMENTADO   (emitir desde propuesta → crear_stock() genera Licencias)
+  CU20  Gestionar propuesta comercial .... IMPLEMENTADO   (CRUD + PDF cotización/contrato)
+  CU21  Gestionar detalle de propuesta ... IMPLEMENTADO   (DetallePropuestaFormSet embebido en CU20 + AJAX precio)
+  CU22  Aprobar/Rechazar propuesta ....... IMPLEMENTADO   (transiciones PENDIENTE→APROBADA/RECHAZADA)
+  CU23  Auditar consistencia inventario .. NO IMPLEMENTADO (solo existe la infraestructura de datos)
+
+──────────────────────────────────────────────────────────────────────────────
+Archivos fuente de referencia:
+  config/urls.py
+  user/interfaces/urls.py · user/interfaces/views/{usuarios,roles,base}.py
+  user/interfaces/forms/{usuarios,roles}.py · user/application/use_cases/{usuarios,roles}.py
+  user/infrastructure/{models.py, repositories/usuarios.py}
+  bitacora/interfaces/{urls.py, views/{bitacora,filtros}.py, signals.py}
+  bitacora/application/use_cases/{log_event,listar_eventos,filtrar_eventos,ver_detalle}.py
+  bitacora/infrastructure/models.py · bitacora/domain/services.py · bitacora/actions/*.py
+  gestion_global/interfaces/{urls.py, views/*.py, forms/*.py} · gestion_global/application/use_cases/*.py
+  gestion_global/infrastructure/repositories/*.py
+  licencias/views.py (CU09 empleados, CU18 proveedor) · licencias/forms.py · licencias/models.py
+  licencias/application/use_cases/catalogo.py · licencias/signals.py
+  empleados/models.py
+  facturacion/interfaces/{urls.py, views/{facturas,propuestas,ajax}.py, forms/propuestas.py}
+  facturacion/application/use_cases/{facturas,propuestas}.py
+  facturacion/infrastructure/{models.py, repositories/*.py} · facturacion/services/pdf.py
+──────────────────────────────────────────────────────────────────────────────

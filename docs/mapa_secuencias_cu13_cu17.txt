@@ -1,0 +1,361 @@
+╔═══════════════════════════════════════════════════════════════════════════╗
+║  MAPA DE FUNCIONES POR CASO DE USO — CICLO 3 (CU13 a CU17)                   ║
+║  Proyecto: Gestión de Licencias (Django)                                     ║
+║  Propósito: insumo para diagramas de secuencia UML                           ║
+║  Generado: 2026-05-29  —  Archivo de TRABAJO (no documentación oficial)      ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+NOTAS GENERALES (leer antes de dibujar):
+  • Las URLs NO están en licencias/urls.py. Están centralizadas en config/urls.py.
+  • Arquitectura por capas (Clean Architecture):
+        URL (config/urls.py)
+          → Vista (licencias/views.py)
+            → Use Case (licencias/application/use_cases/*.py)
+              → Repositorio (licencias/infrastructure/repositories/*.py) / ORM
+              → Bitácora (bitacora/actions/licencias.py → log_event)
+            → Template (licencias/templates/licencias/*.html)
+  • Todos los nombres de funciones/clases son EXACTOS del código fuente.
+  • Donde algo NO está implementado, se declara explícitamente (ver CU14).
+
+
+═══════════════════════════════════════════════════════════
+CU13 — GESTIONAR LICENCIAS
+═══════════════════════════════════════════════════════════
+
+Actor: Administrador
+Resumen: CRUD de Licencia (listar, crear, editar, deshabilitar).
+
+FLUJO PRINCIPAL — LISTAR LICENCIAS
+──────────────────────────────────
+1. URL: GET /licencias/
+      (archivo: config/urls.py, línea 54  → name='gestionar_licencias')
+      (variante con tenant: línea 55 /licencias/tenant/<int:tenant_id>/ → 'gestionar_licencias_tenant')
+2. Vista: gestionar_licencias(request, tenant_id=None)
+      (archivo: licencias/views.py, línea 390)
+      - exigir_permiso(request, 'licencias.view_licencia')
+      - lee filtros de request.GET (q, estado, empresa, proveedor, tipo, fecha_desde, fecha_hasta)
+3. Use Case: uc_listar_licencias(**filtros)
+      (archivo: licencias/application/use_cases/licencias.py, línea 29)
+4. Repositorio/ORM: repo.list_licencias(**filtros)  → Licencia.objects.filter(...)
+      (archivo: licencias/infrastructure/repositories/licencias.py)
+5. Cálculo de KPIs en la vista (ocupadas / disponibles / vencidas / por_vencer)
+6. Bitácora: NINGUNA (es operación de solo lectura)
+7. Template: licencias/templates/licencias/dashboard.html
+8. Response: HTML renderizado al Administrador
+
+FLUJO ALTERNATIVO — CREAR LICENCIA (ingesta manual, soporta lote)
+──────────────────────────────────
+1. URL: POST /licencia/nueva/
+      (archivo: config/urls.py, línea 63  → name='crear_licencia')
+2. Vista: crear_licencia(request)
+      (archivo: licencias/views.py, línea 961)
+      - exigir_permiso(request, 'licencias.add_licencia')
+      - cantidad = int(request.POST.get('cantidad_masiva', 1))
+3. Form: LicenciaForm(request.POST).is_valid()
+      (archivo: licencias/forms.py, línea 120; validaciones en clean())
+4. Persistencia:
+      - licencia_base = form.save(commit=False)
+      - genera N instancias Licencia(...) con origen=Licencia.ORIGEN_MANUAL
+      - Licencia.objects.bulk_create(nuevas_licencias)
+5. Bitácora: log_creacion_licencias(request, licencia_base, cantidad=cantidad)
+      (archivo: bitacora/actions/licencias.py, línea 13)
+      → log_event(accion=CREAR, modulo=LICENCIAS, ...)
+6. Response: redirect a 'gestionar_licencias'
+
+FLUJO ALTERNATIVO — EDITAR LICENCIA
+──────────────────────────────────
+1. URL: GET/POST /licencia/<int:licencia_id>/editar/
+      (archivo: config/urls.py, línea 64  → name='editar_licencia')
+2. Vista: editar_licencia(request, licencia_id)
+      (archivo: licencias/views.py, línea 851)
+      - exigir_permiso(request, 'licencias.change_licencia')
+      - licencia = repo.get_licencia(licencia_id)
+3. Form: LicenciaForm(request.POST, instance=licencia).is_valid()
+      (archivo: licencias/forms.py, línea 120)
+4. Use Case: uc_editar_licencia(request=request, form=form, licencia=licencia)
+      (archivo: licencias/application/use_cases/licencias.py, línea 39)
+      - licencia = form.save()   (ORM UPDATE)
+      - log_editar_licencia(request, licencia)
+5. Bitácora: log_editar_licencia(request, licencia)
+      (archivo: bitacora/actions/licencias.py, línea 33)
+6. Template (en GET o si hay error): licencias/templates/licencias/editar_licencia.html
+7. Response (POST OK): redirect a 'gestionar_licencias'
+
+FLUJO ALTERNATIVO — DESHABILITAR / ELIMINAR LICENCIA  (soft-delete)
+──────────────────────────────────
+1. URL: POST /licencia/<int:licencia_id>/eliminar/
+      (archivo: config/urls.py, línea 65  → name='eliminar_licencia')
+2. Vista: eliminar_licencia(request, licencia_id)
+      (archivo: licencias/views.py, línea 940)
+      - exigir_permiso(request, 'licencias.delete_licencia')
+      - licencia = repo.get_licencia(licencia_id)
+3. Use Case: uc_eliminar_licencia(request=request, licencia=licencia) -> (ok, info)
+      (archivo: licencias/application/use_cases/licencias.py, línea 45)
+      - VALIDA: si licencia.asignaciones.filter(activo=True).exists() → retorna (False, "...")
+      - NO borra físicamente: licencia.estado_operativo = Licencia.ESTADO_REVOCADA
+      - licencia.save(update_fields=['estado_operativo'])
+4. Bitácora: log_eliminar_licencia(request, label, licencia_id=licencia_id)
+      (archivo: bitacora/actions/licencias.py, línea 45)
+5. Response: redirect a 'gestionar_licencias'
+
+VARIANTE — ELIMINAR MASIVO
+──────────────────────────────────
+1. URL: POST /licencias/eliminar-masivo/
+      (archivo: config/urls.py, línea 66  → name='eliminar_licencias_masivo')
+2. Vista: eliminar_licencias_masivo(request)
+      (archivo: licencias/views.py, línea 1202)
+3. Use Case: uc_eliminar_licencias_masivo(request=request, ids=[...]) -> (n_ok, n_skip)
+      (archivo: licencias/application/use_cases/licencias.py, línea 56)
+4. Bitácora: log_eliminar_licencias_masivo(request, cantidad)
+      (archivo: bitacora/actions/licencias.py, línea 86)
+
+NOTA CRUZADA (facturación → stock de licencias):
+   Existe una vía ALTERNATIVA de creación de Licencia que NO pasa por crear_licencia():
+   al emitir una factura, DetalleFactura.crear_stock() genera N licencias con
+   origen=Licencia.ORIGEN_FACTURA. Ver detalle en la sección "APP FACTURACIÓN" al final.
+
+Modelo afectado: Licencia (archivo: licencias/models.py)
+   Campos clave: tenant, empresa, tipo, proveedor, estado_operativo,
+   origen (MANUAL/FACTURA/SYNC), fecha_compra, fecha_inicio, fecha_activacion,
+   fecha_vencimiento (línea 190), observaciones.
+   Estados: DISPONIBLE, ASIGNADA, VENCIDA, SUSPENDIDA, PENDIENTE_ACTIVACION, REVOCADA.
+
+
+═══════════════════════════════════════════════════════════
+CU14 — NOTIFICAR VENCIMIENTO
+═══════════════════════════════════════════════════════════
+
+Actor: Proceso batch (ejecución MANUAL por consola)
+
+⚠ ESTADO DE IMPLEMENTACIÓN: PARCIAL — NO AUTOMATIZADO
+   • EXISTE un management command, pero hay que dispararlo a mano.
+   • NO hay Celery, NO hay APScheduler, NO hay django-q, NO hay cron configurado en el proyecto.
+   • NO hay signal de vencimiento. (licencias/signals.py solo maneja user_locked_out de django-axes.)
+   • Para que sea realmente automático, falta un scheduler externo (cron del SO / Celery beat / etc.)
+     que invoque el comando una vez al día.
+
+FLUJO PRINCIPAL — ENVÍO DE ALERTAS (disparo manual)
+──────────────────────────────────
+1. Disparo: python manage.py enviar_alertas
+      (NO hay URL ni vista; es un comando de consola)
+2. Comando: Command.handle(self, *args, **kwargs)
+      (archivo: licencias/management/commands/enviar_alertas.py, línea 11)
+3. Cálculo de fecha objetivo:
+      - hoy = timezone.now().date()                      (línea 12)
+      - fecha_objetivo = hoy + timedelta(days=30)         (línea 15)
+4. Lectura/ORM: Licencia.objects.filter(fecha_vencimiento=fecha_objetivo)
+      (archivo: enviar_alertas.py, línea 19)
+      - solo licencias que vencen EXACTAMENTE en 30 días
+      - si no hay coincidencias → termina en silencio (líneas 22-24)
+5. Armado del mensaje: itera licencias_a_vencer (líneas 29-39)
+      - por cada licencia consulta lic.usuario_activo → empleado asignado (líneas 31-34)
+6. Envío: send_mail(subject, message, from_email=settings.EMAIL_HOST_USER,
+                    recipient_list=destinatarios, fail_silently=False)
+      (archivo: enviar_alertas.py, línea 47)
+      - destinatarios = ['arianyclaure@gmail.com']  (HARDCODEADO, línea 44)
+7. Bitácora: NINGUNA (el comando NO registra en bitácora; solo escribe a stdout)
+8. Response: salida por consola (SUCCESS / ERROR)
+
+Infraestructura existente reutilizable para automatizar a futuro:
+   • Campo Licencia.fecha_vencimiento (archivo: licencias/models.py, línea 190)
+   • Propiedad Licencia.esta_vencida (usa fecha_vencimiento)
+   • Licencia.cantidad_disponible (filtra fecha_vencimiento__gte=hoy)
+   • Cálculo "por_vencer" (ventana 30 días) en gestionar_licencias() / dashboard
+
+
+═══════════════════════════════════════════════════════════
+CU15 — ASIGNAR LICENCIA A EMPLEADO
+═══════════════════════════════════════════════════════════
+
+Actor: Administrador
+Reglas: mismo tenant/empresa, licencia disponible, sin duplicar TipoLicencia, control de concurrencia.
+
+FLUJO PRINCIPAL — ASIGNAR (1 licencia → 1 empleado)
+──────────────────────────────────
+1. URL: POST /licencia/<int:licencia_id>/asignar/
+      (archivo: config/urls.py, línea 67  → name='asignar_licencia')
+2. Vista: asignar_licencia(request, licencia_id)
+      (archivo: licencias/views.py, línea 622)
+      - licencia = repo.get_licencia(licencia_id)
+      - empleado = ... (con select_related('empresa'))
+3. Use Case: uc_asignar_licencia(request=request, licencia=licencia, empleado=empleado) -> (ok, msg)
+      (archivo: licencias/application/use_cases/asignaciones.py, línea 25)
+      Dentro de transaction.atomic():
+        a. Licencia.objects.select_for_update().select_related(...).get(pk=...)   (línea 28, anti-race)
+        b. if not licencia.puede_asignarse → (False, ...)                          (línea 30)
+        c. valida empleado.empresa_id == licencia.empresa_id  (multi-tenant)       (línea 33)
+        d. valida empresa.tenant_id == licencia.tenant_id  (consistencia)          (línea 36)
+        e. valida empleado.empresa.tenant_id == licencia.tenant_id                 (línea 39)
+        f. valida concurrencia: licencia.asignaciones.filter(activo=True).exists() (línea 42)
+        g. valida NO duplicidad por TipoLicencia para el empleado                  (línea 47)
+        h. Asignacion.objects.create(licencia, empleado, estado='ASIGNADA', activo=True)  (línea 55)
+        i. licencia.estado_operativo = Licencia.ESTADO_ASIGNADA; licencia.save(...)  (líneas 61-62)
+4. Bitácora: log_asignacion_licencia(request, licencia, empleado)
+      (llamada en asignaciones.py línea 63; definición en bitacora/actions/licencias.py, línea 55)
+5. Modelo: Asignacion (archivo: licencias/models.py, ~línea 244)
+      Campos: licencia, empleado, estado, activo, fecha_asignacion, fecha_retiro,
+              area_snapshot, division_snapshot, unidad_snapshot.
+6. Response: mensaje success/error → redirect
+
+VARIANTE — NUEVA ASIGNACIÓN (wizard con formulario)
+──────────────────────────────────
+1. URL: GET/POST /licencias/asignaciones/nueva/
+      (archivo: config/urls.py, línea 86  → name='nueva_asignacion')
+2. Vista: nueva_asignacion(request)
+      (archivo: licencias/views.py, línea 1513)
+3. Use Case: uc_asignar_licencia(...)  (mismo de arriba)
+4. Template: licencias/templates/licencias/nueva_asignacion.html
+      (wizard Tenant → Empresa → Licencia → Empleado, con AJAX de cascada)
+
+VARIANTE — ASIGNACIÓN MASIVA
+──────────────────────────────────
+1. URL: GET/POST /licencias/asignaciones/masivo/
+      (archivo: config/urls.py, línea 70  → name='asignar_licencias_masivo')
+2. Vista: asignar_licencias_masivo(request)
+      (archivo: licencias/views.py, línea 1545)
+      - recibe empresa_id, tipo_id, empleados_ids[]
+      - itera y llama uc_asignar_licencia(...) por cada par licencia/empleado
+3. Template: licencias/templates/licencias/asignacion_masiva.html
+
+Endpoints AJAX de apoyo (cascadas):
+   • cargar_empresas      (config/urls.py línea 112)
+   • cargar_empleados     (config/urls.py línea 113)
+   • ajax_empleados_empresa (config/urls.py línea 88)
+   • ajax_licencias_disponibles (config/urls.py línea 87)
+
+
+═══════════════════════════════════════════════════════════
+CU16 — REVOCAR LICENCIA (LIBERAR)
+═══════════════════════════════════════════════════════════
+
+Actor: Administrador
+Resumen: marca la(s) asignación(es) como inactivas (no borra) y libera la licencia.
+
+FLUJO PRINCIPAL — LIBERAR A NIVEL LICENCIA
+──────────────────────────────────
+1. URL: POST /licencia/<int:licencia_id>/liberar/
+      (archivo: config/urls.py, línea 68  → name='liberar_licencia')
+2. Vista: liberar_licencia(request, licencia_id)
+      (archivo: licencias/views.py, línea 642)
+      - licencia = repo.get_licencia(licencia_id)
+3. Use Case: uc_liberar_licencia(request=request, licencia=licencia) -> (ok, msg, cantidad)
+      (archivo: licencias/application/use_cases/asignaciones.py, línea 67)
+        a. asignaciones_activas = licencia.asignaciones.filter(activo=True).select_related('empleado')  (línea 69)
+        b. if not exists() → (False, "...", 0)                                  (línea 70)
+        c. captura nombres de empleados afectados                               (líneas 73-76)
+        d. transaction.atomic(): por cada asignación:                           (línea 78)
+              - asignacion.estado = 'LIBERADA'                                  (línea 80)
+              - asignacion.activo = False                                       (línea 81)
+              - asignacion.fecha_retiro = timezone.now() (si no tenía)          (líneas 82-83)
+              - asignacion.save()                                               (línea 84)
+        e. licencia.estado_operativo = ESTADO_VENCIDA si esta_vencida, si no ESTADO_DISPONIBLE  (líneas 86-88)
+        f. licencia.save(update_fields=['estado_operativo'])                    (línea 89)
+4. Bitácora: log_liberar_licencia(request, licencia, empleados=[...], cantidad=count)
+      (llamada en asignaciones.py línea 91; definición en bitacora/actions/licencias.py, línea 65)
+5. Response: mensaje success → redirect a 'gestionar_licencias'
+
+VARIANTE — LIBERAR A NIVEL ASIGNACIÓN
+──────────────────────────────────
+1. URL: POST /licencias/asignaciones/<int:asignacion_id>/liberar/
+      (archivo: config/urls.py, línea 71  → name='liberar_asignacion')
+2. Vista: liberar_asignacion(request, asignacion_id)
+      (archivo: licencias/views.py, línea 1644)
+      - asignacion = get_object_or_404(Asignacion, pk=asignacion_id)
+      - si activa: asignacion.activo = False; asignacion.fecha_retiro = timezone.now(); save()
+      - registra en bitácora
+3. Response: redirect a 'asignaciones_licencias'
+
+
+═══════════════════════════════════════════════════════════
+CU17 — GENERAR REPORTES (EXPORTAR A EXCEL)
+═══════════════════════════════════════════════════════════
+
+Actor: Administrador
+Librería: openpyxl (3.1.5). NO usa csv, NO xlsxwriter, NO pandas.to_excel.
+
+FLUJO PRINCIPAL — EXPORTAR REPORTE DE LICENCIAS
+──────────────────────────────────
+1. URL: GET /exportar/                       (todas las licencias)
+      (archivo: config/urls.py, línea 59  → name='exportar_general')
+   URL: GET /exportar/<int:tenant_id>/       (filtrado por tenant)
+      (archivo: config/urls.py, línea 60  → name='exportar_tenant')
+2. Vista: exportar_excel(request, tenant_id=None)
+      (archivo: licencias/views.py, línea 70)
+      - exigir_permiso(request, 'licencias.view_licencia')
+3. Bitácora: log_exportar_excel(request, tenant_label=tenant_label)
+      (archivo: bitacora/actions/licencias.py, línea 104)
+      → log_event(accion=EXPORTAR, modulo=REPORTES, ...)
+4. Construcción del libro:
+      - wb = openpyxl.Workbook(); ws = wb.active; ws.title = "Reporte Completo"
+      - cabeceras (17 columnas) + estilos (Font, PatternFill)
+5. Query/ORM (lectura masiva con optimización N+1):
+      - con tenant:  Licencia.objects.filter(tenant_id=tenant_id).select_related(
+                        'tipo','empresa','tenant','proveedor','factura_origen')
+      - sin tenant:  Licencia.objects.all().select_related(...)
+6. Iteración: por cada licencia obtiene lic.usuario_activo (Asignacion activa) →
+      empleado, email, centro de costos, área, división, unidad, fechas → ws.append([...])
+7. Autoajuste de ancho de columnas (máx. 50)
+8. Response (archivo descargable):
+      - HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+      - response['Content-Disposition'] = 'attachment; filename="Reporte_Licencias_<DD-MM-YYYY>.xlsx"'
+      - wb.save(response); return response
+
+Modelos leídos: Licencia (principal), Asignacion, Empleado, TipoLicencia, Tenant,
+   Empresa, Proveedor, y estructura organizacional (Área/División/Unidad).
+Escritura: ninguna (solo lectura).
+Filtros: NO hay formulario HTML de filtros; el único filtro es tenant_id por URL
+   (reporte completo "todo o nada" por tenant).
+
+
+═══════════════════════════════════════════════════════════
+APP FACTURACIÓN — ALCANCE RESPECTO A ESTOS CU
+═══════════════════════════════════════════════════════════
+
+Se incluye solo porque TOCA CU13 (creación de stock de Licencia). NO interviene en
+CU14 (notificar), CU15 (asignar), CU16 (revocar) ni CU17 (exportar Excel).
+
+Relación con CU13 — Creación de stock vía factura:
+   1. Propuesta APROBADA → emitir_factura_desde_propuesta(request, propuesta_id)
+        (archivo: facturacion/interfaces/views/facturas.py)
+   2. Use case uc_emitir_factura_desde_propuesta(...) crea Factura + DetalleFactura.
+   3. DetalleFactura.crear_stock()  (archivo: facturacion/infrastructure/models.py)
+        - bulk_create de N Licencia con:
+            origen = Licencia.ORIGEN_FACTURA
+            factura_origen = factura
+            fecha_vencimiento = detalle.fecha_vencimiento
+            estado_operativo = Licencia.ESTADO_DISPONIBLE
+
+Reportes en facturación: SOLO PDF (no Excel):
+   • pdf_cotizacion()  → facturacion.services.cotizacion_pdf_response
+   • pdf_contrato()    → facturacion.services.contrato_pdf_response
+   • pdf_factura()     → facturacion.services.factura_pdf_response
+   (Por eso CU17 = exportar_excel vive solo en licencias/, no en facturacion/.)
+
+Montaje de URLs de la app: config/urls.py línea 100
+   path('facturacion/', include('facturacion.interfaces.urls'))
+
+
+═══════════════════════════════════════════════════════════
+RESUMEN DE ESTADO DE IMPLEMENTACIÓN
+═══════════════════════════════════════════════════════════
+
+  CU13  Gestionar licencias .......... IMPLEMENTADO (CRUD completo, eliminar = soft-delete)
+  CU14  Notificar vencimiento ........ PARCIAL — comando existe pero NO automatizado
+  CU15  Asignar licencia ............. IMPLEMENTADO (con validaciones multi-tenant + concurrencia)
+  CU16  Revocar / liberar licencia ... IMPLEMENTADO (soft, no borra; marca fecha_retiro)
+  CU17  Generar reportes (Excel) ..... IMPLEMENTADO (openpyxl; sin filtros HTML)
+
+──────────────────────────────────────────────────────────────────────────────
+Archivos fuente de referencia:
+  config/urls.py
+  licencias/views.py
+  licencias/forms.py                                   (LicenciaForm línea 120)
+  licencias/models.py
+  licencias/application/use_cases/licencias.py
+  licencias/application/use_cases/asignaciones.py
+  licencias/infrastructure/repositories/licencias.py
+  licencias/management/commands/enviar_alertas.py      (CU14)
+  bitacora/actions/licencias.py                        (funciones log_*)
+  facturacion/infrastructure/models.py                 (DetalleFactura.crear_stock)
+  facturacion/interfaces/views/facturas.py
+──────────────────────────────────────────────────────────────────────────────

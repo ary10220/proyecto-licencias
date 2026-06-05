@@ -20,6 +20,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Count, Q
+from django.db.models.functions import TruncMonth
  
 from empleados.models import Empleado, GerenciaDivision, GerenciaArea, Unidad
 from .models import (
@@ -353,6 +354,42 @@ def dashboard(request, tenant_id=None):
         for row in licencias.values('tipo__nombre').annotate(total=Count('id')).order_by('-total')[:8]
     )
 
+    # Series adicionales para los graficos Chart.js (no afectan los KPIs ni las barras CSS existentes).
+    empresa_rows = chart_rows(
+        (row['empresa__nombre'] or 'Sin empresa', row['total'])
+        for row in licencias.values('empresa__nombre').annotate(total=Count('id')).order_by('-total')[:8]
+    )
+    meses_es = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+    vencimientos_rows = [
+        {
+            'label': f"{meses_es[row['mes'].month - 1]} {row['mes'].year}",
+            'value': int(row['total'] or 0),
+        }
+        for row in (
+            licencias
+            .filter(fecha_vencimiento__gte=hoy)
+            .annotate(mes=TruncMonth('fecha_vencimiento'))
+            .values('mes')
+            .annotate(total=Count('id'))
+            .order_by('mes')[:12]
+        )
+        if row['mes']
+    ]
+
+    def _serie(rows):
+        return {
+            'labels': [row['label'] for row in rows],
+            'values': [row['value'] for row in rows],
+        }
+
+    chart_data = {
+        'estado': _serie(estado_rows),
+        'tipo': _serie(tipo_rows),
+        'origen': _serie(origen_rows),
+        'vencimientos': _serie(vencimientos_rows),
+        'empresa': _serie(empresa_rows),
+    }
+
     context = {
         'titulo': titulo,
         'tenants': tenants,
@@ -366,6 +403,7 @@ def dashboard(request, tenant_id=None):
         'chart_estado_rows': estado_rows,
         'chart_origen_rows': origen_rows,
         'chart_tipo_rows': tipo_rows,
+        'chart_data': chart_data,
         'kpi_total': total_licencias,
         'kpi_ocupadas': asignadas,
         'kpi_disponibles': disponibles,
