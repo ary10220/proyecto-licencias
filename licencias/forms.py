@@ -131,10 +131,10 @@ class LicenciaForm(forms.ModelForm):
             'tipo': forms.Select(attrs={'class': 'form-select select2-busqueda'}),
             'proveedor': forms.Select(attrs={'class': 'form-select select2-busqueda'}),
             'estado_operativo': forms.Select(attrs={'class': 'form-select'}),
-            'fecha_compra': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'fecha_inicio': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'fecha_activacion': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'fecha_vencimiento': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'fecha_compra': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-control', 'type': 'date'}),
+            'fecha_inicio': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-control', 'type': 'date'}),
+            'fecha_activacion': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-control', 'type': 'date'}),
+            'fecha_vencimiento': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-control', 'type': 'date'}),
             'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
 
