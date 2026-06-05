@@ -214,6 +214,38 @@
         </div>
     </div>
 
+    {# === Graficos analiticos (Chart.js) === #}
+    <style>
+        .dash-charts-js { display: grid; gap: 1rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .dash-charts-js .dash-card { display: flex; flex-direction: column; }
+        .dash-chart-canvas-wrap { position: relative; height: 280px; }
+        .dash-charts-js .dash-card-wide { grid-column: 1 / -1; }
+        @media (max-width: 991.98px) { .dash-charts-js { grid-template-columns: 1fr; } }
+    </style>
+    <div class="dash-charts-js">
+        <div class="dash-card">
+            <h5 class="dash-card-title"><i class="fa-solid fa-chart-pie me-2"></i>Licencias por estado</h5>
+            <div class="dash-chart-canvas-wrap"><canvas id="chartEstado"></canvas></div>
+        </div>
+        <div class="dash-card">
+            <h5 class="dash-card-title"><i class="fa-solid fa-chart-column me-2"></i>Licencias por tipo (Top 8)</h5>
+            <div class="dash-chart-canvas-wrap"><canvas id="chartTipo"></canvas></div>
+        </div>
+        <div class="dash-card">
+            <h5 class="dash-card-title"><i class="fa-solid fa-diagram-project me-2"></i>Origen del inventario</h5>
+            <div class="dash-chart-canvas-wrap"><canvas id="chartOrigen"></canvas></div>
+        </div>
+        <div class="dash-card">
+            <h5 class="dash-card-title"><i class="fa-solid fa-building me-2"></i>Licencias por empresa (Top 8)</h5>
+            <div class="dash-chart-canvas-wrap"><canvas id="chartEmpresa"></canvas></div>
+        </div>
+        <div class="dash-card dash-card-wide">
+            <h5 class="dash-card-title"><i class="fa-solid fa-chart-line me-2"></i>Vencimientos por mes</h5>
+            <div class="dash-chart-canvas-wrap"><canvas id="chartVencimientos"></canvas></div>
+        </div>
+    </div>
+    {{ chart_data|json_script:"dashboard-chart-data" }}
+
     <div class="dash-grid">
         <div class="dash-card">
             <h5 class="dash-card-title"><i class="fa-solid fa-calendar-days me-2"></i>Vencimientos proximos</h5>
@@ -285,4 +317,78 @@
     </div>
 </div>
 <script src="{% static 'facturacion/js/comercial_filters.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var dataEl = document.getElementById('dashboard-chart-data');
+    if (!dataEl || typeof Chart === 'undefined') {
+        console.error('Dashboard charts: dataEl o Chart no disponible', {dataEl: !!dataEl, Chart: typeof Chart});
+        return;
+    }
+    console.log('Dashboard charts: inicializando');
+
+    var data = JSON.parse(dataEl.textContent);
+
+    // Paleta corporativa Mamaya
+    var PALETA = ['#df6e12', '#0d6efd', '#198754', '#dc3545', '#6f42c1', '#fd7e14', '#20c997', '#6610f2'];
+    var NARANJA = '#df6e12';
+    var AZUL = '#0d6efd';
+
+    function tieneDatos(serie) {
+        return serie && serie.values && serie.values.some(function (v) { return v > 0; });
+    }
+
+    function placeholder(canvasId) {
+        var canvas = document.getElementById(canvasId);
+        if (canvas) {
+            var wrap = canvas.parentElement;
+            wrap.innerHTML = '<div class="text-center text-muted py-5">Sin datos para graficar.</div>';
+        }
+    }
+
+    function crear(canvasId, config, serie) {
+        var canvas = document.getElementById(canvasId);
+        if (!canvas) { return; }
+        if (!tieneDatos(serie)) { placeholder(canvasId); return; }
+        new Chart(canvas.getContext('2d'), config);
+    }
+
+    var leyendaAbajo = { plugins: { legend: { position: 'bottom' } }, responsive: true, maintainAspectRatio: false };
+    var sinLeyenda = { plugins: { legend: { display: false } }, responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } };
+
+    // 1. Estado - doughnut
+    crear('chartEstado', {
+        type: 'doughnut',
+        data: { labels: data.estado.labels, datasets: [{ data: data.estado.values, backgroundColor: PALETA }] },
+        options: leyendaAbajo
+    }, data.estado);
+
+    // 2. Tipo - barras
+    crear('chartTipo', {
+        type: 'bar',
+        data: { labels: data.tipo.labels, datasets: [{ label: 'Licencias', data: data.tipo.values, backgroundColor: NARANJA, borderRadius: 6 }] },
+        options: sinLeyenda
+    }, data.tipo);
+
+    // 3. Origen - pie
+    crear('chartOrigen', {
+        type: 'pie',
+        data: { labels: data.origen.labels, datasets: [{ data: data.origen.values, backgroundColor: PALETA }] },
+        options: leyendaAbajo
+    }, data.origen);
+
+    // 4. Empresa - barras horizontales
+    crear('chartEmpresa', {
+        type: 'bar',
+        data: { labels: data.empresa.labels, datasets: [{ label: 'Licencias', data: data.empresa.values, backgroundColor: AZUL, borderRadius: 6 }] },
+        options: { indexAxis: 'y', plugins: { legend: { display: false } }, responsive: true, maintainAspectRatio: false, scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } }
+    }, data.empresa);
+
+    // 5. Vencimientos por mes - linea
+    crear('chartVencimientos', {
+        type: 'line',
+        data: { labels: data.vencimientos.labels, datasets: [{ label: 'Vencen', data: data.vencimientos.values, borderColor: NARANJA, backgroundColor: 'rgba(223,110,18,.15)', fill: true, tension: .3, pointRadius: 4, pointBackgroundColor: NARANJA }] },
+        options: sinLeyenda
+    }, data.vencimientos);
+});
+</script>
 {% endblock %}
