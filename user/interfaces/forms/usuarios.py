@@ -19,6 +19,11 @@ class UserForm(forms.ModelForm):
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'}),
     )
+    recibir_alertas_vencimiento = forms.BooleanField(
+        label='Recibir alertas de vencimiento de licencias',
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+    )
 
     groups = forms.ModelMultipleChoiceField(
         label='Roles / Grupos',
@@ -80,6 +85,7 @@ class UserForm(forms.ModelForm):
             if perfil:
                 self.fields['area_usuario'].initial = perfil.area_usuario
                 self.fields['cargo'].initial = perfil.cargo
+                self.fields['recibir_alertas_vencimiento'].initial = perfil.recibir_alertas_vencimiento
 
     def clean_email(self):
         email = (self.cleaned_data.get('email') or '').strip()
@@ -151,6 +157,7 @@ class UserForm(forms.ModelForm):
             perfil.area_usuario = self.cleaned_data.get('area_usuario')
             perfil.area = ''
             perfil.cargo = self.cleaned_data.get('cargo')
+            perfil.recibir_alertas_vencimiento = self.cleaned_data.get('recibir_alertas_vencimiento', False)
             if creating:
                 perfil.must_change_password = True
             perfil.save()
