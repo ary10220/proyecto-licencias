@@ -20,14 +20,15 @@ from .interpretar_consulta import ESTADOS, ORIGENES, REGLAS_FILTROS, filtros_vac
 SYSTEM_PROMPT = (
     'Sos el asistente del sistema de Gestion de Licencias de software (control de TI corporativo, multiempresa).\n'
     'Segun el MENSAJE del usuario decidi su intencion y respondé SOLO con los campos del esquema:\n\n'
-    '- intencion = "filtros": cuando el usuario quiere VER o BUSCAR datos: una lista de licencias, un reporte, '
-    'el dashboard, o filtrar por empresa, estado, tipo, proveedor, origen, etc. Completá los campos de filtro y '
-    'poné en "respuesta" una frase corta confirmando el filtro.\n'
-    '- intencion = "ayuda": cuando el usuario PREGUNTA como funciona algo, donde esta algo, que hace un modulo o '
-    'pide una explicacion/instrucciones. Poné la explicacion en "respuesta" (2 a 5 frases o pasos cortos) y dejá '
-    'TODOS los filtros en 0 o "".\n\n'
-    'Ante la duda: si pide ver/listar/mostrar/filtrar datos -> "filtros"; si pregunta como/donde/que es/para que '
-    'sirve -> "ayuda".\n\n'
+    '- intencion = "filtros": SOLO cuando el usuario quiere VER el DASHBOARD / REPORTES de licencias filtrado '
+    'por alguno de estos criterios del tablero: tenant, empresa, tipo de licencia, origen, estado '
+    '(disponible / asignada / vencida / por vencer / suspendida / pendiente de activacion / revocada) o proveedor. '
+    'Completá esos campos y poné en "respuesta" una frase corta confirmando que abris el dashboard con ese filtro.\n'
+    '- intencion = "ayuda": para TODO lo demas. Como funciona o donde esta algo, como usar cualquier modulo '
+    '(empleados, facturacion, usuarios, roles, bitacora, gestion global, asignaciones), buscar a alguien por '
+    'nombre o CI, etc. Poné la explicacion en "respuesta" (2 a 5 frases o pasos) y dejá los filtros en 0 o "".\n\n'
+    'IMPORTANTE: los filtros SOLO aplican al dashboard de reportes y SOLO con esos 6 criterios. Si el pedido no se '
+    'puede resolver con ellos (p. ej. buscar por nombre, ver empleados, una factura puntual), respondé como "ayuda".\n\n'
     '== REGLAS PARA LOS FILTROS (solo si intencion="filtros") ==\n'
     + REGLAS_FILTROS
     + '\n\n== GUIA DEL SISTEMA (para responder cuando intencion="ayuda") ==\n'
@@ -60,25 +61,36 @@ SCHEMA = {
 class AsistenteChat:
     """Asistente unico: clasifica la intencion y responde en una sola llamada."""
 
-    def execute(self, consulta: str, rol: str = '') -> dict:
+    def execute(self, consulta: str, rol: str = '', puede_ver_licencias: bool = True) -> dict:
+        """
+        `puede_ver_licencias`: si es False (el usuario no tiene el permiso
+        `licencias.view_licencia`), el asistente NO arma filtros ni expone el
+        catalogo; solo responde ayuda.
+        """
         consulta = (consulta or '').strip()
         if not consulta:
             return self._fallback(
                 'Escribí tu consulta. Puedo explicarte cómo usar el sistema o mostrarte un reporte.'
             )
 
-        catalogo = cat.construir_catalogo()
-        user = (
-            (f'Rol del usuario: {rol}.\n\n' if rol else '')
-            + 'Catalogo (usa estos ids para los filtros):\n'
-            + json.dumps(catalogo, ensure_ascii=False)
-            + '\n\nMensaje del usuario:\n'
-            + consulta
-        )
+        # Solo se incluye el catalogo (y se habilitan los filtros) si el usuario
+        # tiene permiso para ver el tablero de licencias.
+        catalogo = cat.construir_catalogo() if puede_ver_licencias else None
+        system = SYSTEM_PROMPT
+        if not puede_ver_licencias:
+            system += (
+                '\n\nIMPORTANTE: el usuario NO tiene permiso para ver el tablero de licencias. '
+                'NUNCA uses intencion="filtros"; respondé siempre intencion="ayuda".'
+            )
+
+        user = (f'Rol del usuario: {rol}.\n\n' if rol else '')
+        if catalogo is not None:
+            user += 'Catalogo (usa estos ids para los filtros):\n' + json.dumps(catalogo, ensure_ascii=False) + '\n\n'
+        user += 'Mensaje del usuario:\n' + consulta
 
         try:
             texto_modelo = ai.chat(
-                system=SYSTEM_PROMPT, user=user, schema=SCHEMA,
+                system=system, user=user, schema=SCHEMA,
                 schema_name='asistente', temperature=0, max_tokens=600, timeout=25,
             )
         except ai.AsistenteNoConfigurado:
@@ -93,8 +105,15 @@ class AsistenteChat:
         if not isinstance(parsed, dict):
             return self._fallback('No entendí bien tu consulta. ¿La podés reformular?')
 
-        if parsed.get('intencion') == 'filtros':
+        if parsed.get('intencion') == 'filtros' and puede_ver_licencias and catalogo is not None:
             return {'ok': True, 'intencion': 'filtros', **normalizar_filtros(parsed, catalogo, consulta)}
+
+        # Si pidio filtros pero no tiene permiso, lo reconducimos a ayuda.
+        if parsed.get('intencion') == 'filtros' and not puede_ver_licencias:
+            return {
+                'ok': True, 'intencion': 'ayuda', **filtros_vacios(),
+                'respuesta': 'No tenés permiso para ver el tablero de licencias, pero puedo explicarte cómo usar el sistema.',
+            }
 
         respuesta = (parsed.get('respuesta') or '').strip() or 'No entendí bien tu pregunta. ¿La podés reformular?'
         return {'ok': True, 'intencion': 'ayuda', 'respuesta': respuesta, **filtros_vacios()}

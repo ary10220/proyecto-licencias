@@ -219,32 +219,19 @@ Sin dependencias extra: usa los estilos/JS ya cargados por base.html.
         };
 
         const buildUrl = (f) => {
+            // Los filtros del asistente operan SOLO sobre el dashboard de reportes.
             const qp = new URLSearchParams();
-            let base;
-            if (f.vista === 'reportes') {
-                base = f.tenant ? (cfg.dashboardUrl + f.tenant + '/') : cfg.dashboardUrl;
-                if (f.empresa) qp.set('empresa', f.empresa);
-                if (f.tipo) qp.set('tipo', f.tipo);
-                if (f.origen) qp.set('origen', f.origen);
-            } else {
-                base = cfg.licenciasUrl;
-                if (f.texto) qp.set('q', f.texto);
-                if (f.estado) qp.set('estado', f.estado);
-                if (f.tipo) qp.set('tipo', f.tipo);
-                if (f.proveedor) qp.set('proveedor', f.proveedor);
-            }
+            const base = f.tenant ? (cfg.dashboardUrl + f.tenant + '/') : cfg.dashboardUrl;
+            if (f.empresa) qp.set('empresa', f.empresa);
+            if (f.tipo) qp.set('tipo', f.tipo);
+            if (f.origen) qp.set('origen', f.origen);
+            if (f.estado) qp.set('estado', f.estado);
+            if (f.proveedor) qp.set('proveedor', f.proveedor);
             const s = qp.toString();
             return s ? base + '?' + s : base;
         };
 
-        const addApply = (url, vista) => {
-            const a = document.createElement('a');
-            a.className = 'asis-apply';
-            a.href = url;
-            a.innerHTML = '<i class="fa-solid fa-arrow-right"></i> ' + (vista === 'reportes' ? 'Ver dashboard' : 'Ver licencias');
-            messages.appendChild(a);
-            scrollDown();
-        };
+        const tieneFiltro = (f) => !!(f.tenant || f.empresa || f.tipo || f.origen || f.estado || f.proveedor);
 
         const post = async (url, consulta) => {
             const res = await fetch(url, {
@@ -279,8 +266,21 @@ Sin dependencias extra: usa los estilos/JS ya cargados por base.html.
                 const data = await post(cfg.chatUrl, text);
                 typing.remove();
                 addMsg('bot', data.respuesta || 'Sin respuesta.', data.ok === false);
-                if (data.intencion === 'filtros' && data.ok && data.vista && data.vista !== 'ninguna') {
-                    addApply(buildUrl(data), data.vista);
+                if (data.intencion === 'filtros' && data.ok && tieneFiltro(data)) {
+                    if (typeof window.dashboardAplicarFiltros === 'function') {
+                        // Estamos en el dashboard: filtra EN VIVO, sin recargar (el chat queda abierto).
+                        window.dashboardAplicarFiltros(data);
+                    } else {
+                        // Estamos en otra pagina: lleva al dashboard ya filtrado.
+                        const yendo = document.createElement('div');
+                        yendo.className = 'asis-typing';
+                        yendo.textContent = 'Abriendo el dashboard…';
+                        messages.appendChild(yendo);
+                        scrollDown();
+                        setTimeout(() => window.location.assign(buildUrl(data)), 450);
+                    }
+                } else if (data.intencion === 'filtros' && data.ok) {
+                    addMsg('bot', 'No identifiqué un filtro claro. Probá por empresa, estado, tipo de licencia, origen o proveedor.', true);
                 }
             } catch (err) {
                 typing.remove();

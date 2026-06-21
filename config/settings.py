@@ -3,11 +3,42 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-#^yxj0*56r=-^0@9n+z66mu0$+t#_l_6v+y0#j8w7bfmo1=6^t'
+def _load_env(path):
+    if not path.exists():
+        return
+    for raw_line in path.read_text(encoding='utf-8').splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith('#') or '=' not in line:
+            continue
+        key, _, value = line.partition('=')
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
 
-DEBUG = True
 
-ALLOWED_HOSTS = ['joseagc.pythonanywhere.com', '127.0.0.1', 'localhost']
+def _env_bool(name, default=False):
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {'1', 'true', 'yes', 'y', 'on'}
+
+
+def _env_list(name, default=None):
+    value = os.environ.get(name, '')
+    if not value:
+        return default or []
+    return [item.strip() for item in value.split(',') if item.strip()]
+
+
+_load_env(BASE_DIR / '.env')
+
+
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-local-dev-only-change-me')
+
+DEBUG = _env_bool('DEBUG', True)
+
+ALLOWED_HOSTS = _env_list(
+    'ALLOWED_HOSTS',
+    ['joseagc.pythonanywhere.com', '127.0.0.1', 'localhost'],
+)
 
 
 INSTALLED_APPS = [
@@ -144,13 +175,21 @@ LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'login'
 
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'arianyclaure@gmail.com'
-EMAIL_HOST_PASSWORD = 'pusuvtrgfykwdila'
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
+EMAIL_USE_TLS = _env_bool('EMAIL_USE_TLS', True)
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
+
+
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
+OPENAI_MODEL = os.environ.get('OPENAI_MODEL', 'gpt-4o-mini')
+
+# Dias antes del vencimiento en los que se envia la alerta automatica (management command enviar_alertas).
+# Se avisa cuando faltan EXACTAMENTE estos dias para el vencimiento de una licencia.
+ALERTAS_DIAS_AVISO = [30, 15, 7, 1]
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

@@ -169,12 +169,11 @@ def normalizar_filtros(parsed: dict, catalogo: dict, consulta: str) -> dict:
     origen = origen if origen in ORIGENES else ''
     vista = vista if vista in VISTAS else 'ninguna'
 
-    tiene_filtros = bool(tenant or empresa or tipo or proveedor or estado or origen or texto)
+    tiene_filtros = bool(tenant or empresa or tipo or proveedor or estado or origen)
 
-    if vista == 'ninguna':
-        vista = _inferir_vista(consulta, tiene_filtros)
-    if (estado or proveedor or texto) and vista == 'reportes':
-        vista = 'lista'
+    # Los filtros del asistente operan EXCLUSIVAMENTE sobre el dashboard de reportes.
+    # Los demas modulos no se navegan/filtran desde aca (solo ayuda de uso).
+    vista = 'reportes'
 
     respuesta = _normalizar_respuesta(str(parsed.get('respuesta') or '').strip(), vista, tiene_filtros)
 

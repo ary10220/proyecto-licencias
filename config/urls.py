@@ -54,10 +54,11 @@ urlpatterns = [
     path('licencias/', views.gestionar_licencias, name='gestionar_licencias'),
     path('licencias/tenant/<int:tenant_id>/', views.gestionar_licencias, name='gestionar_licencias_tenant'),
 
-    # Sincronizacion / Reportes
-    path('sincronizar/', views.sincronizar_m365, name='sincronizar'),
+    # Reportes
     path('exportar/', views.exportar_excel, name='exportar_general'),
     path('exportar/<int:tenant_id>/', views.exportar_excel, name='exportar_tenant'),
+    path('exportar-pdf/', views.exportar_pdf, name='exportar_pdf_general'),
+    path('exportar-pdf/<int:tenant_id>/', views.exportar_pdf, name='exportar_pdf_tenant'),
 
     # Modulo de Licencias
     path('licencia/nueva/', views.crear_licencia, name='crear_licencia'),

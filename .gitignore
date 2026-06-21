@@ -6,5 +6,10 @@ env/
 __pycache__/
 *.pyc
 
+# Ignorar variables de entorno locales y secretos
+.env
+.env.local
+.env.*.local
+
 # Ignorar la base de datos local (para que no se pisen los datos entre ustedes)
 db.sqlite3

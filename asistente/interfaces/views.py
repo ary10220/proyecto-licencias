@@ -48,7 +48,12 @@ def asistente_filtros(request):
 @login_required
 @require_POST
 def asistente_chat(request):
-    """Endpoint unificado: el modelo decide si responde ayuda o arma filtros."""
+    """Endpoint unificado: el modelo decide si responde ayuda o arma filtros.
+
+    Los filtros/reportes solo se habilitan si el usuario tiene permiso para ver
+    el tablero de licencias; la ayuda esta disponible para cualquier sesion.
+    """
     consulta = _leer_consulta(request)
     rol = ', '.join(request.user.groups.values_list('name', flat=True))
-    return JsonResponse(AsistenteChat().execute(consulta, rol))
+    puede_ver_licencias = request.user.is_superuser or request.user.has_perm('licencias.view_licencia')
+    return JsonResponse(AsistenteChat().execute(consulta, rol, puede_ver_licencias=puede_ver_licencias))

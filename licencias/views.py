@@ -18,8 +18,8 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
-from django.db import transaction
 from django.db.models import Count, Q
+from django.db.models.functions import TruncMonth
  
 from empleados.models import Empleado, GerenciaDivision, GerenciaArea, Unidad
 from .models import (
@@ -48,9 +48,9 @@ from bitacora.actions import (
     log_eliminar_licencia,
     log_eliminar_licencias_masivo,
     log_exportar_excel,
+    log_exportar_pdf,
     log_liberar_licencia,
     log_reactivar_empleado,
-    log_sincronizar_m365,
     log_proveedor_editar,
     log_proveedor_eliminar,
     log_tipo_licencia_editar,
@@ -174,6 +174,83 @@ def exportar_excel(request, tenant_id=None):
     wb.save(response)
     
     return response
+
+
+@login_required
+def exportar_pdf(request, tenant_id=None):
+    """
+    Genera un reporte PDF de una pagina (resumen ejecutivo) de las licencias.
+    Reutiliza el servicio de PDF de facturacion (xhtml2pdf).
+    """
+    exigir_permiso(request, 'licencias.view_licencia')
+    from facturacion.services.pdf import _pdf_response
+
+    tenant_label = None
+    if tenant_id:
+        tenant_label = Tenant.objects.filter(pk=tenant_id).values_list('nombre', flat=True).first()
+    log_exportar_pdf(request, tenant_label=tenant_label)
+
+    if tenant_id:
+        licencias = Licencia.objects.filter(tenant_id=tenant_id).select_related('tipo', 'empresa', 'tenant', 'proveedor')
+    else:
+        licencias = Licencia.objects.all().select_related('tipo', 'empresa', 'tenant', 'proveedor')
+
+    hoy = timezone.now().date()
+    limite_30_dias = hoy + timedelta(days=30)
+
+    total = licencias.count()
+    asignadas = licencias.filter(asignaciones__activo=True).distinct().count()
+    vencidas = licencias.filter(fecha_vencimiento__lt=hoy).count()
+    por_vencer = licencias.filter(fecha_vencimiento__gte=hoy, fecha_vencimiento__lte=limite_30_dias).count()
+    disponibles = (
+        licencias
+        .filter(estado_operativo=Licencia.ESTADO_DISPONIBLE, fecha_vencimiento__gte=hoy)
+        .exclude(asignaciones__activo=True)
+        .distinct()
+        .count()
+    )
+
+    estado_labels = dict(Licencia.ESTADOS_OPERATIVOS)
+    desglose_estado = [
+        {'estado': estado_labels.get(row['estado_operativo'], row['estado_operativo']), 'total': row['total']}
+        for row in licencias.values('estado_operativo').annotate(total=Count('id')).order_by('-total')
+    ]
+
+    proximas = (
+        licencias
+        .filter(fecha_vencimiento__gte=hoy, fecha_vencimiento__lte=limite_30_dias)
+        .order_by('fecha_vencimiento')[:10]
+    )
+
+    contexto = {
+        'doc_titulo': 'REPORTE DE LICENCIAS',
+        'numero': tenant_label or 'GENERAL',
+        'fecha': hoy,
+        'kpi_total': total,
+        'kpi_asignadas': asignadas,
+        'kpi_disponibles': disponibles,
+        'kpi_vencidas': vencidas,
+        'kpi_por_vencer': por_vencer,
+        'desglose_estado': desglose_estado,
+        'proximas': proximas,
+        'tenant_label': tenant_label,
+    }
+
+    fecha_str = hoy.strftime('%d-%m-%Y')
+    filename = f'Reporte_Licencias_{fecha_str}.pdf'
+    download = request.GET.get('download') == '1'
+    preview = request.GET.get('preview') == '1'
+    paper_size = request.GET.get('paper') or 'letter'
+    return _pdf_response(
+        'licencias/pdf/reporte_licencias.html',
+        contexto,
+        filename,
+        download=download,
+        preview=preview,
+        paper_size=paper_size,
+    )
+
+
 # ==========================================
 # MÓDULO token
 # ==========================================
@@ -296,6 +373,8 @@ def dashboard(request, tenant_id=None):
     empresa_id = request.GET.get('empresa') or None
     tipo_id = request.GET.get('tipo') or None
     origen = request.GET.get('origen') or ''
+    estado = request.GET.get('estado') or ''
+    proveedor_id = request.GET.get('proveedor') or None
 
     if tenant_id:
         tenant_seleccionado = get_object_or_404(Tenant, pk=tenant_id)
@@ -312,6 +391,24 @@ def dashboard(request, tenant_id=None):
         licencias = licencias.filter(tipo_id=tipo_id)
     if origen:
         licencias = licencias.filter(origen=origen)
+    if proveedor_id:
+        licencias = licencias.filter(proveedor_id=proveedor_id)
+    if estado:
+        # Mismo criterio que la lista de licencias. Se filtra por PK (subquery)
+        # para no introducir joins que dupliquen filas en los KPIs/graficos.
+        if estado == Licencia.ESTADO_ASIGNADA:
+            sub = licencias.filter(asignaciones__activo=True)
+        elif estado == Licencia.ESTADO_VENCIDA:
+            sub = licencias.filter(fecha_vencimiento__lt=hoy)
+        elif estado == 'POR_VENCER':
+            sub = licencias.filter(fecha_vencimiento__gte=hoy, fecha_vencimiento__lte=limite_30_dias)
+        elif estado == Licencia.ESTADO_DISPONIBLE:
+            sub = licencias.filter(
+                estado_operativo=Licencia.ESTADO_DISPONIBLE, fecha_vencimiento__gte=hoy
+            ).exclude(asignaciones__activo=True)
+        else:
+            sub = licencias.filter(estado_operativo=estado)
+        licencias = licencias.filter(pk__in=sub.values('pk'))
 
     licencias = licencias.select_related('tipo', 'empresa', 'tenant', 'proveedor', 'factura_origen')
     total_licencias = licencias.count()
@@ -353,6 +450,42 @@ def dashboard(request, tenant_id=None):
         for row in licencias.values('tipo__nombre').annotate(total=Count('id')).order_by('-total')[:8]
     )
 
+    # Series adicionales para los graficos Chart.js (no afectan los KPIs ni las barras CSS existentes).
+    empresa_rows = chart_rows(
+        (row['empresa__nombre'] or 'Sin empresa', row['total'])
+        for row in licencias.values('empresa__nombre').annotate(total=Count('id')).order_by('-total')[:8]
+    )
+    meses_es = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+    vencimientos_rows = [
+        {
+            'label': f"{meses_es[row['mes'].month - 1]} {row['mes'].year}",
+            'value': int(row['total'] or 0),
+        }
+        for row in (
+            licencias
+            .filter(fecha_vencimiento__gte=hoy)
+            .annotate(mes=TruncMonth('fecha_vencimiento'))
+            .values('mes')
+            .annotate(total=Count('id'))
+            .order_by('mes')[:12]
+        )
+        if row['mes']
+    ]
+
+    def _serie(rows):
+        return {
+            'labels': [row['label'] for row in rows],
+            'values': [row['value'] for row in rows],
+        }
+
+    chart_data = {
+        'estado': _serie(estado_rows),
+        'tipo': _serie(tipo_rows),
+        'origen': _serie(origen_rows),
+        'vencimientos': _serie(vencimientos_rows),
+        'empresa': _serie(empresa_rows),
+    }
+
     context = {
         'titulo': titulo,
         'tenants': tenants,
@@ -360,12 +493,25 @@ def dashboard(request, tenant_id=None):
         'empresa_filtro': empresa_id,
         'tipo_filtro': tipo_id,
         'origen_filtro': origen,
+        'estado_filtro': estado,
+        'proveedor_filtro': proveedor_id,
         'empresas': Empresa.objects.filter(activo=True).select_related('tenant').order_by('tenant__nombre', 'nombre'),
         'tipos_licencia': TipoLicencia.objects.filter(activo=True).order_by('fabricante', 'nombre'),
+        'proveedores': Proveedor.objects.filter(activo=True).order_by('nombre'),
         'origenes_licencia': Licencia.ORIGENES,
+        'estados_filtro': [
+            ('DISPONIBLE', 'Disponible'),
+            ('ASIGNADA', 'Asignada'),
+            ('VENCIDA', 'Vencida'),
+            ('POR_VENCER', 'Por vencer'),
+            ('SUSPENDIDA', 'Suspendida'),
+            ('PENDIENTE_ACTIVACION', 'Pendiente de activacion'),
+            ('REVOCADA', 'Revocada'),
+        ],
         'chart_estado_rows': estado_rows,
         'chart_origen_rows': origen_rows,
         'chart_tipo_rows': tipo_rows,
+        'chart_data': chart_data,
         'kpi_total': total_licencias,
         'kpi_ocupadas': asignadas,
         'kpi_disponibles': disponibles,
@@ -402,8 +548,6 @@ def gestionar_licencias(request, tenant_id=None):
     empresa_id = None
     proveedor_id = request.GET.get('proveedor') or None
     tipo_id = request.GET.get('tipo') or None
-    precio_min = request.GET.get('precio_min') or ''
-    precio_max = request.GET.get('precio_max') or ''
     fecha_desde = request.GET.get('fecha_desde') or None
     fecha_hasta = request.GET.get('fecha_hasta') or None
 
@@ -434,11 +578,6 @@ def gestionar_licencias(request, tenant_id=None):
             fecha_hasta=fecha_hasta,
         )
         titulo = "Todas las Licencias"
-
-    if precio_min:
-        licencias = licencias.filter(tipo__precio_venta__gte=precio_min)
-    if precio_max:
-        licencias = licencias.filter(tipo__precio_venta__lte=precio_max)
 
     empleados = Empleado.objects.filter(activo=True).select_related('empresa', 'area').order_by('nombre_completo')
 
@@ -508,8 +647,6 @@ def gestionar_licencias(request, tenant_id=None):
         'empresa_filtro': empresa_id,
         'proveedor_filtro': proveedor_id,
         'tipo_filtro': tipo_id,
-        'precio_min': precio_min,
-        'precio_max': precio_max,
         'fecha_desde': fecha_desde,
         'fecha_hasta': fecha_hasta,
         'empresas': Empresa.objects.filter(activo=True).select_related('tenant').order_by('tenant__nombre', 'nombre'),
@@ -1006,192 +1143,6 @@ def crear_licencia(request):
         else:
             messages.error(request, "Fallo de validación estructural. Verifique los parámetros de entrada.")
             
-    return redirect('gestionar_licencias')
-
-
-# ==========================================
-# MOTOR DE SINCRONIZACIÓN AUTOMATIZADA M365
-# ==========================================
-
-@login_required
-def sincronizar_m365(request):
-    """
-    Motor de ingesta y conciliación de datos contra el proveedor M365.
-    Procesa múltiples hojas de cálculo vía DataFrames y ejecuta actualización
-    transaccional garantizando el principio ACID en la base de datos.
-    """
-    exigir_permiso(request, 'licencias.change_licencia')
-    if request.method == 'POST' and request.FILES.get('archivo_excel'):
-        excel_file = request.FILES['archivo_excel']
-        
-        try:
-            # 1. Extracción de datos en memoria mediante motor OpenPyXL
-            diccionario_hojas = pd.read_excel(excel_file, engine='openpyxl', sheet_name=None)
-            df = pd.concat(diccionario_hojas.values(), ignore_index=True)
-            df.columns = df.columns.str.strip()
-
-            creados, actualizados, asignadas, liberadas, sin_stock = 0, 0, 0, 0, 0
-
-            # 2. Diccionario de enrutamiento de dominios corporativos
-            mapa_dominios = {
-                'avicolasofia.com': 'AVICOLASOFIA',
-                'mamayatech.com': 'MAMAYATECH',
-                'indatta.com': 'INDATTA',
-                'agrosofiaservicios.com': 'AGROSOFIA'
-            }
-
-            # 3. Diccionario de homologación de SKUs (M365 vs Sistema Interno)
-            mapa_licencias = {
-                'ENTERPRISEPACK': 'E3',                             
-                'SPE_F1': 'F3',                                     
-                'O365_BUSINESS_PREMIUM': 'ESTANDAR',                
-                'Office_365_E3_(no_Teams)': 'E3 (SIN TEAMS)',       
-                'Office_365_E1_(no_Teams)': 'E1 (SIN TEAMS)',       
-                'Microsoft_Teams_Enterprise_New': 'TEAMS ENTERPRISE',
-                'PROJECTPROFESSIONAL': 'PROJECT',                   
-                'POWER_BI_PRO': 'POWER BI',                         
-                'VISIOCLIENT': 'VISIO PLAN 2',                      
-                'EXCHANGESTANDARD': 'EXCHANGE ONLINE (PLAN 1)'      
-            }
-
-            # 4. Bloque Transaccional Atómico (Evita inconsistencias ante errores críticos)
-            with transaction.atomic():
-                for index, row in df.iterrows():
-                    correo = str(row.get('Nombre principal de usuario', '')).strip().lower()
-                    nombre = str(row.get('Nombre para mostrar', '')).strip()
-                    tiene_lic = str(row.get('Tiene licencia', '')).strip().upper() == 'VERDADERO'
-                    skus_str = str(row.get('AssignedProductSkus', '')).strip()
-
-                    # Limpieza de registros inválidos
-                    if pd.isna(correo) or not correo or '@' not in correo:
-                        continue
-
-                    # Resolución de dependencias corporativas
-                    dominio = correo.split('@')[1]
-                    nombre_empresa = mapa_dominios.get(dominio, 'MAMAYATECH')
-                    empresa_obj = Empresa.objects.filter(nombre__icontains=nombre_empresa).first()
-                    
-                    if not empresa_obj: 
-                        continue
-                        
-                    area_por_defecto = GerenciaArea.objects.filter(empresa=empresa_obj).first()
-
-                    # Consolidación de Identidades Operativas
-                    empleado, creado = Empleado.objects.get_or_create(
-                        email_principal=correo,
-                        defaults={
-                            'nombre_completo': nombre,
-                            'ci': correo.split('@')[0],
-                            'empresa': empresa_obj,
-                            'area': area_por_defecto,
-                            'activo': tiene_lic
-                        }
-                    )
-
-                    if creado: 
-                        creados += 1
-                    else:
-                        if empleado.activo != tiene_lic:
-                            empleado.activo = tiene_lic
-                            empleado.save(update_fields=['activo'])
-                        actualizados += 1
-
-                    # Parseo estructural de SKUs compuestos
-                    skus_lista = skus_str.split('+') if skus_str else []
-                    skus_principales = []
-                    skus_extra = [] 
-
-                    for sku in skus_lista:
-                        sku = sku.strip()
-                        if sku in mapa_licencias:
-                            skus_principales.append(sku)
-                        elif sku:
-                            skus_extra.append(sku)
-
-                    nombres_licencias_excel = [mapa_licencias[s] for s in skus_principales]
-                    nombres_manejados = list(mapa_licencias.values())
-
-                    # Políticas de retención: Se revocan únicamente las licencias gestionadas en la conciliación actual
-                    asignaciones_actuales = Asignacion.objects.filter(empleado=empleado, activo=True).select_related('licencia__tipo')
-                    
-                    for asig in asignaciones_actuales:
-                        nombre_bd = asig.licencia.tipo.nombre.upper()
-                        es_gestionada = any(nm.upper() in nombre_bd for nm in nombres_manejados)
-                        
-                        if es_gestionada:
-                            viene_en_excel = any(nm.upper() in nombre_bd for nm in nombres_licencias_excel)
-                            if not viene_en_excel or not tiene_lic:
-                                licencia = asig.licencia
-                                asig.estado = 'LIBERADA'
-                                asig.activo = False
-                                asig.fecha_retiro = timezone.now()
-                                asig.save()
-                                licencia.estado_operativo = Licencia.ESTADO_VENCIDA if licencia.esta_vencida else Licencia.ESTADO_DISPONIBLE
-                                licencia.save(update_fields=['estado_operativo'])
-                                liberadas += 1
-
-                    # Aprovisionamiento dinámico de activos
-                    texto_extra = f"Complementos M365: {', '.join(skus_extra)}" if skus_extra else ""
-
-                    if tiene_lic:
-                        for sku_principal in skus_principales:
-                            nombre_lic_bd = mapa_licencias[sku_principal]
-                            
-                            tiene_esta_licencia = Asignacion.objects.filter(
-                                empleado=empleado, 
-                                licencia__tipo__nombre__icontains=nombre_lic_bd, 
-                                activo=True
-                            ).exists()
-
-                            if not tiene_esta_licencia:
-                                licencia_libre = Licencia.objects.filter(
-                                    tipo__nombre__icontains=nombre_lic_bd,
-                                    empresa=empresa_obj,
-                                    estado_operativo=Licencia.ESTADO_DISPONIBLE,
-                                    fecha_vencimiento__gte=timezone.now().date(),
-                                ).exclude(asignaciones__activo=True).first()
-
-                                if licencia_libre:
-                                    Asignacion.objects.create(
-                                        licencia=licencia_libre,
-                                        empleado=empleado,
-                                        observaciones=texto_extra
-                                    )
-                                    licencia_libre.estado_operativo = Licencia.ESTADO_ASIGNADA
-                                    licencia_libre.save(update_fields=['estado_operativo'])
-                                    asignadas += 1
-                                else:
-                                    sin_stock += 1 
-                            else:
-                                # Sincronización de adiciones de bajo nivel (Add-ons)
-                                asig_actual = Asignacion.objects.filter(
-                                    empleado=empleado, 
-                                    licencia__tipo__nombre__icontains=nombre_lic_bd, 
-                                    activo=True
-                                ).first()
-                                if asig_actual and skus_extra:
-                                    asig_actual.observaciones = texto_extra
-                                    asig_actual.save(update_fields=['observaciones'])
-
-            # ==========================================
-            # DIAGNÓSTICO FINAL DE SINCRONIZACIÓN
-            # ==========================================
-            msg = f"Conciliación Finalizada: {creados} altas, {actualizados} validadas. {asignadas} asignaciones generadas, {liberadas} revocadas."
-            if sin_stock > 0:
-                msg += f" RIESGO DETECTADO: Déficit de inventario. Faltan {sin_stock} activos en pool corporativo."
-                messages.warning(request, msg)
-            else:
-                messages.success(request, msg)
-
-
-            log_sincronizar_m365(
-                request,
-                resumen=f"{creados} altas, {actualizados} validadas, {asignadas} asignaciones, {liberadas} revocadas, sin stock={sin_stock}.",
-            )
-
-        except Exception as e:
-            messages.error(request, f"Error critico en Pipeline de Datos. Traceback: {str(e)}")
-
     return redirect('gestionar_licencias')
 
 
