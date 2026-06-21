@@ -1036,6 +1036,10 @@
 
         {% block content %}{% endblock %}
     </div>
+
+    {% if request.user.is_authenticated %}
+        {% include 'asistente/_widget.html' %}
+    {% endif %}
     {% if force_password_change %}
         <div class="modal fade" id="forcePasswordModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
             <div class="modal-dialog modal-dialog-centered">

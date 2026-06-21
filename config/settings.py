@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     'licencias.apps.LicenciasConfig',
     'facturacion.apps.FacturacionConfig',
     'gestion_global.apps.GestionGlobalConfig',
+    'asistente.apps.AsistenteConfig',
     'axes',
 ]
 

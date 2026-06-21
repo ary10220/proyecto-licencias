@@ -108,6 +108,9 @@ urlpatterns = [
     path('bitacora/', include('bitacora.interfaces.urls')),
     path('user/', include('user.interfaces.urls')),
 
+    # Asistente de IA (chatbot de ayuda + interprete de filtros del tablero)
+    path('asistente/', include('asistente.interfaces.urls')),
+
     # Endpoints AJAX (cascada Tenant -> Empresa -> Division -> Area -> Unidad)
     path('ajax/cargar-empresas/', views.cargar_empresas, name='ajax_cargar_empresas'),
     path('ajax/cargar-empleados/', views.cargar_empleados, name='ajax_cargar_empleados'),

@@ -1,0 +1,323 @@
+{% comment %}
+Widget flotante del Asistente de IA (unificado). Se incluye al final de
+templates/base.html. Un solo chat: el modelo decide si responde una AYUDA
+(como funciona / donde esta algo) o arma un FILTRO/REPORTE del tablero.
+Sin dependencias extra: usa los estilos/JS ya cargados por base.html.
+{% endcomment %}
+<style>
+    .asis-launcher {
+        position: fixed; right: 22px; bottom: 22px; z-index: 1080;
+        height: 62px; width: 62px; border-radius: 50%;
+        display: inline-flex; align-items: center; justify-content: center;
+        border: none; cursor: pointer; color: #fff;
+        background: linear-gradient(180deg, #ef882d 0%, #df6e12 100%);
+        box-shadow: 0 12px 26px rgba(223, 110, 18, 0.42);
+        transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .asis-launcher:hover { transform: translateY(-3px) scale(1.04); box-shadow: 0 18px 34px rgba(223, 110, 18, 0.5); }
+    .asis-bot { display: inline-flex; }
+    .asis-bot svg { width: 32px; height: 32px; color: #fff; overflow: visible; }
+    /* La cabeza se inclina (se bambolea) sobre los hombros fijos. */
+    .asis-bot__head {
+        transform-box: fill-box; transform-origin: center bottom;
+        animation: asis-tilt 2.8s ease-in-out infinite;
+    }
+    .asis-bot__eye {
+        transform-box: fill-box; transform-origin: center;
+        animation: asis-eyes 4s ease-in-out infinite;
+    }
+    .asis-bot__led { animation: asis-blink 1.6s ease-in-out infinite; }
+    /* Anillos de pulso animados (onda tipo radar). */
+    .asis-launcher::before, .asis-launcher::after {
+        content: ""; position: absolute; inset: 0; border-radius: 50%;
+        border: 2px solid rgba(223, 110, 18, 0.55); pointer-events: none;
+        animation: asis-ring 2.6s ease-out infinite;
+    }
+    .asis-launcher::after { animation-delay: 1.3s; }
+    .asis-launcher[aria-expanded="true"]::before,
+    .asis-launcher[aria-expanded="true"]::after { animation: none; opacity: 0; }
+    .asis-launcher .asis-badge {
+        position: absolute; top: -3px; right: -3px;
+        background: #dc3545; color: #fff; border: 2px solid var(--surface, #fffdf9);
+        border-radius: 999px; font-size: .58rem; font-weight: 800; line-height: 1;
+        padding: 3px 5px; letter-spacing: .4px;
+        animation: asis-blink 1.8s ease-in-out infinite;
+    }
+    @keyframes asis-ring { 0% { transform: scale(1); opacity: .7; } 100% { transform: scale(1.85); opacity: 0; } }
+    @keyframes asis-tilt {
+        0%, 100% { transform: rotate(0deg); }
+        18% { transform: rotate(-11deg); }
+        50% { transform: rotate(0deg); }
+        72% { transform: rotate(11deg); }
+    }
+    @keyframes asis-eyes { 0%, 90%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.12); } }
+    @keyframes asis-blink { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+    @media (prefers-reduced-motion: reduce) {
+        .asis-bot__head, .asis-bot__eye, .asis-bot__led,
+        .asis-launcher::before, .asis-launcher::after, .asis-launcher .asis-badge { animation: none !important; }
+    }
+
+    .asis-panel {
+        position: fixed; right: 22px; bottom: 94px; z-index: 1080;
+        width: min(420px, calc(100vw - 32px)); height: min(82vh, 680px); max-height: min(82vh, 680px);
+        display: flex; flex-direction: column; overflow: hidden;
+        background: var(--surface, #fffdf9);
+        border: 1px solid rgba(220, 197, 177, 0.65);
+        border-radius: 16px; box-shadow: 0 22px 50px rgba(37, 43, 54, 0.22);
+    }
+    .asis-panel[hidden] { display: none; }
+
+    .asis-head {
+        display: flex; align-items: center; gap: 10px;
+        padding: 12px 14px; color: #fff;
+        background: linear-gradient(135deg, #df6e12 0%, #c96410 72%, #ba580d 100%);
+    }
+    .asis-head .asis-avatar {
+        flex: 0 0 34px; height: 34px; width: 34px; border-radius: 9px;
+        display: inline-flex; align-items: center; justify-content: center;
+        background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.24);
+    }
+    .asis-head .asis-titles { display: flex; flex-direction: column; line-height: 1.15; }
+    .asis-head .asis-titles strong { font-size: .96rem; font-weight: 800; }
+    .asis-head .asis-titles small { font-size: .72rem; opacity: .85; }
+    .asis-head .asis-close {
+        margin-left: auto; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.24);
+        color: #fff; height: 30px; width: 30px; border-radius: 8px; cursor: pointer;
+    }
+
+    .asis-messages {
+        flex: 1; min-height: 260px; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 11px;
+        scrollbar-width: thin;
+    }
+    .asis-hint { font-size: .82rem; color: var(--text-muted, #6c7480); line-height: 1.5; }
+    .asis-hint strong { color: #b65a11; }
+    .asis-msg { max-width: 86%; padding: 10px 13px; border-radius: 12px; font-size: .9rem; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
+    .asis-msg.user { align-self: flex-end; background: #ffe1c7; color: #7a3c06; border-bottom-right-radius: 4px; }
+    .asis-msg.bot { align-self: flex-start; background: #f4f1ec; color: #2c3038; border-bottom-left-radius: 4px; }
+    .asis-msg.bot.error { background: #fdeeee; color: #a12b2b; }
+    .asis-apply {
+        align-self: flex-start; display: inline-flex; align-items: center; gap: 7px;
+        background: #edf5f7; border: 1px solid rgba(47, 93, 104, 0.28); color: #23424a;
+        font-weight: 700; font-size: .82rem; padding: 7px 12px; border-radius: 8px;
+        cursor: pointer; text-decoration: none;
+    }
+    .asis-apply:hover { background: #dfecef; color: #16313a; }
+    .asis-typing { align-self: flex-start; color: var(--text-muted, #6c7480); font-size: .82rem; }
+
+    .asis-inputbar {
+        display: flex; align-items: center; gap: 7px; padding: 10px 12px;
+        border-top: 1px solid rgba(220, 197, 177, 0.55); background: var(--surface-muted, #fff8f2);
+    }
+    .asis-inputbar input {
+        flex: 1; border: 1px solid rgba(220, 197, 177, 0.85); border-radius: 999px;
+        padding: 9px 14px; font-size: .86rem; background: #fff; outline: none; min-width: 0;
+    }
+    .asis-inputbar input:focus { border-color: rgba(223, 110, 18, 0.6); box-shadow: 0 0 0 .18rem rgba(223, 110, 18, 0.12); }
+    .asis-ic {
+        flex: 0 0 38px; height: 38px; width: 38px; border-radius: 50%; border: none; cursor: pointer;
+        display: inline-flex; align-items: center; justify-content: center; color: #fff;
+    }
+    .asis-ic.mic { background: #8d8378; }
+    .asis-ic.mic.rec { background: #dc3545; animation: asis-pulse 1.1s infinite; }
+    .asis-ic.send { background: linear-gradient(180deg, #ef882d 0%, #df6e12 100%); }
+    .asis-ic:disabled { opacity: .55; cursor: default; }
+    @keyframes asis-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(220,53,69,.4);} 50% { box-shadow: 0 0 0 7px rgba(220,53,69,0);} }
+
+    @media (max-width: 575.98px) {
+        .asis-panel { right: 12px; left: 12px; width: auto; bottom: 80px; }
+        .asis-launcher { right: 14px; bottom: 14px; }
+    }
+</style>
+
+<button type="button" class="asis-launcher" id="asisLauncher" aria-label="Abrir asistente de IA" aria-expanded="false">
+    <span class="asis-bot" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path class="asis-bot__shoulders" d="M6.5 21c0-2.2 2.4-3.4 5.5-3.4s5.5 1.2 5.5 3.4"/>
+            <g class="asis-bot__head">
+                <line x1="12" y1="5.4" x2="12" y2="3.1"/>
+                <circle class="asis-bot__led" cx="12" cy="2.3" r="1.1" fill="currentColor" stroke="none"/>
+                <rect x="5" y="5.4" width="14" height="11" rx="3.8"/>
+                <circle class="asis-bot__eye" cx="9.5" cy="10.4" r="1.35" fill="currentColor" stroke="none"/>
+                <circle class="asis-bot__eye" cx="14.5" cy="10.4" r="1.35" fill="currentColor" stroke="none"/>
+                <path d="M10 13.6h4"/>
+            </g>
+        </svg>
+    </span>
+    <span class="asis-badge">IA</span>
+</button>
+
+<section class="asis-panel" id="asisPanel" hidden aria-label="Asistente de IA">
+    <div class="asis-head">
+        <span class="asis-avatar"><i class="fa-solid fa-wand-magic-sparkles"></i></span>
+        <span class="asis-titles">
+            <strong>Asistente</strong>
+            <small>Ayuda y reportes del sistema</small>
+        </span>
+        <button type="button" class="asis-close" id="asisClose" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <div class="asis-messages" id="asisMessages">
+        <div class="asis-hint" id="asisHint">
+            Preguntame <strong>cómo usar el sistema</strong> o pedime un <strong>reporte</strong>. Por ejemplo:
+            <strong>&ldquo;¿cómo asigno una licencia?&rdquo;</strong> · <strong>&ldquo;licencias vencidas&rdquo;</strong> ·
+            <strong>&ldquo;disponibles de Microsoft&rdquo;</strong>. Tocá el micrófono para hablar.
+        </div>
+    </div>
+
+    <div class="asis-inputbar">
+        <input type="text" id="asisInput" placeholder="Escribí o hablá…" aria-label="Tu consulta" autocomplete="off">
+        <button type="button" class="asis-ic mic" id="asisMic" aria-label="Hablar"><i class="fa-solid fa-microphone"></i></button>
+        <button type="button" class="asis-ic send" id="asisSend" aria-label="Enviar"><i class="fa-solid fa-paper-plane"></i></button>
+    </div>
+</section>
+
+<script>
+    window.ASIS_CONFIG = {
+        chatUrl: "{% url 'asistente:chat' %}",
+        dashboardUrl: "{% url 'dashboard_general' %}",
+        licenciasUrl: "{% url 'gestionar_licencias' %}",
+        csrf: "{{ csrf_token }}"
+    };
+
+    (() => {
+        const cfg = window.ASIS_CONFIG;
+        const launcher = document.getElementById('asisLauncher');
+        const panel = document.getElementById('asisPanel');
+        const closeBtn = document.getElementById('asisClose');
+        const messages = document.getElementById('asisMessages');
+        const hint = document.getElementById('asisHint');
+        const input = document.getElementById('asisInput');
+        const sendBtn = document.getElementById('asisSend');
+        const micBtn = document.getElementById('asisMic');
+        if (!launcher || !panel) return;
+
+        let busy = false;
+
+        const openPanel = () => {
+            panel.hidden = false;
+            launcher.setAttribute('aria-expanded', 'true');
+            setTimeout(() => input.focus(), 60);
+        };
+        const closePanel = () => {
+            panel.hidden = true;
+            launcher.setAttribute('aria-expanded', 'false');
+        };
+
+        launcher.addEventListener('click', () => panel.hidden ? openPanel() : closePanel());
+        closeBtn.addEventListener('click', closePanel);
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !panel.hidden) closePanel(); });
+
+        const scrollDown = () => { messages.scrollTop = messages.scrollHeight; };
+
+        const addMsg = (who, text, isError) => {
+            const el = document.createElement('div');
+            el.className = 'asis-msg ' + who + (isError ? ' error' : '');
+            el.textContent = text;
+            messages.appendChild(el);
+            scrollDown();
+            return el;
+        };
+
+        const buildUrl = (f) => {
+            const qp = new URLSearchParams();
+            let base;
+            if (f.vista === 'reportes') {
+                base = f.tenant ? (cfg.dashboardUrl + f.tenant + '/') : cfg.dashboardUrl;
+                if (f.empresa) qp.set('empresa', f.empresa);
+                if (f.tipo) qp.set('tipo', f.tipo);
+                if (f.origen) qp.set('origen', f.origen);
+            } else {
+                base = cfg.licenciasUrl;
+                if (f.texto) qp.set('q', f.texto);
+                if (f.estado) qp.set('estado', f.estado);
+                if (f.tipo) qp.set('tipo', f.tipo);
+                if (f.proveedor) qp.set('proveedor', f.proveedor);
+            }
+            const s = qp.toString();
+            return s ? base + '?' + s : base;
+        };
+
+        const addApply = (url, vista) => {
+            const a = document.createElement('a');
+            a.className = 'asis-apply';
+            a.href = url;
+            a.innerHTML = '<i class="fa-solid fa-arrow-right"></i> ' + (vista === 'reportes' ? 'Ver dashboard' : 'Ver licencias');
+            messages.appendChild(a);
+            scrollDown();
+        };
+
+        const post = async (url, consulta) => {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': cfg.csrf,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({ consulta })
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+        };
+
+        const send = async () => {
+            const text = (input.value || '').trim();
+            if (!text || busy) return;
+            if (hint) hint.style.display = 'none';
+            busy = true;
+            sendBtn.disabled = true;
+            addMsg('user', text);
+            input.value = '';
+
+            const typing = document.createElement('div');
+            typing.className = 'asis-typing';
+            typing.textContent = 'Pensando…';
+            messages.appendChild(typing);
+            scrollDown();
+
+            try {
+                const data = await post(cfg.chatUrl, text);
+                typing.remove();
+                addMsg('bot', data.respuesta || 'Sin respuesta.', data.ok === false);
+                if (data.intencion === 'filtros' && data.ok && data.vista && data.vista !== 'ninguna') {
+                    addApply(buildUrl(data), data.vista);
+                }
+            } catch (err) {
+                typing.remove();
+                addMsg('bot', 'No pude conectar con el asistente. Probá de nuevo.', true);
+            } finally {
+                busy = false;
+                sendBtn.disabled = false;
+                input.focus();
+            }
+        };
+
+        sendBtn.addEventListener('click', send);
+        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); send(); } });
+
+        // --- Dictado por voz (Web Speech API), opcional ---
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) {
+            micBtn.style.display = 'none';
+        } else {
+            const rec = new SR();
+            rec.lang = 'es-ES';
+            rec.interimResults = false;
+            rec.maxAlternatives = 1;
+            let recording = false;
+
+            micBtn.addEventListener('click', () => {
+                if (recording) { rec.stop(); return; }
+                try { rec.start(); } catch (e) { /* ya activo */ }
+            });
+            rec.addEventListener('start', () => { recording = true; micBtn.classList.add('rec'); });
+            rec.addEventListener('end', () => { recording = false; micBtn.classList.remove('rec'); });
+            rec.addEventListener('error', () => { recording = false; micBtn.classList.remove('rec'); });
+            rec.addEventListener('result', (e) => {
+                const said = e.results[0][0].transcript;
+                input.value = said;
+                send();
+            });
+        }
+    })();
+</script>
