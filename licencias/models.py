@@ -190,9 +190,41 @@ class Licencia(models.Model):
     fecha_vencimiento = models.DateField()
     observaciones = models.TextField(blank=True)
 
+    # Precios por instancia (opcionales). Si quedan en NULL se usa el precio del TipoLicencia.
+    # Permite registrar el costo real de ESTA compra puntual sin sobreescribir el catalogo.
+    precio_unitario = models.DecimalField(
+        max_digits=12, decimal_places=2,
+        null=True, blank=True,
+        verbose_name="Precio unitario (compra)",
+        help_text="Precio al que se compro esta licencia. Si se deja vacio, usa el del catalogo.",
+    )
+    precio_venta = models.DecimalField(
+        max_digits=12, decimal_places=2,
+        null=True, blank=True,
+        verbose_name="Precio de venta",
+        help_text="Precio sugerido para venta. Si se deja vacio, usa el del catalogo.",
+    )
+
     def __str__(self):
         empresa_nombre = self.empresa.nombre if self.empresa else self.tenant.nombre
         return f"{self.tipo.nombre} - {empresa_nombre}"
+
+    # ==========================================
+    # PRECIOS EFECTIVOS (instancia o catalogo)
+    # ==========================================
+    @property
+    def precio_unitario_efectivo(self):
+        """Precio de compra real: el de la instancia si esta seteado, sino el del TipoLicencia."""
+        if self.precio_unitario is not None:
+            return self.precio_unitario
+        return self.tipo.precio_compra if self.tipo_id else 0
+
+    @property
+    def precio_venta_efectivo(self):
+        """Precio de venta real: el de la instancia si esta seteado, sino el del TipoLicencia."""
+        if self.precio_venta is not None:
+            return self.precio_venta
+        return self.tipo.precio_venta if self.tipo_id else 0
 
     @property
     def usuario_activo(self):

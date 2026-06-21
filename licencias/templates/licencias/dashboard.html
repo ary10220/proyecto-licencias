@@ -232,7 +232,12 @@
                         </td>
 
                         <td class="text-end fw-bold">
-                            {{ licencia.tipo.moneda }} {{ licencia.tipo.precio_venta|floatformat:2 }}
+                            {{ licencia.tipo.moneda }} {{ licencia.precio_venta_efectivo|floatformat:2 }}
+                            {% if licencia.precio_unitario is not None %}
+                                <small class="d-block text-muted fw-normal" style="font-size:.72rem;">
+                                    Costo: {{ licencia.tipo.moneda }} {{ licencia.precio_unitario|floatformat:2 }}
+                                </small>
+                            {% endif %}
                         </td>
 
                         <td>

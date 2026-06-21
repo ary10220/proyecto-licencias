@@ -123,7 +123,9 @@ class LicenciaForm(forms.ModelForm):
         fields = [
             'tenant', 'empresa', 'tipo', 'proveedor',
             'estado_operativo', 'fecha_compra', 'fecha_inicio',
-            'fecha_activacion', 'fecha_vencimiento', 'observaciones',
+            'fecha_activacion', 'fecha_vencimiento',
+            'precio_unitario', 'precio_venta',
+            'observaciones',
         ]
         widgets = {
             'tenant': forms.Select(attrs={'class': 'form-select select2-busqueda'}),
@@ -135,6 +137,14 @@ class LicenciaForm(forms.ModelForm):
             'fecha_inicio': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'fecha_activacion': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'fecha_vencimiento': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'precio_unitario': forms.NumberInput(attrs={
+                'class': 'form-control', 'step': '0.01', 'min': '0',
+                'placeholder': 'Vacio = usa precio del catalogo',
+            }),
+            'precio_venta': forms.NumberInput(attrs={
+                'class': 'form-control', 'step': '0.01', 'min': '0',
+                'placeholder': 'Vacio = usa precio del catalogo',
+            }),
             'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
 

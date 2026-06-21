@@ -96,12 +96,19 @@
 .quote-products-table th,
 .quote-products-table td {
   white-space: nowrap;
+  vertical-align: middle;
 }
 
 .quote-products-table td:first-child,
 .quote-products-table th:first-child {
-  min-width: 280px;
+  min-width: 240px;
   white-space: normal;
+}
+
+.quote-products-table input,
+.quote-products-table select {
+  font-size: 0.85rem;
+  padding: 0.3rem 0.45rem;
 }
 
 .quote-inline-help {
@@ -219,7 +226,6 @@
     justify-content: stretch !important;
   }
 
-  .quote-products-table,
   .gg-shell .gg-table-card table,
   .gg-shell .table-responsive > table {
     min-width: 760px;
@@ -235,5 +241,114 @@
     align-items: flex-start;
     flex-direction: column;
     gap: 0.15rem;
+  }
+}
+
+/* =========================================================================
+   TABLA DE LICENCIAS COTIZADAS - RESPONSIVE EN CARDS
+   En pantallas <= 991px convierte cada fila en una card con grid interno,
+   eliminando el scroll horizontal. Cada celda lleva etiqueta via data-label.
+   ========================================================================= */
+
+/* Compactacion en pantallas medianas (992-1399px) para que entren las 9 cols */
+@media (min-width: 992px) and (max-width: 1399.98px) {
+  .quote-products-table th,
+  .quote-products-table td {
+    font-size: 0.78rem;
+    padding: 0.4rem 0.35rem;
+  }
+  .quote-products-table input,
+  .quote-products-table select {
+    font-size: 0.78rem;
+    padding: 0.25rem 0.35rem;
+  }
+  .quote-products-table td:first-child,
+  .quote-products-table th:first-child {
+    min-width: 180px;
+  }
+}
+
+/* TABLET / mobile (<= 991px): cards verticales */
+@media (max-width: 991.98px) {
+  /* Quitar scroll horizontal del contenedor */
+  .quote-products-table {
+    min-width: 0 !important;
+    width: 100%;
+  }
+  .quote-products-table > thead {
+    display: none;
+  }
+  .quote-products-table,
+  .quote-products-table tbody,
+  .quote-products-table tr,
+  .quote-products-table td {
+    display: block;
+    width: 100%;
+  }
+  .quote-products-table tr {
+    background: #fff;
+    border: 1px solid rgba(220, 197, 177, 0.55);
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    display: grid;
+    gap: 0.6rem 0.85rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-bottom: 0.85rem;
+    padding: 0.85rem 0.95rem;
+  }
+  .quote-products-table td {
+    border: 0;
+    min-width: 0;
+    padding: 0;
+    white-space: normal;
+  }
+  .quote-products-table td::before {
+    color: #6c7480;
+    content: attr(data-label);
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.2rem;
+    text-transform: uppercase;
+  }
+  /* Producto / licencia ocupa toda la fila */
+  .quote-products-table td:first-child {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+  /* Subtotal y Quitar en la ultima fila del card */
+  .quote-products-table td:nth-last-child(2) {
+    align-items: center;
+    background: #fff8f2;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0.45rem 0.6rem;
+    text-align: center;
+  }
+  .quote-products-table td:nth-last-child(2)::before {
+    margin-bottom: 0.15rem;
+  }
+  .quote-products-table td:last-child {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+  }
+  .quote-products-table input,
+  .quote-products-table select {
+    font-size: 0.88rem;
+    padding: 0.4rem 0.55rem;
+    width: 100%;
+  }
+}
+
+/* MOVIL (<= 575px): grid de 1 columna */
+@media (max-width: 575.98px) {
+  .quote-products-table tr {
+    grid-template-columns: 1fr;
   }
 }

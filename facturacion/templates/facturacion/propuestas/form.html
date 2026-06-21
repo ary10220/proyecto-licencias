@@ -113,15 +113,15 @@
                                 <tbody id="detalle-tbody">
                                     {% for form in detalle_formset %}
                                     <tr class="detalle-row" data-detalle-row>
-                                        <td>{{ form.id }}{{ form.tipo_licencia }}{% if form.tipo_licencia.errors %}<div class="text-danger small mt-1">{{ form.tipo_licencia.errors|striptags }}</div>{% endif %}</td>
-                                        <td>{{ form.cantidad }}{% if form.cantidad.errors %}<div class="text-danger small mt-1">{{ form.cantidad.errors|striptags }}</div>{% endif %}</td>
-                                        <td>{{ form.precio_unitario }}{% if form.precio_unitario.errors %}<div class="text-danger small mt-1">{{ form.precio_unitario.errors|striptags }}</div>{% endif %}</td>
-                                        <td>{{ form.fecha_inicio_uso }}{% if form.fecha_inicio_uso.errors %}<div class="text-danger small mt-1">{{ form.fecha_inicio_uso.errors|striptags }}</div>{% endif %}</td>
-                                        <td>{{ form.fecha_fin_uso }}{% if form.fecha_fin_uso.errors %}<div class="text-danger small mt-1">{{ form.fecha_fin_uso.errors|striptags }}</div>{% endif %}</td>
-                                        <td>{{ form.descuento_porcentaje }}</td>
-                                        <td>{{ form.descuento_monto }}</td>
-                                        <td class="text-end fw-bold detalle-subtotal">$ 0.00</td>
-                                        <td class="text-center">{% if form.DELETE %}{{ form.DELETE }}{% endif %}</td>
+                                        <td data-label="Producto / licencia">{{ form.id }}{{ form.tipo_licencia }}{% if form.tipo_licencia.errors %}<div class="text-danger small mt-1">{{ form.tipo_licencia.errors|striptags }}</div>{% endif %}</td>
+                                        <td data-label="Cantidad">{{ form.cantidad }}{% if form.cantidad.errors %}<div class="text-danger small mt-1">{{ form.cantidad.errors|striptags }}</div>{% endif %}</td>
+                                        <td data-label="Precio unit.">{{ form.precio_unitario }}{% if form.precio_unitario.errors %}<div class="text-danger small mt-1">{{ form.precio_unitario.errors|striptags }}</div>{% endif %}</td>
+                                        <td data-label="Inicio">{{ form.fecha_inicio_uso }}{% if form.fecha_inicio_uso.errors %}<div class="text-danger small mt-1">{{ form.fecha_inicio_uso.errors|striptags }}</div>{% endif %}</td>
+                                        <td data-label="Fin">{{ form.fecha_fin_uso }}{% if form.fecha_fin_uso.errors %}<div class="text-danger small mt-1">{{ form.fecha_fin_uso.errors|striptags }}</div>{% endif %}</td>
+                                        <td data-label="Desc. %">{{ form.descuento_porcentaje }}</td>
+                                        <td data-label="Desc. monto">{{ form.descuento_monto }}</td>
+                                        <td data-label="Subtotal" class="text-end fw-bold detalle-subtotal">$ 0.00</td>
+                                        <td data-label="Quitar" class="text-center">{% if form.DELETE %}{{ form.DELETE }}{% endif %}</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -323,18 +323,18 @@
             // Construir la fila HTML directamente (mas confiable que usar <template> dada la complejidad del select)
             const html = `
                 <tr class="detalle-row" data-detalle-row>
-                    <td>
+                    <td data-label="Producto / licencia">
                         <input type="hidden" name="detalles-${idx}-id" id="id_detalles-${idx}-id">
                         <select name="detalles-${idx}-tipo_licencia" class="form-select" id="id_detalles-${idx}-tipo_licencia">${tipoOptions}</select>
                     </td>
-                    <td><input type="number" name="detalles-${idx}-cantidad" class="form-control" min="1" value="1" id="id_detalles-${idx}-cantidad"></td>
-                    <td><input type="number" name="detalles-${idx}-precio_unitario" class="form-control" step="0.01" min="0" placeholder="Auto" id="id_detalles-${idx}-precio_unitario"></td>
-                    <td><input type="date" name="detalles-${idx}-fecha_inicio_uso" class="form-control" id="id_detalles-${idx}-fecha_inicio_uso"></td>
-                    <td><input type="date" name="detalles-${idx}-fecha_fin_uso" class="form-control" id="id_detalles-${idx}-fecha_fin_uso"></td>
-                    <td><input type="number" name="detalles-${idx}-descuento_porcentaje" class="form-control" step="0.01" min="0" max="100" value="0" id="id_detalles-${idx}-descuento_porcentaje"></td>
-                    <td><input type="number" name="detalles-${idx}-descuento_monto" class="form-control" step="0.01" min="0" value="0" id="id_detalles-${idx}-descuento_monto"></td>
-                    <td class="text-end fw-bold detalle-subtotal">$ 0.00</td>
-                    <td class="text-center"><input type="checkbox" name="detalles-${idx}-DELETE" id="id_detalles-${idx}-DELETE"></td>
+                    <td data-label="Cantidad"><input type="number" name="detalles-${idx}-cantidad" class="form-control" min="1" value="1" id="id_detalles-${idx}-cantidad"></td>
+                    <td data-label="Precio unit."><input type="number" name="detalles-${idx}-precio_unitario" class="form-control" step="0.01" min="0" placeholder="Auto" id="id_detalles-${idx}-precio_unitario"></td>
+                    <td data-label="Inicio"><input type="date" name="detalles-${idx}-fecha_inicio_uso" class="form-control" id="id_detalles-${idx}-fecha_inicio_uso"></td>
+                    <td data-label="Fin"><input type="date" name="detalles-${idx}-fecha_fin_uso" class="form-control" id="id_detalles-${idx}-fecha_fin_uso"></td>
+                    <td data-label="Desc. %"><input type="number" name="detalles-${idx}-descuento_porcentaje" class="form-control" step="0.01" min="0" max="100" value="0" id="id_detalles-${idx}-descuento_porcentaje"></td>
+                    <td data-label="Desc. monto"><input type="number" name="detalles-${idx}-descuento_monto" class="form-control" step="0.01" min="0" value="0" id="id_detalles-${idx}-descuento_monto"></td>
+                    <td data-label="Subtotal" class="text-end fw-bold detalle-subtotal">$ 0.00</td>
+                    <td data-label="Quitar" class="text-center"><input type="checkbox" name="detalles-${idx}-DELETE" id="id_detalles-${idx}-DELETE"></td>
                 </tr>
             `;
             tbody.insertAdjacentHTML('beforeend', html);
