@@ -7,10 +7,15 @@ Delega toda la logica a `application.use_cases.facturas`.
 from __future__ import annotations
 
 from datetime import date
+import stripe
+from django.conf import settings
+from django.urls import reverse
+from django.http import HttpResponseRedirect
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
+from ...infrastructure.models import Factura
 
 from .base import exigir_permiso, filtros_comerciales_context
 from ..forms import DetalleFacturaForm, FacturaFiscalForm, FacturaForm
@@ -253,3 +258,76 @@ def pdf_factura(request, pk):
     preview = request.GET.get('preview') == '1'
     paper_size = request.GET.get('paper') or 'letter'
     return factura_pdf_response(factura, download=download, preview=preview, paper_size=paper_size)
+
+
+# Configurar la llave secreta
+stripe.api_key = settings.STRIPE_SECRET_KEY
+
+@login_required
+def iniciar_pago_stripe(request, pk):
+    """
+    Crea la sesión de Stripe Checkout y redirige al cliente a la pasarela.
+    """
+    factura = get_object_or_404(Factura, pk=pk)
+    
+    # Prevenir doble pago
+    if factura.estado == 'PAGADA':
+        messages.info(request, "Esta factura ya se encuentra pagada.")
+        return redirect('detalle_factura', pk=factura.pk)
+
+    # Stripe maneja los montos en centavos (ej. 100.50 BOB -> 10050)
+    monto_centavos = int(factura.total * 100)
+
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=[{
+                'price_data': {
+                    'currency': 'bob', # Cambia a 'usd' si prefieres dolares
+                    'product_data': {
+                        'name': f'Factura {factura.numero}',
+                        'description': f'Pago de licencias - {factura.empresa.nombre}',
+                    },
+                    'unit_amount': monto_centavos,
+                },
+                'quantity': 1,
+            }],
+            mode='payment',
+            # A donde vuelve si paga con exito
+            success_url=request.build_absolute_uri(reverse('pago_exitoso')) + f"?session_id={{CHECKOUT_SESSION_ID}}&factura_id={factura.id}",
+            # A donde vuelve si cancela o se arrepiente
+            cancel_url=request.build_absolute_uri(reverse('pago_cancelado', kwargs={'pk': factura.id})),
+        )
+        # Redirigir a la pasarela de Stripe
+        return HttpResponseRedirect(session.url)
+        
+    except Exception as e:
+        messages.error(request, f"Error al conectar con la pasarela de pago: {str(e)}")
+        return redirect('detalle_factura', pk=factura.pk)
+
+
+@login_required
+def pago_exitoso(request):
+    """
+    Ruta a la que Stripe redirige cuando la tarjeta pasó exitosamente.
+    """
+    factura_id = request.GET.get('factura_id')
+    factura = get_object_or_404(Factura, pk=factura_id)
+    
+    # Cambiamos el estado de la factura a Pagada
+    if factura.estado != 'PAGADA':
+        factura.estado = 'PAGADA'
+        factura.metodo_pago = 'TARJETA'
+        factura.save()
+        messages.success(request, f"¡Pago exitoso! La factura {factura.numero} ha sido cancelada correctamente.")
+        
+    return redirect('detalle_factura', pk=factura.pk)
+
+
+@login_required
+def pago_cancelado(request, pk):
+    """
+    Ruta a la que Stripe redirige si el cliente cancela el pago.
+    """
+    messages.warning(request, "El proceso de pago fue cancelado. No se hizo ningún cargo a tu tarjeta.")
+    return redirect('detalle_factura', pk=pk)
