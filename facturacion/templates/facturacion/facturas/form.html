@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}{% if modo == 'editar' %}Editar{% else %}Nueva{% endif %} Factura{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'gestion_global/css/common.css' %}">
+<link rel="stylesheet" href="{% static 'facturacion/css/comercial.css' %}">
+
+<div class="gg-shell">
+    <div class="page-header">
+        <h2 class="page-title">
+            <span class="page-title-icon"><i class="fa-solid fa-file-invoice-dollar"></i></span>
+            <span class="page-title-text">
+                {% if modo == 'editar' %}Editar factura{% else %}Nueva factura{% endif %}
+            </span>
+        </h2>
+        <div class="page-actions">
+            <a href="{% url 'lista_facturas' %}" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-arrow-left me-1"></i>Volver
+            </a>
+        </div>
+    </div>
+
+    {% if modo == 'crear' %}
+    <div class="alert alert-warning border-0 shadow-sm">
+        <i class="fa-solid fa-triangle-exclamation me-2"></i>
+        Recomendado: emiti la factura desde una <strong>propuesta APROBADA</strong>
+        para que los datos se completen automaticamente y se genere el stock de licencias.
+        <a href="{% url 'lista_propuestas' %}" class="alert-link">Ir a propuestas</a>.
+    </div>
+    {% endif %}
+
+    <form method="POST">
+        {% csrf_token %}
+
+        <div class="card shadow-sm border-0 mb-3">
+            <div class="card-header bg-white">
+                <h5 class="mb-0 fw-bold text-primary">
+                    <i class="fa-solid fa-clipboard-list me-2"></i>Datos de la factura
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    {% for field in factura_form %}
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <label class="form-label fw-bold small text-secondary text-uppercase">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.help_text %}<div class="form-text small">{{ field.help_text }}</div>{% endif %}
+                        {% if field.errors %}<div class="text-danger small mt-1 fw-bold">{{ field.errors|striptags }}</div>{% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 mb-3">
+            <div class="card-header bg-white">
+                <h5 class="mb-0 fw-bold text-primary">
+                    <i class="fa-solid fa-list-check me-2"></i>Detalle facturado
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    {% for field in detalle_form %}
+                    <div class="col-12 col-md-6 col-lg-3">
+                        <label class="form-label fw-bold small text-secondary text-uppercase">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.help_text %}<div class="form-text small">{{ field.help_text }}</div>{% endif %}
+                        {% if field.errors %}<div class="text-danger small mt-1 fw-bold">{{ field.errors|striptags }}</div>{% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mb-4">
+            <a href="{% url 'lista_facturas' %}" class="btn btn-outline-secondary px-4">Cancelar</a>
+            <button type="submit" class="btn btn-primary px-4">
+                <i class="fa-solid fa-floppy-disk me-2"></i>Guardar
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+(function(){
+    // Filtro Tenant -> Empresa
+    const tenantSelect  = document.querySelector('#id_tenant');
+    const empresaSelect = document.querySelector('#id_empresa');
+
+    async function cargarEmpresas(tenantId) {
+        if (!empresaSelect || !tenantId) return;
+        const selActual = empresaSelect.value;
+        try {
+            const resp = await fetch(`/ajax/cargar-empresas/?tenant_id=${encodeURIComponent(tenantId)}`);
+            const data = await resp.json();
+            const opts = ['<option value="">--- Selecciona una empresa ---</option>'];
+            for (const e of data) {
+                const sel = (String(e.id) === String(selActual)) ? ' selected' : '';
+                opts.push(`<option value="${e.id}"${sel}>${e.nombre}</option>`);
+            }
+            empresaSelect.innerHTML = opts.join('');
+        } catch (e) { console.error('AJAX empresas:', e); }
+    }
+    if (tenantSelect) {
+        tenantSelect.addEventListener('change', () => cargarEmpresas(tenantSelect.value));
+    }
+
+    // Auto-completar precio_unitario al elegir tipo_licencia
+    const tipoSelect = document.querySelector('#id_tipo_licencia');
+    const precioInp  = document.querySelector('#id_precio_unitario');
+    if (tipoSelect && precioInp) {
+        tipoSelect.addEventListener('change', async () => {
+            if (!tipoSelect.value) return;
+            try {
+                const resp = await fetch(`/facturacion/ajax/precio-licencia/?tipo_id=${encodeURIComponent(tipoSelect.value)}`);
+                if (!resp.ok) return;
+                const data = await resp.json();
+                const val = parseFloat(precioInp.value || '0');
+                if (!val) {
+                    precioInp.value = data.precio_venta;
+                }
+            } catch (e) { console.error('precio AJAX:', e); }
+        });
+    }
+})();
+</script>
+{% endblock %}

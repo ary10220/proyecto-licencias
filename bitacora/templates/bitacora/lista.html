@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'bitacora/css/lista.css' %}">
+
+<div class="page-header mb-3">
+    <h2 class="page-title">
+        <span class="page-title-icon"><i class="fa-solid fa-clipboard-list"></i></span>
+        <span class="page-title-text">Bitacora del Sistema</span>
+    </h2>
+</div>
+
+<div class="card audit-card">
+    <div class="card-body audit-card-body">
+        <div class="table-responsive audit-workspace">
+            {% include 'bitacora/_partials/filtros.html' %}
+            {% include 'bitacora/_partials/tabla_eventos.html' %}
+        </div>
+    </div>
+</div>
+
+<script src="{% static 'bitacora/js/lista.js' %}"></script>
+{% endblock %}

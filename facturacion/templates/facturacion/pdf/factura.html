@@ -1,0 +1,120 @@
+{% extends 'facturacion/pdf/_base.html' %}
+
+{% block doc_body %}
+<div class="document-band">
+    <table>
+        <tr>
+            <td style="width:65%;">
+                <div class="band-title">Factura emitida</div>
+                <div class="band-meta">
+                    {{ factura.razon_social|default:factura.empresa.nombre }}
+                    {% if factura.propuesta %} - origen {{ factura.propuesta.numero }}{% endif %}
+                </div>
+            </td>
+            <td style="width:35%;" class="band-value">Bs. {{ factura.total|floatformat:2 }}</td>
+        </tr>
+    </table>
+</div>
+
+<div class="seccion-titulo">
+    Acerca de la Factura {{ factura.numero }}
+</div>
+<p class="seccion-desc">
+    Factura emitida a <strong>{{ factura.razon_social|default:factura.empresa.nombre }}</strong>
+    por las licencias detalladas a continuacion.
+    {% if factura.propuesta %}Cotizacion origen: <strong>{{ factura.propuesta.numero }}</strong>.{% endif %}
+</p>
+
+<div class="info-grid">
+    <table>
+        <tr>
+            <td style="width:42%; vertical-align: top; padding-right: 14px;">
+                <span class="label">Facturar a</span><br>
+                <span class="value">{{ factura.razon_social|default:factura.empresa.nombre }}</span><br>
+                {% if factura.nit %}<small><strong>NIT:</strong> {{ factura.nit }}</small><br>{% endif %}
+                {% if factura.direccion_fiscal %}<small>{{ factura.direccion_fiscal }}</small><br>{% endif %}
+                <small style="color:#888;">Tenant: {{ factura.tenant.nombre }}</small>
+            </td>
+            <td style="width:30%; vertical-align: top;">
+                <span class="label">Proveedor</span><br>
+                <span class="value">{{ factura.proveedor.nombre }}</span><br>
+                {% if factura.proveedor.nit %}<small>NIT: {{ factura.proveedor.nit }}</small><br>{% endif %}
+                <small style="color:#888;"><strong>{{ factura.get_metodo_pago_display }}</strong></small>
+            </td>
+            <td style="width:28%; vertical-align: top; text-align: right;">
+                <span class="label">Estado</span><br>
+                <span class="estado-badge estado-{{ factura.estado }}">{{ factura.get_estado_display }}</span><br>
+                <small style="margin-top:4px; display:block;">Stock {% if factura.stock_generado %}generado{% else %}pendiente{% endif %}</small>
+            </td>
+        </tr>
+    </table>
+</div>
+
+<div class="seccion-titulo" style="margin-top: 18px;">
+    Detalle facturado
+</div>
+
+<table class="items-table">
+    <thead>
+        <tr>
+            <th style="width: 38%;">Item & Descripcion</th>
+            <th style="width: 10%;" class="text-center">Cant.</th>
+            <th style="width: 16%;" class="text-center">Vigencia</th>
+            <th style="width: 12%;" class="text-center">Venc.</th>
+            <th style="width: 12%;" class="text-right">Precio U.</th>
+            <th style="width: 12%;" class="text-right">Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for d in factura.detalles.all %}
+        <tr>
+            <td>
+                <div class="item-name">{{ d.tipo_licencia.nombre }}</div>
+                {% if d.tipo_licencia.fabricante %}<div class="item-desc">{{ d.tipo_licencia.fabricante }}</div>{% endif %}
+            </td>
+            <td class="text-center">{{ d.cantidad }}</td>
+            <td class="text-center">
+                {% if d.fecha_inicio_uso %}<small>{{ d.fecha_inicio_uso|date:"d/m/y" }}<br>al<br>{{ d.fecha_fin_uso|date:"d/m/y" }}</small>{% else %}-{% endif %}
+            </td>
+            <td class="text-center"><small>{{ d.fecha_vencimiento|date:"d/m/Y" }}</small></td>
+            <td class="text-right">Bs. {{ d.precio_unitario|floatformat:2 }}</td>
+            <td class="text-right"><strong>Bs. {{ d.subtotal_con_descuento|floatformat:2 }}</strong></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<table class="totales-table">
+    <tr>
+        <td class="label">Subtotal:</td>
+        <td class="value">Bs. {{ factura.subtotal_bruto|floatformat:2 }}</td>
+    </tr>
+    {% if factura.descuento_global_calculado %}
+    <tr>
+        <td class="label">Descuento global:</td>
+        <td class="value" style="color: #c0392b;">- Bs. {{ factura.descuento_global_calculado|floatformat:2 }}</td>
+    </tr>
+    {% endif %}
+    <tr>
+        <td class="label">Impuesto ({{ factura.impuesto_porcentaje }}%):</td>
+        <td class="value">Bs. {{ factura.impuesto_calculado|floatformat:2 }}</td>
+    </tr>
+    <tr class="total-row">
+        <td class="label" style="color:#fff;">TOTAL EN BS.</td>
+        <td class="value">Bs. {{ factura.total|floatformat:2 }}</td>
+    </tr>
+</table>
+
+{% if factura.observaciones %}
+<div class="observaciones">
+    <span class="label">Observaciones</span>
+    {{ factura.observaciones|linebreaksbr }}
+</div>
+{% endif %}
+
+<div class="fine-print">
+    <strong>METODO DE PAGO:</strong> {{ factura.get_metodo_pago_display }}.<br>
+    <strong>STOCK DE LICENCIAS:</strong> {% if factura.stock_generado %}Generado en el inventario automaticamente.{% else %}Pendiente de generacion.{% endif %}<br>
+    <strong>NOTA:</strong> Factura emitida segun la cotizacion comercial aprobada.
+</div>
+{% endblock %}

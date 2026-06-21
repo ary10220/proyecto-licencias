@@ -1,0 +1,28 @@
+.areas-title {
+        color: var(--color-principal-dark);
+        font-size: 1.55rem;
+        font-weight: 800;
+    }
+
+    .area-card {
+        border: 1px solid #eee1d6;
+        border-radius: 18px;
+        transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .area-card:hover {
+        box-shadow: 0 0.8rem 1.8rem rgba(95, 54, 18, 0.12);
+        transform: translateY(-2px);
+    }
+
+    .cargo-chip {
+        background: #fff3e7;
+        border: 1px solid #f2cfad;
+        border-radius: 999px;
+        color: var(--color-principal-dark);
+        display: inline-flex;
+        font-size: 0.78rem;
+        font-weight: 800;
+        margin: 0.12rem;
+        padding: 0.32rem 0.65rem;
+    }

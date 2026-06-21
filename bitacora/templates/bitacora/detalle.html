@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'bitacora/css/detalle.css' %}">
+
+<div class="card audit-detail-card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 bitacora-detail-title">
+            <i class="fa-solid fa-magnifying-glass me-2"></i> Detalle del evento
+        </h5>
+        <a href="{% url 'lista_bitacora' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="fa-solid fa-arrow-left me-1"></i> Volver al listado
+        </a>
+    </div>
+
+    <div class="card-body audit-detail-body">
+        <div class="row mb-3">
+            <div class="col-md-3 detail-label">Identificador</div>
+            <div class="col-md-9 detail-value">#{{ evento.id }}</div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-3 detail-label">Fecha</div>
+            <div class="col-md-9 detail-value">{{ evento.fecha|date:"d/m/Y H:i:s" }}</div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-3 detail-label">Usuario</div>
+            <div class="col-md-9 detail-value">
+                {% if evento.usuario %}
+                    <strong>{{ evento.usuario.username }}</strong>
+                    <span class="text-muted">({{ evento.usuario.get_full_name|default:"sin nombre" }})</span>
+                {% else %}
+                    <span class="text-muted">Sistema</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-3 detail-label">Acción</div>
+            <div class="col-md-9 detail-value">
+                <span class="badge bg-{{ color }} audit-badge">{{ evento.accion }}</span>
+                <span class="badge bg-light text-dark border audit-level">Nivel: {{ nivel }}</span>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-3 detail-label">Módulo</div>
+            <div class="col-md-9 detail-value">{{ modulo_label|default:evento.modulo }}</div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-3 detail-label">Dirección IP</div>
+            <div class="col-md-9 detail-value">
+                {% if evento.ip %}
+                    <code>{{ evento.ip }}</code>
+                {% else %}
+                    <span class="text-muted">No registrada</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-3 detail-label">Descripción</div>
+            <div class="col-md-9 detail-value">
+                <pre class="audit-description">{{ evento.descripcion|default:"(sin descripción)" }}</pre>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

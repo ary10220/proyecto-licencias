@@ -1,0 +1,394 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<style>
+    .dash-shell { display: flex; flex-direction: column; gap: 1rem; }
+    .dash-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
+    .dash-kpi {
+        background: #ffffff;
+        border: 1px solid rgba(223, 110, 18, 0.14);
+        border-radius: 8px;
+        box-shadow: 0 10px 24px rgba(35, 45, 60, 0.06);
+        display: flex;
+        justify-content: space-between;
+        min-height: 96px;
+        padding: 1rem;
+    }
+    .dash-kpi-label { color: #667085; font-size: .74rem; font-weight: 800; text-transform: uppercase; }
+    .dash-kpi-value { color: #1f2937; font-size: 2rem; font-weight: 900; line-height: 1; }
+    .dash-kpi-icon {
+        align-items: center;
+        border-radius: 8px;
+        display: inline-flex;
+        height: 42px;
+        justify-content: center;
+        width: 42px;
+    }
+    .dash-kpi-primary { background: #fff1e7; color: #df6e12; }
+    .dash-kpi-green { background: #e8f7ef; color: #198754; }
+    .dash-kpi-red { background: #fdecee; color: #dc3545; }
+    .dash-kpi-blue { background: #e8f1ff; color: #0d6efd; }
+    .dash-grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 1rem; }
+    .dash-card { background: #fff; border: 1px solid rgba(223,110,18,.12); border-radius: 8px; box-shadow: 0 10px 24px rgba(35,45,60,.06); padding: 1rem; }
+    .dash-card-title { color: #0d6efd; font-size: 1rem; font-weight: 900; margin-bottom: .8rem; }
+    .dash-chart-grid { display: grid; gap: 1rem; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .dash-chart-row { margin-bottom: .7rem; }
+    .dash-chart-meta { align-items: center; display: flex; justify-content: space-between; gap: .75rem; margin-bottom: .2rem; }
+    .dash-chart-label { color: #344054; font-size: .86rem; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dash-chart-value { color: #667085; font-size: .78rem; font-weight: 800; }
+    .dash-chart-track { background: #f2f4f7; border-radius: 999px; height: 10px; overflow: hidden; }
+    .dash-chart-bar { background: linear-gradient(90deg, #df6e12, #0d6efd); border-radius: 999px; height: 10px; min-width: 4px; }
+    @media (max-width: 1199.98px) { .dash-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .dash-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 1199.98px) { .dash-chart-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 767.98px) {
+        .dash-shell .page-actions { justify-content: flex-start; width: 100%; }
+        .dash-shell .page-actions .btn { flex: 0 0 auto; white-space: nowrap; }
+        .dash-shell .table-responsive table { min-width: 700px; }
+    }
+    @media (max-width: 575.98px) {
+        .dash-kpis { grid-template-columns: 1fr; }
+        .dash-kpi { min-height: 84px; }
+        .dash-kpi-value { font-size: 1.65rem; }
+    }
+</style>
+<link rel="stylesheet" href="{% static 'licencias/css/modulo.css' %}">
+
+<div class="dash-shell">
+    <div class="page-header mb-0">
+        <h2 class="page-title">
+            <span class="page-title-icon"><i class="fa-solid fa-chart-pie"></i></span>
+            <span class="page-title-text">Dashboard</span>
+        </h2>
+        <div class="page-actions">
+            <a href="{% url 'gestionar_licencias' %}" class="btn btn-primary">
+                <i class="fa-solid fa-key me-2"></i>Gestionar licencias
+            </a>
+            <a href="{% url 'exportar_general' %}" class="btn btn-success">
+                <i class="fa-solid fa-file-excel me-2"></i>Excel
+            </a>
+        </div>
+    </div>
+
+    <form method="get" class="content-card" data-commercial-filter-form>
+        <div class="row g-3 align-items-end">
+            <div class="col-12 col-lg-4">
+                <label class="form-label small fw-bold text-secondary">TENANT</label>
+                <select class="form-select" data-tenant-router onchange="if (this.value) { window.location.href = this.value; } else { window.location.href = '{% url 'dashboard_general' %}'; }">
+                    <option value="" data-tenant-id="">Todos los tenants</option>
+                    {% for tenant in tenants %}
+                    <option value="{% url 'dashboard_tenant' tenant.id %}" data-tenant-id="{{ tenant.id }}" {% if tenant_seleccionado and tenant.id == tenant_seleccionado.id %}selected{% endif %}>{{ tenant.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-lg-3">
+                <label class="form-label small fw-bold text-secondary">EMPRESA</label>
+                <select name="empresa" class="form-select" onchange="this.form.submit()">
+                    <option value="">Todas las empresas</option>
+                    {% for empresa in empresas %}
+                    {% with empresa_id=empresa.id|stringformat:"s" %}
+                    <option value="{{ empresa.id }}" data-tenant="{{ empresa.tenant_id }}" {% if empresa_filtro == empresa_id %}selected{% endif %}>{{ empresa.nombre }}</option>
+                    {% endwith %}
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-lg-3">
+                <label class="form-label small fw-bold text-secondary">LICENCIA</label>
+                <select name="tipo" class="form-select" onchange="this.form.submit()">
+                    <option value="">Todos los productos</option>
+                    {% for tipo in tipos_licencia %}
+                    {% with tipo_id=tipo.id|stringformat:"s" %}
+                    <option value="{{ tipo.id }}" {% if tipo_filtro == tipo_id %}selected{% endif %}>{{ tipo.nombre }}</option>
+                    {% endwith %}
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-lg-2">
+                <label class="form-label small fw-bold text-secondary">ORIGEN</label>
+                <select name="origen" class="form-select" onchange="this.form.submit()">
+                    <option value="">Todos</option>
+                    {% for value,label in origenes_licencia %}
+                    <option value="{{ value }}" {% if origen_filtro == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </form>
+
+    <div class="dash-kpis">
+        <div class="dash-kpi">
+            <div>
+                <div class="dash-kpi-label">Licencias totales</div>
+                <div class="dash-kpi-value">{{ kpi_total }}</div>
+            </div>
+            <span class="dash-kpi-icon dash-kpi-primary"><i class="fa-solid fa-server"></i></span>
+        </div>
+        <div class="dash-kpi">
+            <div>
+                <div class="dash-kpi-label">Disponibles</div>
+                <div class="dash-kpi-value">{{ kpi_disponibles }}</div>
+            </div>
+            <span class="dash-kpi-icon dash-kpi-green"><i class="fa-regular fa-circle-check"></i></span>
+        </div>
+        <div class="dash-kpi">
+            <div>
+                <div class="dash-kpi-label">Asignadas</div>
+                <div class="dash-kpi-value">{{ kpi_ocupadas }}</div>
+            </div>
+            <span class="dash-kpi-icon dash-kpi-blue"><i class="fa-solid fa-user-check"></i></span>
+        </div>
+        <div class="dash-kpi">
+            <div>
+                <div class="dash-kpi-label">Riesgo de vencimiento</div>
+                <div class="dash-kpi-value">{{ kpi_vencidas }} / {{ kpi_por_vencer }}</div>
+            </div>
+            <span class="dash-kpi-icon dash-kpi-red"><i class="fa-solid fa-triangle-exclamation"></i></span>
+        </div>
+    </div>
+
+    <div class="dash-kpis">
+        <div class="dash-kpi">
+            <div>
+                <div class="dash-kpi-label">Empresas</div>
+                <div class="dash-kpi-value">{{ kpi_empresas }}</div>
+            </div>
+            <span class="dash-kpi-icon dash-kpi-blue"><i class="fa-solid fa-building"></i></span>
+        </div>
+        <div class="dash-kpi">
+            <div>
+                <div class="dash-kpi-label">Empleados activos</div>
+                <div class="dash-kpi-value">{{ kpi_empleados }}</div>
+            </div>
+            <span class="dash-kpi-icon dash-kpi-green"><i class="fa-solid fa-users"></i></span>
+        </div>
+        <div class="dash-kpi">
+            <div>
+                <div class="dash-kpi-label">Proveedores</div>
+                <div class="dash-kpi-value">{{ kpi_proveedores }}</div>
+            </div>
+            <span class="dash-kpi-icon dash-kpi-primary"><i class="fa-solid fa-tags"></i></span>
+        </div>
+        <div class="dash-kpi">
+            <div>
+                <div class="dash-kpi-label">Stock bajo</div>
+                <div class="dash-kpi-value">{{ stock_bajo|length }}</div>
+            </div>
+            <span class="dash-kpi-icon dash-kpi-red"><i class="fa-solid fa-box-open"></i></span>
+        </div>
+    </div>
+
+    <div class="dash-chart-grid">
+        <div class="dash-card">
+            <h5 class="dash-card-title"><i class="fa-solid fa-chart-simple me-2"></i>Distribucion por estado</h5>
+            {% for row in chart_estado_rows %}
+            <div class="dash-chart-row">
+                <div class="dash-chart-meta"><span class="dash-chart-label">{{ row.label }}</span><span class="dash-chart-value">{{ row.value }}</span></div>
+                <div class="dash-chart-track"><div class="dash-chart-bar" style="width: {{ row.pct }}%;"></div></div>
+            </div>
+            {% empty %}
+            <div class="text-center text-muted py-3">Sin datos para graficar.</div>
+            {% endfor %}
+        </div>
+        <div class="dash-card">
+            <h5 class="dash-card-title"><i class="fa-solid fa-diagram-project me-2"></i>Origen del inventario</h5>
+            {% for row in chart_origen_rows %}
+            <div class="dash-chart-row">
+                <div class="dash-chart-meta"><span class="dash-chart-label">{{ row.label }}</span><span class="dash-chart-value">{{ row.value }}</span></div>
+                <div class="dash-chart-track"><div class="dash-chart-bar" style="width: {{ row.pct }}%;"></div></div>
+            </div>
+            {% empty %}
+            <div class="text-center text-muted py-3">Sin datos para graficar.</div>
+            {% endfor %}
+        </div>
+        <div class="dash-card">
+            <h5 class="dash-card-title"><i class="fa-solid fa-ranking-star me-2"></i>Top productos</h5>
+            {% for row in chart_tipo_rows %}
+            <div class="dash-chart-row">
+                <div class="dash-chart-meta"><span class="dash-chart-label">{{ row.label }}</span><span class="dash-chart-value">{{ row.value }}</span></div>
+                <div class="dash-chart-track"><div class="dash-chart-bar" style="width: {{ row.pct }}%;"></div></div>
+            </div>
+            {% empty %}
+            <div class="text-center text-muted py-3">Sin datos para graficar.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    {# === Graficos analiticos (Chart.js) === #}
+    <style>
+        .dash-charts-js { display: grid; gap: 1rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .dash-charts-js .dash-card { display: flex; flex-direction: column; }
+        .dash-chart-canvas-wrap { position: relative; height: 280px; }
+        .dash-charts-js .dash-card-wide { grid-column: 1 / -1; }
+        @media (max-width: 991.98px) { .dash-charts-js { grid-template-columns: 1fr; } }
+    </style>
+    <div class="dash-charts-js">
+        <div class="dash-card">
+            <h5 class="dash-card-title"><i class="fa-solid fa-chart-pie me-2"></i>Licencias por estado</h5>
+            <div class="dash-chart-canvas-wrap"><canvas id="chartEstado"></canvas></div>
+        </div>
+        <div class="dash-card">
+            <h5 class="dash-card-title"><i class="fa-solid fa-chart-column me-2"></i>Licencias por tipo (Top 8)</h5>
+            <div class="dash-chart-canvas-wrap"><canvas id="chartTipo"></canvas></div>
+        </div>
+        <div class="dash-card">
+            <h5 class="dash-card-title"><i class="fa-solid fa-diagram-project me-2"></i>Origen del inventario</h5>
+            <div class="dash-chart-canvas-wrap"><canvas id="chartOrigen"></canvas></div>
+        </div>
+        <div class="dash-card">
+            <h5 class="dash-card-title"><i class="fa-solid fa-building me-2"></i>Licencias por empresa (Top 8)</h5>
+            <div class="dash-chart-canvas-wrap"><canvas id="chartEmpresa"></canvas></div>
+        </div>
+        <div class="dash-card dash-card-wide">
+            <h5 class="dash-card-title"><i class="fa-solid fa-chart-line me-2"></i>Vencimientos por mes</h5>
+            <div class="dash-chart-canvas-wrap"><canvas id="chartVencimientos"></canvas></div>
+        </div>
+    </div>
+    {{ chart_data|json_script:"dashboard-chart-data" }}
+
+    <div class="dash-grid">
+        <div class="dash-card">
+            <h5 class="dash-card-title"><i class="fa-solid fa-calendar-days me-2"></i>Vencimientos proximos</h5>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead class="table-light">
+                        <tr><th>Licencia</th><th>Empresa</th><th>Origen</th><th>Vence</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for lic in licencias_por_vencer %}
+                        <tr>
+                            <td><strong>{{ lic.tipo.nombre }}</strong><small class="text-muted d-block">{{ lic.tipo.fabricante }}</small></td>
+                            <td>{{ lic.empresa.nombre|default:lic.tenant.nombre }}</td>
+                            <td>{{ lic.get_origen_display }}</td>
+                            <td class="fw-bold text-danger">{{ lic.fecha_vencimiento|date:"d/m/Y" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4" class="text-center text-muted py-3">Sin vencimientos proximos.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="dash-card">
+            <h5 class="dash-card-title"><i class="fa-solid fa-clock-rotate-left me-2"></i>Asignaciones recientes</h5>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead class="table-light">
+                        <tr><th>Empleado</th><th>Licencia</th><th>Fecha</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for asig in ultimas_asignaciones %}
+                        <tr>
+                            <td><strong>{{ asig.empleado.nombre_completo }}</strong><small class="text-muted d-block">{{ asig.licencia.empresa.nombre|default:"-" }}</small></td>
+                            <td>{{ asig.licencia.tipo.nombre }}</td>
+                            <td>{{ asig.fecha_asignacion|date:"d/m/Y" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="3" class="text-center text-muted py-3">Sin asignaciones activas.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="dash-card">
+        <h5 class="dash-card-title"><i class="fa-solid fa-boxes-stacked me-2"></i>Tipos con stock bajo</h5>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead class="table-light">
+                    <tr><th>Tipo</th><th>Proveedor</th><th class="text-center">Disponible</th><th class="text-center">Minimo</th></tr>
+                </thead>
+                <tbody>
+                    {% for tipo in stock_bajo %}
+                    <tr>
+                        <td><strong>{{ tipo.nombre }}</strong><small class="text-muted d-block">{{ tipo.codigo|default:"Sin codigo" }}</small></td>
+                        <td>{{ tipo.proveedor_default.nombre|default:"-" }}</td>
+                        <td class="text-center fw-bold">{{ tipo.cantidad_disponible }}</td>
+                        <td class="text-center">{{ tipo.stock_minimo }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="text-center text-muted py-3">No hay tipos por debajo del stock minimo.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<script src="{% static 'facturacion/js/comercial_filters.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var dataEl = document.getElementById('dashboard-chart-data');
+    if (!dataEl || typeof Chart === 'undefined') {
+        console.error('Dashboard charts: dataEl o Chart no disponible', {dataEl: !!dataEl, Chart: typeof Chart});
+        return;
+    }
+    console.log('Dashboard charts: inicializando');
+
+    var data = JSON.parse(dataEl.textContent);
+
+    // Paleta corporativa Mamaya
+    var PALETA = ['#df6e12', '#0d6efd', '#198754', '#dc3545', '#6f42c1', '#fd7e14', '#20c997', '#6610f2'];
+    var NARANJA = '#df6e12';
+    var AZUL = '#0d6efd';
+
+    function tieneDatos(serie) {
+        return serie && serie.values && serie.values.some(function (v) { return v > 0; });
+    }
+
+    function placeholder(canvasId) {
+        var canvas = document.getElementById(canvasId);
+        if (canvas) {
+            var wrap = canvas.parentElement;
+            wrap.innerHTML = '<div class="text-center text-muted py-5">Sin datos para graficar.</div>';
+        }
+    }
+
+    function crear(canvasId, config, serie) {
+        var canvas = document.getElementById(canvasId);
+        if (!canvas) { return; }
+        if (!tieneDatos(serie)) { placeholder(canvasId); return; }
+        new Chart(canvas.getContext('2d'), config);
+    }
+
+    var leyendaAbajo = { plugins: { legend: { position: 'bottom' } }, responsive: true, maintainAspectRatio: false };
+    var sinLeyenda = { plugins: { legend: { display: false } }, responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } };
+
+    // 1. Estado - doughnut
+    crear('chartEstado', {
+        type: 'doughnut',
+        data: { labels: data.estado.labels, datasets: [{ data: data.estado.values, backgroundColor: PALETA }] },
+        options: leyendaAbajo
+    }, data.estado);
+
+    // 2. Tipo - barras
+    crear('chartTipo', {
+        type: 'bar',
+        data: { labels: data.tipo.labels, datasets: [{ label: 'Licencias', data: data.tipo.values, backgroundColor: NARANJA, borderRadius: 6 }] },
+        options: sinLeyenda
+    }, data.tipo);
+
+    // 3. Origen - pie
+    crear('chartOrigen', {
+        type: 'pie',
+        data: { labels: data.origen.labels, datasets: [{ data: data.origen.values, backgroundColor: PALETA }] },
+        options: leyendaAbajo
+    }, data.origen);
+
+    // 4. Empresa - barras horizontales
+    crear('chartEmpresa', {
+        type: 'bar',
+        data: { labels: data.empresa.labels, datasets: [{ label: 'Licencias', data: data.empresa.values, backgroundColor: AZUL, borderRadius: 6 }] },
+        options: { indexAxis: 'y', plugins: { legend: { display: false } }, responsive: true, maintainAspectRatio: false, scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } }
+    }, data.empresa);
+
+    // 5. Vencimientos por mes - linea
+    crear('chartVencimientos', {
+        type: 'line',
+        data: { labels: data.vencimientos.labels, datasets: [{ label: 'Vencen', data: data.vencimientos.values, borderColor: NARANJA, backgroundColor: 'rgba(223,110,18,.15)', fill: true, tension: .3, pointRadius: 4, pointBackgroundColor: NARANJA }] },
+        options: sinLeyenda
+    }, data.vencimientos);
+});
+</script>
+{% endblock %}

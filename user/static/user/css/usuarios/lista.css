@@ -1,0 +1,21 @@
+.users-title {
+        color: var(--color-principal-dark);
+        font-size: 1.55rem;
+        font-weight: 800;
+    }
+
+    .users-title i {
+        color: var(--color-principal);
+    }
+
+    .role-chip {
+        background: #fff3e7;
+        border: 1px solid #f2cfad;
+        border-radius: 999px;
+        color: var(--color-principal-dark);
+        display: inline-flex;
+        font-size: 0.72rem;
+        font-weight: 700;
+        margin: 0.12rem;
+        padding: 0.25rem 0.55rem;
+    }

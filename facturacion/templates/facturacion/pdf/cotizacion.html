@@ -1,0 +1,122 @@
+{% extends 'facturacion/pdf/_base.html' %}
+{% load static %}
+
+{% block doc_body %}
+<div class="document-band">
+    <table>
+        <tr>
+            <td style="width:65%;">
+                <div class="band-title">Cotizacion comercial</div>
+                <div class="band-meta">{{ propuesta.empresa.nombre }} - {{ propuesta.detalles.count }} item(s) de licenciamiento</div>
+            </td>
+            <td style="width:35%;" class="band-value">Bs. {{ propuesta.total|floatformat:2 }}</td>
+        </tr>
+    </table>
+</div>
+
+{# === Seccion "Acerca de" === #}
+<div class="seccion-titulo">
+    Acerca de la Cotizacion {{ propuesta.numero }}
+</div>
+<p class="seccion-desc">
+    El objetivo de esta propuesta es proporcionar a <strong>{{ propuesta.empresa.nombre }}</strong>
+    una solucion robusta y segura para la gestion de sus licencias de software,
+    bajo las condiciones comerciales detalladas a continuacion.
+</p>
+
+{# === Info cliente === #}
+<div class="info-grid">
+    <table>
+        <tr>
+            <td style="width:50%; vertical-align: top; padding-right: 14px;">
+                <span class="label">Cliente / Empresa</span><br>
+                <span class="value">{{ propuesta.empresa.nombre }}</span><br>
+                <small style="color:#888;">Tenant: {{ propuesta.tenant.nombre }}</small>
+            </td>
+            <td style="width:30%; vertical-align: top;">
+                <span class="label">Estado</span><br>
+                <span class="estado-badge estado-{{ propuesta.estado }}">{{ propuesta.get_estado_display }}</span>
+            </td>
+            <td style="width:20%; vertical-align: top; text-align: right;">
+                <span class="label">Fecha emision</span><br>
+                <span class="value">{{ propuesta.fecha|date:"d/m/Y" }}</span>
+            </td>
+        </tr>
+    </table>
+</div>
+
+{# === Tabla productos === #}
+<div class="seccion-titulo" style="margin-top: 18px;">
+    Detalle de licencias cotizadas
+</div>
+
+<table class="items-table">
+    <thead>
+        <tr>
+            <th style="width: 40%;">Item & Descripcion</th>
+            <th style="width: 10%;" class="text-center">Cantidad</th>
+            <th style="width: 18%;" class="text-center">Vigencia</th>
+            <th style="width: 15%;" class="text-right">Precio Unitario</th>
+            <th style="width: 17%;" class="text-right">Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for d in propuesta.detalles.all %}
+        <tr>
+            <td>
+                <div class="item-name">{{ d.tipo_licencia.nombre }}</div>
+                {% if d.tipo_licencia.fabricante %}<div class="item-desc">{{ d.tipo_licencia.fabricante }}{% if d.tipo_licencia.descripcion %} - {{ d.tipo_licencia.descripcion|truncatechars:80 }}{% endif %}</div>{% endif %}
+                {% if d.descuento_porcentaje or d.descuento_monto %}
+                <div class="item-desc" style="color: #c0392b;">
+                    Descuento aplicado: {% if d.descuento_porcentaje %}{{ d.descuento_porcentaje }}%{% endif %}{% if d.descuento_monto %} + Bs. {{ d.descuento_monto|floatformat:2 }}{% endif %}
+                </div>
+                {% endif %}
+            </td>
+            <td class="text-center">{{ d.cantidad }}</td>
+            <td class="text-center">
+                {% if d.fecha_inicio_uso %}
+                    <small>{{ d.fecha_inicio_uso|date:"d/m/y" }}<br>al<br>{{ d.fecha_fin_uso|date:"d/m/y" }}</small>
+                {% else %}-{% endif %}
+            </td>
+            <td class="text-right">Bs. {{ d.precio_unitario|floatformat:2 }}</td>
+            <td class="text-right"><strong>Bs. {{ d.subtotal_con_descuento|floatformat:2 }}</strong></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{# === Totales === #}
+<table class="totales-table">
+    <tr>
+        <td class="label">Subtotal:</td>
+        <td class="value">Bs. {{ propuesta.subtotal_bruto|floatformat:2 }}</td>
+    </tr>
+    {% if propuesta.descuento_global_calculado %}
+    <tr>
+        <td class="label">Descuento global ({{ propuesta.descuento_porcentaje }}%):</td>
+        <td class="value" style="color: #c0392b;">- Bs. {{ propuesta.descuento_global_calculado|floatformat:2 }}</td>
+    </tr>
+    {% endif %}
+    <tr>
+        <td class="label">Impuesto ({{ propuesta.impuesto_porcentaje }}%):</td>
+        <td class="value">Bs. {{ propuesta.impuesto_calculado|floatformat:2 }}</td>
+    </tr>
+    <tr class="total-row">
+        <td class="label" style="color:#fff;">TOTAL EN BS.</td>
+        <td class="value">Bs. {{ propuesta.total|floatformat:2 }}</td>
+    </tr>
+</table>
+
+{% if propuesta.observaciones %}
+<div class="observaciones">
+    <span class="label">Observaciones</span>
+    {{ propuesta.observaciones|linebreaksbr }}
+</div>
+{% endif %}
+
+<div class="fine-print">
+    <strong>VALIDEZ DE LA COTIZACION:</strong> 30 dias a partir de la fecha de emision.<br>
+    <strong>FORMA DE PAGO:</strong> Por definir al momento de la facturacion.<br>
+    <strong>NOTA:</strong> Esta cotizacion es referencial. La aprobacion comercial genera obligaciones contractuales.
+</div>
+{% endblock %}

@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Facturas{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'gestion_global/css/common.css' %}">
+<link rel="stylesheet" href="{% static 'facturacion/css/comercial.css' %}">
+
+<div class="gg-shell">
+    <div class="gg-header-block">
+        <div class="gg-title-row">
+            <h2 class="page-title">
+                <span class="page-title-icon"><i class="fa-solid fa-file-invoice-dollar"></i></span>
+                Facturas
+            </h2>
+        </div>
+
+        <div class="module-nav">
+            <a href="{% url 'lista_cotizaciones' %}" class="module-nav-link {% if facturacion_active == 'propuestas' %}active{% endif %}">
+                <i class="fa-solid fa-file-signature"></i><span>Cotizaciones</span>
+            </a>
+            <a href="{% url 'lista_facturas' %}" class="module-nav-link {% if facturacion_active == 'facturas' %}active{% endif %}">
+                <i class="fa-solid fa-file-invoice-dollar"></i><span>Facturas</span>
+            </a>
+        </div>
+
+        <div class="gg-actions-bar">
+            <div class="left">{{ facturas|length }} resultados</div>
+            {% if puede_crear %}
+            <a href="{% url 'seleccionar_cotizacion' %}" class="btn btn-primary">
+                <i class="fa-solid fa-plus me-1"></i>Nueva factura
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <form method="get" class="gg-filter-card gg-filter-bar commercial-filter-bar" data-gg-autofilter data-commercial-filter-form>
+        <div>
+            <label class="form-label small fw-bold text-secondary">TENANT</label>
+            <select name="tenant" class="form-select">
+                <option value="">Todos</option>
+                {% for tenant in tenants %}
+                {% with tenant_id=tenant.id|stringformat:"s" %}
+                <option value="{{ tenant.id }}" {% if tenant_filtro == tenant_id %}selected{% endif %}>{{ tenant.nombre }}</option>
+                {% endwith %}
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="form-label small fw-bold text-secondary">EMPRESA</label>
+            <select name="empresa" class="form-select">
+                <option value="">Todas</option>
+                {% for empresa in empresas %}
+                {% with empresa_id=empresa.id|stringformat:"s" %}
+                <option value="{{ empresa.id }}" data-tenant="{{ empresa.tenant_id }}" {% if empresa_filtro == empresa_id %}selected{% endif %}>{{ empresa.nombre }}</option>
+                {% endwith %}
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="form-label small fw-bold text-secondary">LICENCIA</label>
+            <select name="tipo" class="form-select">
+                <option value="">Todas</option>
+                {% for tipo in tipos_licencia %}
+                {% with tipo_id=tipo.id|stringformat:"s" %}
+                <option value="{{ tipo.id }}" {% if tipo_filtro == tipo_id %}selected{% endif %}>{{ tipo.nombre }}</option>
+                {% endwith %}
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="form-label small fw-bold text-secondary">ESTADO</label>
+            <select name="estado" class="form-select">
+                <option value="todos" {% if estado == 'todos' %}selected{% endif %}>Todos</option>
+                <option value="BORRADOR" {% if estado == 'BORRADOR' %}selected{% endif %}>Borrador</option>
+                <option value="EMITIDA" {% if estado == 'EMITIDA' %}selected{% endif %}>Emitida</option>
+                <option value="PAGADA" {% if estado == 'PAGADA' %}selected{% endif %}>Pagada</option>
+                <option value="ANULADA" {% if estado == 'ANULADA' %}selected{% endif %}>Anulada</option>
+            </select>
+        </div>
+        <div>
+            <label class="form-label small fw-bold text-secondary">STOCK</label>
+            <select name="stock" class="form-select">
+                <option value="todos" {% if stock_filtro == 'todos' %}selected{% endif %}>Todos</option>
+                <option value="generado" {% if stock_filtro == 'generado' %}selected{% endif %}>Generado</option>
+                <option value="pendiente" {% if stock_filtro == 'pendiente' %}selected{% endif %}>Pendiente</option>
+            </select>
+        </div>
+        <div>
+            <label class="form-label small fw-bold text-secondary">DESDE</label>
+            <input type="date" name="fecha_desde" value="{{ fecha_desde }}" class="form-control">
+        </div>
+        <div>
+            <label class="form-label small fw-bold text-secondary">HASTA</label>
+            <input type="date" name="fecha_hasta" value="{{ fecha_hasta }}" class="form-control">
+        </div>
+        <button type="submit" class="btn btn-outline-secondary gg-filter-submit">
+            <i class="fa-solid fa-filter me-1"></i>Filtrar
+        </button>
+    </form>
+
+    <div class="card gg-table-card">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Numero</th>
+                        <th>Empresa</th>
+                        <th>NIT</th>
+                        <th>Fecha</th>
+                        <th>Estado</th>
+                        <th>Stock</th>
+                        <th class="text-end">Total</th>
+                        <th class="text-end" style="width:240px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in facturas %}
+                    <tr>
+                        <td class="fw-bold text-primary">{{ f.numero }}</td>
+                        <td>{{ f.empresa.nombre }}</td>
+                        <td><small>{{ f.nit|default:"-" }}</small></td>
+                        <td><small>{{ f.fecha|date:"d/m/Y" }}</small></td>
+                        <td>
+                            {% if f.estado == 'BORRADOR' %}<span class="badge bg-secondary gg-status-badge">Borrador</span>
+                            {% elif f.estado == 'EMITIDA' %}<span class="badge bg-primary gg-status-badge">Emitida</span>
+                            {% elif f.estado == 'PAGADA' %}<span class="badge bg-success gg-status-badge">Pagada</span>
+                            {% elif f.estado == 'ANULADA' %}<span class="badge bg-danger gg-status-badge">Anulada</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if f.stock_generado %}<span class="badge bg-success gg-status-badge"><i class="fa-solid fa-check"></i></span>
+                            {% else %}<span class="badge bg-light text-muted gg-status-badge">-</span>{% endif %}
+                        </td>
+                        <td class="text-end fw-bold">$ {{ f.total|floatformat:2 }}</td>
+                        <td>
+                            <div class="gg-actions">
+                                <a href="{% url 'detalle_factura' f.id %}" class="btn btn-outline-secondary" title="Ver detalle">
+                                    <i class="fa-solid fa-eye"></i>
+                                </a>
+                                <a href="#" data-pdf-url="{% url 'pdf_factura' f.id %}" data-pdf-title="Factura {{ f.numero }}" class="btn btn-outline-info" title="Vista previa PDF"><i class="fa-solid fa-file-pdf"></i></a>
+                                {% if f.estado != 'ANULADA' %}
+                                <a href="{% url 'editar_factura' f.id %}" class="btn btn-outline-info" title="Editar">
+                                    <i class="fa-solid fa-pen"></i>
+                                </a>
+                                <form method="post" action="{% url 'anular_factura' f.id %}" data-confirm-title="Anular factura" data-confirm="Anular la factura {{ f.numero }}? El stock ya generado no se elimina automaticamente." data-confirm-icon="warning" data-confirm-ok="Anular">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-warning" title="Anular"><i class="fa-solid fa-ban"></i></button>
+                                </form>
+                                {% endif %}
+                                {% if not f.stock_generado %}
+                                <form method="post" action="{% url 'eliminar_factura' f.id %}" data-confirm-title="Eliminar factura" data-confirm="Eliminar la factura {{ f.numero }}? Esta accion no se puede deshacer." data-confirm-icon="warning" data-confirm-ok="Eliminar">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-danger" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="8" class="text-center py-4 text-muted">No hay facturas registradas.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% include 'facturacion/_partials/modal_pdf.html' %}
+<script src="{% static 'facturacion/js/comercial_filters.js' %}"></script>
+<script src="{% static 'gestion_global/js/filters.js' %}"></script>
+{% endblock %}

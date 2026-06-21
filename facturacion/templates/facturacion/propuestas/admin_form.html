@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Gestion administrativa - {{ propuesta.numero }}{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'gestion_global/css/common.css' %}">
+<link rel="stylesheet" href="{% static 'facturacion/css/comercial.css' %}">
+
+<div class="gg-shell">
+    <div class="page-header">
+        <h2 class="page-title">
+            <span class="page-title-icon"><i class="fa-solid fa-lock"></i></span>
+            <span class="page-title-text">Cotizacion aprobada</span>
+        </h2>
+        <div class="page-actions">
+            <a href="{% url 'detalle_cotizacion' propuesta.id %}" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-arrow-left me-1"></i>Volver
+            </a>
+        </div>
+    </div>
+
+    <div class="module-nav mb-3">
+        <a href="{% url 'lista_cotizaciones' %}" class="module-nav-link active">
+            <i class="fa-solid fa-file-signature"></i><span>Cotizaciones</span>
+        </a>
+        <a href="{% url 'lista_facturas' %}" class="module-nav-link">
+            <i class="fa-solid fa-file-invoice-dollar"></i><span>Facturas</span>
+        </a>
+    </div>
+
+    <div class="alert alert-warning border-0 shadow-sm">
+        <i class="fa-solid fa-shield-halved me-2"></i>
+        Esta cotizacion ya fue aprobada. Productos, cantidades, precios,
+        descuentos, fechas, tenant y empresa quedan bloqueados para conservar
+        la trazabilidad comercial.
+    </div>
+
+    <div class="row g-3">
+        <div class="col-12 col-lg-7">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0 fw-bold text-primary">
+                        <i class="fa-solid fa-list-check me-2"></i>Resumen bloqueado
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4 text-muted">Numero</dt>
+                        <dd class="col-sm-8 fw-bold">{{ propuesta.numero }}</dd>
+                        <dt class="col-sm-4 text-muted">Tenant</dt>
+                        <dd class="col-sm-8">{{ propuesta.tenant.nombre }}</dd>
+                        <dt class="col-sm-4 text-muted">Empresa</dt>
+                        <dd class="col-sm-8">{{ propuesta.empresa.nombre }}</dd>
+                        <dt class="col-sm-4 text-muted">Fecha</dt>
+                        <dd class="col-sm-8">{{ propuesta.fecha|date:"d/m/Y" }}</dd>
+                        <dt class="col-sm-4 text-muted">Items</dt>
+                        <dd class="col-sm-8">{{ propuesta.detalles.count }} licencia(s)</dd>
+                        <dt class="col-sm-4 text-muted">Total</dt>
+                        <dd class="col-sm-8 fw-bold text-primary">$ {{ propuesta.total|floatformat:2 }}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-5">
+            <form method="post" class="card shadow-sm border-0 h-100">
+                {% csrf_token %}
+                <div class="card-header bg-white">
+                    <h5 class="mb-0 fw-bold text-primary">
+                        <i class="fa-solid fa-pen-to-square me-2"></i>Datos administrativos
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% for field in propuesta_form %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-secondary small text-uppercase">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.errors %}<div class="text-danger small mt-1 fw-bold">{{ field.errors|striptags }}</div>{% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="card-footer bg-white d-flex justify-content-end gap-2">
+                    <a href="{% url 'detalle_cotizacion' propuesta.id %}" class="btn btn-outline-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-floppy-disk me-2"></i>Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
