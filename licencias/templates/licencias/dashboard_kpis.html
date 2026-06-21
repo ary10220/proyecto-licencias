@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Dashboard - Licencias{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'gestion_global/css/common.css' %}">
+<link rel="stylesheet" href="{% static 'licencias/css/modulo.css' %}">
+
+<div class="gg-shell">
+    <div class="page-header">
+        <h2 class="page-title">
+            <span class="page-title-icon"><i class="fa-solid fa-chart-pie"></i></span>
+            <span class="page-title-text">{{ titulo }}</span>
+        </h2>
+    </div>
+
+    {% include 'licencias/_partials/nav_licencias.html' %}
+
+    {# === KPIs principales === #}
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-md-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body text-center">
+                    <i class="fa-solid fa-key text-primary" style="font-size:1.6rem;"></i>
+                    <h3 class="mb-0 mt-2">{{ kpi.total_licencias }}</h3>
+                    <small class="text-muted text-uppercase">Total licencias</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body text-center">
+                    <i class="fa-solid fa-circle-check text-success" style="font-size:1.6rem;"></i>
+                    <h3 class="mb-0 mt-2">{{ kpi.asignaciones_activas }}</h3>
+                    <small class="text-muted text-uppercase">Asignadas</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body text-center">
+                    <i class="fa-solid fa-circle-dot text-info" style="font-size:1.6rem;"></i>
+                    <h3 class="mb-0 mt-2">{{ kpi.licencias_disponibles }}</h3>
+                    <small class="text-muted text-uppercase">Disponibles</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body text-center">
+                    <i class="fa-solid fa-triangle-exclamation text-warning" style="font-size:1.6rem;"></i>
+                    <h3 class="mb-0 mt-2">{{ kpi.proximas_vencer }}</h3>
+                    <small class="text-muted text-uppercase">Vencen 30 dias</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-md-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body text-center">
+                    <i class="fa-solid fa-xmark-circle text-danger" style="font-size:1.6rem;"></i>
+                    <h3 class="mb-0 mt-2">{{ kpi.licencias_vencidas }}</h3>
+                    <small class="text-muted text-uppercase">Vencidas</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body text-center">
+                    <i class="fa-solid fa-file-signature text-primary" style="font-size:1.6rem;"></i>
+                    <h3 class="mb-0 mt-2">{{ kpi.cotizaciones_aprobadas }}</h3>
+                    <small class="text-muted text-uppercase">Cotizaciones aprobadas</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body text-center">
+                    <i class="fa-solid fa-file-invoice-dollar text-success" style="font-size:1.6rem;"></i>
+                    <h3 class="mb-0 mt-2">{{ kpi.facturas_emitidas }}</h3>
+                    <small class="text-muted text-uppercase">Facturas emitidas</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# === Distribucion por TipoLicencia === #}
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-header bg-white">
+            <h5 class="mb-0 fw-bold text-primary">
+                <i class="fa-solid fa-ranking-star me-2"></i>Top 5 productos por inventario
+            </h5>
+        </div>
+        <div class="card-body">
+            {% if top_tipos %}
+            <canvas id="chartTipos" height="80"></canvas>
+            <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+            <script>
+                const ctx = document.getElementById('chartTipos').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: [{% for t in top_tipos %}"{{ t.tipo__nombre|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}],
+                        datasets: [{
+                            label: 'Licencias en inventario',
+                            data: [{% for t in top_tipos %}{{ t.total }}{% if not forloop.last %},{% endif %}{% endfor %}],
+                            backgroundColor: '#df6e12',
+                            borderRadius: 4,
+                        }]
+                    },
+                    options: {
+                        plugins: { legend: { display: false } },
+                        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                    }
+                });
+            </script>
+            {% else %}
+            <p class="text-muted text-center py-4 mb-0">Sin datos para graficar.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

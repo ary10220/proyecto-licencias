@@ -1,4 +1,4 @@
-<div class="modal fade" id="modalAsignar{{ licencia.id }}" tabindex="-1" aria-hidden="true">
+<div class="modal fade lic-modal" id="modalAsignar{{ licencia.id }}" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content border-0 shadow">
             
@@ -22,9 +22,11 @@
                         <select name="empleado_id" class="form-select select2-empleado" required style="width: 100%;">
                             <option value="">-- Buscar por nombre, empresa o área --</option>
                             {% for emp in empleados %}
-                                <option value="{{ emp.id }}">
-                                    {{ emp.nombre_completo }} | {{ emp.empresa.nombre }} ({{ emp.area.codigo|default:"S/A" }})
-                                </option>
+                                {% if not licencia.empresa_id or emp.empresa_id == licencia.empresa_id %}
+                                    <option value="{{ emp.id }}">
+                                        {{ emp.nombre_completo }} | {{ emp.empresa.nombre }} ({{ emp.area.codigo|default:"S/A" }})
+                                    </option>
+                                {% endif %}
                             {% endfor %}
                         </select>
                     </div>

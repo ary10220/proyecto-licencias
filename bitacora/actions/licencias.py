@@ -92,15 +92,6 @@ def log_eliminar_licencias_masivo(request, cantidad):
     )
 
 
-def log_sincronizar_m365(request, resumen):
-    log_event(
-        request=request,
-        accion=ACCIONES["SINCRONIZAR"],
-        modulo=MODULOS["SYNC"],
-        descripcion=f"Sincronización M365 ejecutada. {resumen}",
-    )
-
-
 def log_exportar_excel(request, tenant_label=None):
     detalle = f" ({tenant_label})" if tenant_label else ""
     log_event(
@@ -108,4 +99,14 @@ def log_exportar_excel(request, tenant_label=None):
         accion=ACCIONES["EXPORTAR"],
         modulo=MODULOS["REPORTES"],
         descripcion=f"Exportó reporte Excel{detalle}.",
+    )
+
+
+def log_exportar_pdf(request, tenant_label=None):
+    detalle = f" ({tenant_label})" if tenant_label else ""
+    log_event(
+        request=request,
+        accion=ACCIONES["EXPORTAR"],
+        modulo=MODULOS["REPORTES"],
+        descripcion=f"Exportó reporte PDF{detalle}.",
     )

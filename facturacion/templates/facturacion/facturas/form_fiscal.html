@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Editar factura {{ factura.numero }}{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'gestion_global/css/common.css' %}">
+<link rel="stylesheet" href="{% static 'facturacion/css/comercial.css' %}">
+
+<div class="gg-shell">
+    <div class="page-header">
+        <h2 class="page-title">
+            <span class="page-title-icon"><i class="fa-solid fa-receipt"></i></span>
+            <span class="page-title-text">Datos fiscales de factura</span>
+        </h2>
+        <div class="page-actions">
+            <a href="{% url 'detalle_factura' factura.id %}" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-arrow-left me-1"></i>Volver
+            </a>
+        </div>
+    </div>
+
+    <div class="module-nav mb-3">
+        <a href="{% url 'lista_cotizaciones' %}" class="module-nav-link">
+            <i class="fa-solid fa-file-signature"></i><span>Cotizaciones</span>
+        </a>
+        <a href="{% url 'lista_facturas' %}" class="module-nav-link active">
+            <i class="fa-solid fa-file-invoice-dollar"></i><span>Facturas</span>
+        </a>
+    </div>
+
+    <div class="alert alert-info border-0 shadow-sm">
+        <i class="fa-solid fa-lock me-2"></i>
+        Los productos, cantidades, precios, descuentos y fechas vienen desde la
+        cotizacion aprobada y no se editan desde la factura.
+    </div>
+
+    <div class="row g-3">
+        <div class="col-12 col-lg-5">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0 fw-bold text-primary">
+                        <i class="fa-solid fa-file-invoice-dollar me-2"></i>Resumen importado
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-5 text-muted">Factura</dt>
+                        <dd class="col-sm-7 fw-bold">{{ factura.numero }}</dd>
+                        {% if factura.propuesta %}
+                        <dt class="col-sm-5 text-muted">Cotizacion</dt>
+                        <dd class="col-sm-7">
+                            <a href="{% url 'detalle_cotizacion' factura.propuesta.id %}">{{ factura.propuesta.numero }}</a>
+                        </dd>
+                        {% endif %}
+                        <dt class="col-sm-5 text-muted">Tenant</dt>
+                        <dd class="col-sm-7">{{ factura.tenant.nombre }}</dd>
+                        <dt class="col-sm-5 text-muted">Empresa</dt>
+                        <dd class="col-sm-7">{{ factura.empresa.nombre }}</dd>
+                        <dt class="col-sm-5 text-muted">Items</dt>
+                        <dd class="col-sm-7">{{ factura.detalles.count }} licencia(s)</dd>
+                        <dt class="col-sm-5 text-muted">Total</dt>
+                        <dd class="col-sm-7 fw-bold text-primary">$ {{ factura.total|floatformat:2 }}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-7">
+            <form method="post" class="card shadow-sm border-0">
+                {% csrf_token %}
+                <div class="card-header bg-white">
+                    <h5 class="mb-0 fw-bold text-primary">
+                        <i class="fa-solid fa-pen-to-square me-2"></i>Datos editables
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        {% for field in factura_form %}
+                        <div class="col-12 {% if field.name == 'observaciones' %}{% else %}col-md-6{% endif %}">
+                            <label class="form-label fw-bold text-secondary small text-uppercase">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.errors %}<div class="text-danger small mt-1 fw-bold">{{ field.errors|striptags }}</div>{% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="card-footer bg-white d-flex justify-content-end gap-2">
+                    <a href="{% url 'detalle_factura' factura.id %}" class="btn btn-outline-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-floppy-disk me-2"></i>Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

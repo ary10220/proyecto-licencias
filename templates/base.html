@@ -249,6 +249,34 @@
             padding: 28px;
         }
 
+        /* ===== Loading bar de navegacion (feedback inmediato al hacer clic) ===== */
+        .nav-progress {
+            background: linear-gradient(90deg, var(--color-principal) 0%, var(--color-principal-dark) 100%);
+            height: 3px;
+            left: 0;
+            opacity: 0;
+            position: fixed;
+            top: 0;
+            transform: translateX(-100%);
+            transition: transform 0.4s ease, opacity 0.25s ease;
+            width: 100%;
+            z-index: 2000;
+        }
+        .nav-progress.is-active {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .nav-progress.is-done {
+            opacity: 0;
+            transform: translateX(0);
+            transition: opacity 0.3s ease 0.1s;
+        }
+
+        body.is-navigating .main-content {
+            opacity: 0.65;
+            transition: opacity 0.18s ease;
+        }
+
         .mobile-topbar,
         .sidebar-backdrop,
         .sidebar-toggle,
@@ -368,6 +396,44 @@
 
         .page-actions > * {
             max-width: 100%;
+        }
+
+        .module-nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.65rem;
+        }
+
+        .module-nav-link {
+            background: #fffdf9;
+            border: 1px solid rgba(223, 110, 18, 0.18);
+            border-radius: 8px;
+            color: #6d7480;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            font-size: 0.92rem;
+            font-weight: 700;
+            padding: 0.7rem 1rem;
+            text-decoration: none;
+            transition: all 0.18s ease;
+        }
+
+        .module-nav-link:hover {
+            background: #fff6ed;
+            border-color: rgba(223, 110, 18, 0.34);
+            color: #b65a11;
+        }
+
+        .module-nav-link.active {
+            background: linear-gradient(180deg, #ef882d 0%, #df6e12 100%);
+            border-color: #df6e12;
+            box-shadow: 0 10px 22px rgba(223, 110, 18, 0.18);
+            color: #ffffff;
+        }
+
+        .module-nav-link i {
+            opacity: 0.82;
         }
 
 
@@ -863,6 +929,7 @@
     </style>
 </head>
 <body>
+    <div class="nav-progress" id="navProgress" aria-hidden="true"></div>
     <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
     <div class="sidebar" id="appSidebar">
@@ -890,6 +957,9 @@
                 <a href="{% url 'dashboard_general' %}" class="{% if request.resolver_match.url_name == 'dashboard_general' or request.resolver_match.url_name == 'dashboard_tenant' %}active{% endif %}">
                     <i class="fa-solid fa-chart-pie"></i> <span>Dashboard</span>
                 </a>
+                <a href="{% url 'gestionar_licencias' %}" class="{% if request.resolver_match.url_name == 'gestionar_licencias' or request.resolver_match.url_name == 'gestionar_licencias_tenant' or request.resolver_match.url_name == 'catalogo_licencias' or request.resolver_match.url_name == 'asignaciones_licencias' or request.resolver_match.url_name == 'editar_licencia' %}active{% endif %}">
+                    <i class="fa-solid fa-key"></i> <span>Licencias</span>
+                </a>
                 {% endif %}
  
                 {% if perms.empleados.view_empleado %}
@@ -898,11 +968,20 @@
                 </a>
                 {% endif %}
  
-                {% if perms.licencias.view_tenant or perms.licencias.view_empresa or perms.licencias.view_proveedor or perms.licencias.view_tipolicencia or perms.empleados.view_gerenciadivision %}
-                <a href="{% url 'configuracion' %}" class="{% if request.resolver_match.url_name == 'configuracion' %}active{% endif %}">
-                    <i class="fa-solid fa-gears"></i> <span>Parametrización Global</span>
+                {% if perms.licencias.view_tenant or perms.licencias.view_empresa or perms.empleados.view_gerenciadivision or perms.empleados.view_gerenciaarea or perms.empleados.view_unidad %}
+                <a href="{% url 'gestion_global:lista_empresas' %}"
+                   class="{% if request.resolver_match.namespace == 'gestion_global' %}active{% endif %}">
+                    <i class="fa-solid fa-gears"></i> <span>Gestión Global</span>
                 </a>
                 {% endif %}
+
+                {% if perms.facturacion.view_propuestalicencia or perms.facturacion.view_factura %}
+                <a href="{% if perms.facturacion.view_propuestalicencia %}{% url 'lista_cotizaciones' %}{% else %}{% url 'lista_facturas' %}{% endif %}"
+                   class="{% if request.path|slice:':13' == '/facturacion/' %}active{% endif %}">
+                    <i class="fa-solid fa-file-invoice-dollar"></i> <span>Facturacion</span>
+                </a>
+                {% endif %}
+
  
                 {% if perms.bitacora.view_bitacora %}
                 <a href="{% url 'lista_bitacora' %}" class="{% if request.resolver_match.url_name == 'lista_bitacora' %}active{% endif %}">
@@ -911,7 +990,7 @@
                 {% endif %}
  
                 {% if perms.auth.view_user or perms.auth.view_group or perms.empleados.view_cargo or perms.user.view_areausuario %}
-                <a href="{% if perms.auth.view_user %}{% url 'lista_usuarios' %}{% elif perms.auth.view_group %}{% url 'lista_roles' %}{% elif perms.empleados.view_cargo %}{% url 'lista_cargos' %}{% else %}{% url 'lista_areas' %}{% endif %}" class="{% if request.resolver_match.url_name == 'lista_usuarios' or request.resolver_match.url_name == 'crear_usuario' or request.resolver_match.url_name == 'editar_usuario' or request.resolver_match.url_name == 'lista_roles' or request.resolver_match.url_name == 'crear_rol' or request.resolver_match.url_name == 'detalle_rol' or request.resolver_match.url_name == 'editar_rol' or request.resolver_match.url_name == 'lista_areas' or request.resolver_match.url_name == 'crear_area' or request.resolver_match.url_name == 'editar_area' or request.resolver_match.url_name == 'lista_cargos' or request.resolver_match.url_name == 'crear_cargo' or request.resolver_match.url_name == 'editar_cargo' %}active{% endif %}">
+                <a href="{% if perms.auth.view_user %}{% url 'lista_usuarios' %}{% elif perms.auth.view_group %}{% url 'lista_roles' %}{% elif perms.empleados.view_cargo %}{% url 'lista_cargos' %}{% else %}{% url 'lista_areas' %}{% endif %}" class="{% if request.path|slice:':6' == '/user/' and request.resolver_match.url_name == 'lista_usuarios' or request.path|slice:':6' == '/user/' and request.resolver_match.url_name == 'crear_usuario' or request.path|slice:':6' == '/user/' and request.resolver_match.url_name == 'editar_usuario' or request.path|slice:':6' == '/user/' and request.resolver_match.url_name == 'lista_roles' or request.path|slice:':6' == '/user/' and request.resolver_match.url_name == 'crear_rol' or request.path|slice:':6' == '/user/' and request.resolver_match.url_name == 'detalle_rol' or request.path|slice:':6' == '/user/' and request.resolver_match.url_name == 'editar_rol' or request.path|slice:':6' == '/user/' and request.resolver_match.url_name == 'lista_areas' or request.path|slice:':6' == '/user/' and request.resolver_match.url_name == 'crear_area' or request.path|slice:':6' == '/user/' and request.resolver_match.url_name == 'editar_area' or request.path|slice:':6' == '/user/' and request.resolver_match.url_name == 'lista_cargos' or request.path|slice:':6' == '/user/' and request.resolver_match.url_name == 'crear_cargo' or request.path|slice:':6' == '/user/' and request.resolver_match.url_name == 'editar_cargo' %}active{% endif %}">
                     <i class="fa-solid fa-user-gear"></i> <span>Usuarios</span>
                 </a>
                 {% endif %}
@@ -985,7 +1064,8 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
- 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+
     <script>
         // Render Django messages as non-blocking toasts (no layout jump).
         (() => {
@@ -1029,6 +1109,36 @@
                     },
                 });
             });
+        })();
+    </script>
+
+    <script>
+        // Confirmaciones de acciones criticas con el mismo lenguaje visual del sistema.
+        (() => {
+            document.addEventListener('submit', (event) => {
+                const form = event.target;
+                if (!(form instanceof HTMLFormElement)) return;
+                const message = form.getAttribute('data-confirm');
+                if (!message || form.getAttribute('data-confirmed') === '1') return;
+                if (typeof Swal === 'undefined') return;
+
+                event.preventDefault();
+                Swal.fire({
+                    title: form.getAttribute('data-confirm-title') || 'Confirmar accion',
+                    text: message,
+                    icon: form.getAttribute('data-confirm-icon') || 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#df6e12',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: form.getAttribute('data-confirm-ok') || 'Confirmar',
+                    cancelButtonText: form.getAttribute('data-confirm-cancel') || 'Cancelar',
+                    reverseButtons: true,
+                }).then((result) => {
+                    if (!result.isConfirmed) return;
+                    form.setAttribute('data-confirmed', '1');
+                    form.submit();
+                });
+            }, true);
         })();
     </script>
  
@@ -1157,6 +1267,79 @@
                 icon: 'success',
                 confirmButtonColor: '#df6e12',
                 confirmButtonText: 'Confirmar',
+            });
+        })();
+    </script>
+    <script>
+        // Navegacion: barra de carga (feedback inmediato al click)
+        (() => {
+            const body = document.body;
+            const bar = document.getElementById('navProgress');
+            if (!bar) return;
+            let progressTimer = null;
+
+            const startProgress = () => {
+                bar.classList.remove('is-done');
+                bar.classList.add('is-active');
+                body.classList.add('is-navigating');
+                clearTimeout(progressTimer);
+                progressTimer = setTimeout(stopProgress, 8000);
+            };
+            const stopProgress = () => {
+                clearTimeout(progressTimer);
+                bar.classList.remove('is-active');
+                bar.classList.add('is-done');
+                body.classList.remove('is-navigating');
+            };
+
+            document.addEventListener('click', (event) => {
+                const link = event.target.closest('a');
+                if (!link) return;
+                if (link.target === '_blank') return;
+                if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+                const href = link.getAttribute('href');
+                if (!href || href.startsWith('#')) return;
+                if (href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('javascript:')) return;
+                if (link.hasAttribute('download')) return;
+                if (link.hasAttribute('data-bs-toggle')) return;
+                try {
+                    const url = new URL(href, window.location.href);
+                    if (url.origin !== window.location.origin) return;
+                    if (url.pathname === window.location.pathname && url.search === window.location.search) return;
+                } catch (e) { return; }
+                startProgress();
+            }, true);
+
+            document.addEventListener('submit', (event) => {
+                if (event.defaultPrevented) return;
+                const form = event.target;
+                if (!(form instanceof HTMLFormElement)) return;
+                if (form.target === '_blank') return;
+                startProgress();
+            }, true);
+
+            window.addEventListener('pageshow', stopProgress);
+            window.addEventListener('pagehide', stopProgress);
+            window.addEventListener('beforeunload', () => clearTimeout(progressTimer));
+        })();
+    </script>
+
+    <script>
+        // Defensive tab activation: si .tab-content no tiene ningun .tab-pane
+        // marcado como `show active`, activamos el primero. Garantiza que el
+        // contenido de la pagina nunca quede en blanco por un active_tab raro.
+        (() => {
+            document.querySelectorAll('.tab-content').forEach((tc) => {
+                if (tc.querySelector(':scope > .tab-pane.show.active')) return;
+                const first = tc.querySelector(':scope > .tab-pane');
+                if (first) {
+                    first.classList.add('show', 'active');
+                    const id = first.getAttribute('id');
+                    if (id) {
+                        const trigger = document.querySelector('[data-bs-target="#' + id + '"]');
+                        if (trigger) trigger.classList.add('active');
+                    }
+                }
             });
         })();
     </script>

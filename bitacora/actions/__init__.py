@@ -12,8 +12,8 @@ from .licencias import (  # noqa: F401
     log_eliminar_licencia,
     log_eliminar_licencias_masivo,
     log_exportar_excel,
+    log_exportar_pdf,
     log_liberar_licencia,
-    log_sincronizar_m365,
 )
 
 from .usuarios import (  # noqa: F401
@@ -42,6 +42,19 @@ from .empleados import (  # noqa: F401
     log_reactivar_empleado,
 )
 
+from .facturacion import (  # noqa: F401
+    log_propuesta_crear,
+    log_propuesta_editar,
+    log_propuesta_aprobar,
+    log_propuesta_rechazar,
+    log_propuesta_eliminar,
+    log_factura_crear,
+    log_factura_editar,
+    log_factura_anular,
+    log_factura_eliminar,
+    log_factura_generar_stock,
+)
+
 from .configuracion import (  # noqa: F401
     log_area_crear,
     log_division_crear,
@@ -58,10 +71,15 @@ from .configuracion import (  # noqa: F401
     log_tipo_licencia_editar,
     log_unidad_editar,
     log_area_eliminar,
+    log_area_reactivar,
     log_division_eliminar,
+    log_division_reactivar,
     log_empresa_eliminar,
+    log_empresa_reactivar,
     log_proveedor_eliminar,
     log_tenant_eliminar,
+    log_tenant_reactivar,
     log_tipo_licencia_eliminar,
     log_unidad_eliminar,
+    log_unidad_reactivar,
 )

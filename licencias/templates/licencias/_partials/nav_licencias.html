@@ -1,0 +1,13 @@
+{# Tabs internos del modulo Licencias - MISMA estructura que dashboard.html
+   para mantener consistencia visual. Recibe `licencias_active`. #}
+<div class="lic-module-nav">
+    <a href="{% url 'gestionar_licencias' %}" class="lic-module-link {% if licencias_active == 'gestionar' %}active{% endif %}">
+        <i class="fa-solid fa-table-list"></i><span>Gestionar Licencias</span>
+    </a>
+    <a href="{% url 'catalogo_licencias' %}" class="lic-module-link {% if licencias_active == 'proveedores' %}active{% endif %}">
+        <i class="fa-solid fa-truck-fast"></i><span>Gestionar Proveedores</span>
+    </a>
+    <a href="{% url 'asignaciones_licencias' %}" class="lic-module-link {% if licencias_active == 'asignaciones' %}active{% endif %}">
+        <i class="fa-solid fa-user-check"></i><span>Gestionar Asignaciones</span>
+    </a>
+</div>

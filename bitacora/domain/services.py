@@ -42,6 +42,9 @@ MODULOS = {
     "PERFIL": "Perfil",
     "BITACORA": "Bitacora",
     "ORG": "Organizacion",
+    "COMERCIAL": "Comercial y Facturacion",
+    "PROPUESTAS": "Comercial y Facturacion",
+    "FACTURAS": "Comercial y Facturacion",
 }
 
 NIVEL_INFO = "INFO"

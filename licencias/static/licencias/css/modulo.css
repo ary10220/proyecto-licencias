@@ -1,0 +1,224 @@
+.lic-shell {
+  min-width: 0;
+}
+
+.lic-module-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.lic-module-link {
+  align-items: center;
+  background: #fffdf9;
+  border: 1px solid rgba(223, 110, 18, 0.18);
+  border-radius: 8px;
+  color: #6d7480;
+  display: inline-flex;
+  font-size: 0.92rem;
+  font-weight: 700;
+  gap: 0.45rem;
+  min-height: 42px;
+  padding: 0.7rem 1rem;
+  text-decoration: none;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+  white-space: nowrap;
+}
+
+.lic-module-link:hover {
+  background: #fff6ed;
+  border-color: rgba(223, 110, 18, 0.34);
+  color: #b65a11;
+}
+
+.lic-module-link.active {
+  background: linear-gradient(180deg, #ef882d 0%, #df6e12 100%);
+  border-color: #df6e12;
+  box-shadow: 0 10px 22px rgba(223, 110, 18, 0.18);
+  color: #fff;
+}
+
+.lic-kpi-grid,
+.lic-filter-card,
+.lic-table-card,
+.mass-card,
+.lic-step-card {
+  min-width: 0;
+}
+
+.lic-filter-card {
+  min-width: 0;
+}
+
+.lic-actions {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 0.25rem;
+}
+
+.lic-actions form {
+  margin: 0;
+}
+
+.lic-form-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  padding-top: 0.75rem;
+}
+
+.lic-shell .table-responsive table {
+  margin-bottom: 0;
+}
+
+.lic-shell .page-actions {
+  min-width: 0;
+}
+
+.lic-shell .page-actions .btn,
+.lic-shell .page-actions a,
+.lic-shell .page-actions button {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+}
+
+.lic-modal .modal-title,
+.lic-shell .page-title-text,
+.lic-step-card h5 {
+  min-width: 0;
+}
+
+@media (max-width: 991.98px) {
+  .lic-module-nav {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 0.2rem;
+    scrollbar-width: thin;
+  }
+
+  .lic-module-link {
+    flex: 0 0 auto;
+  }
+
+  .lic-shell .page-actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .lic-shell .btn-group {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 0.2rem;
+    scrollbar-width: thin;
+    width: 100%;
+  }
+
+  .lic-shell .btn-group .mx-1 {
+    display: none;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .lic-module-link {
+    font-size: 0.86rem;
+    padding: 0.65rem 0.85rem;
+  }
+
+  .lic-shell .page-actions {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 0.2rem;
+    scrollbar-width: thin;
+  }
+
+  .lic-shell .page-actions .btn,
+  .lic-shell .page-actions a,
+  .lic-shell .page-actions button,
+  .lic-shell .btn-group .btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .lic-filter-card {
+    display: grid !important;
+    grid-template-columns: 1fr;
+  }
+
+  .lic-filter-card > div {
+    min-width: 0 !important;
+    width: 100%;
+  }
+
+  .lic-kpi-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .lic-table,
+  .lic-table-card table,
+  .lic-shell .gg-table-card table,
+  .lic-shell .table-responsive table,
+  #tablaLicencias {
+    min-width: 820px;
+  }
+
+  .lic-actions,
+  .lic-shell td .d-inline-flex,
+  .lic-shell td .d-flex.justify-content-center {
+    flex-wrap: nowrap;
+  }
+
+  .lic-form-actions,
+  .lic-shell form > .d-flex.justify-content-end,
+  .lic-modal .modal-footer {
+    align-items: stretch !important;
+    display: grid !important;
+    grid-template-columns: 1fr;
+    justify-content: stretch !important;
+  }
+
+  .lic-form-actions .btn,
+  .lic-shell form > .d-flex.justify-content-end .btn,
+  .lic-shell form > .d-flex.justify-content-end a,
+  .lic-modal .modal-footer .btn,
+  .lic-modal .modal-footer button {
+    margin: 0 !important;
+    width: 100%;
+  }
+
+  .lic-modal .modal-dialog {
+    margin: 0.55rem;
+  }
+
+  .lic-modal .input-group {
+    flex-wrap: nowrap;
+  }
+
+  .lic-modal .input-group-text {
+    min-width: 0;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .lic-shell .row > [class*="col-6"] {
+    width: 100%;
+  }
+
+  .lic-step-card .card-header,
+  .lic-step-card .card-body,
+  .mass-card,
+  .lic-filter-card {
+    padding-left: 0.85rem !important;
+    padding-right: 0.85rem !important;
+  }
+}

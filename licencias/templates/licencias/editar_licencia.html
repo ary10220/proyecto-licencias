@@ -1,15 +1,35 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Editar Licencia - {{ licencia.tipo.nombre }}{% endblock %}
 
 {% block content %}
+<style>
+    .lic-module-nav { display:flex; flex-wrap:wrap; gap:.65rem; margin-bottom:1rem; }
+    .lic-module-link { background:#fffdf9; border:1px solid rgba(223,110,18,.18); border-radius:8px; color:#6d7480; display:inline-flex; align-items:center; gap:.45rem; font-size:.92rem; font-weight:700; padding:.7rem 1rem; text-decoration:none; transition:all .18s ease; }
+    .lic-module-link:hover { background:#fff6ed; border-color:rgba(223,110,18,.34); color:#b65a11; }
+    .lic-module-link.active { background:linear-gradient(180deg,#ef882d 0%,#df6e12 100%); border-color:#df6e12; box-shadow:0 10px 22px rgba(223,110,18,.18); color:#fff; }
+    .lic-form-actions { background:#fffdf9; bottom:0; position:sticky; z-index:2; }
+    @media (max-width: 767.98px) { .lic-form-actions .btn { flex:1 1 0; } }
+</style>
+<link rel="stylesheet" href="{% static 'licencias/css/modulo.css' %}">
 <div class="container-fluid max-w-7xl mx-auto">
+    <div class="page-header mb-3">
+        <h2 class="page-title"><span class="page-title-icon"><i class="fa-solid fa-key"></i></span><span class="page-title-text">Licencias</span></h2>
+    </div>
+
+    <div class="lic-module-nav">
+        <a href="{% url 'gestionar_licencias' %}" class="lic-module-link active"><i class="fa-solid fa-table-list"></i><span>Gestionar Licencias</span></a>
+        <a href="{% url 'catalogo_licencias' %}" class="lic-module-link "><i class="fa-solid fa-truck-fast"></i><span>Gestionar Proveedores</span></a>
+        <a href="{% url 'asignaciones_licencias' %}" class="lic-module-link"><i class="fa-solid fa-user-check"></i><span>Gestionar Asignaciones</span></a>
+    </div>
+
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h3 style="color: #333; font-weight: bold;">
             <i class="fa-solid fa-pen-to-square me-2"></i> Editar Licencia
         </h3>
-        <a href="javascript:history.back()" class="btn btn-outline-secondary btn-sm" title="Volver al Dashboard">
-            <i class="fa-solid fa-arrow-left me-1"></i> Volver al Dashboard
+        <a href="javascript:history.back()" class="btn btn-outline-secondary btn-sm" title="Volver al Inventario">
+            <i class="fa-solid fa-arrow-left me-1"></i> Volver al Inventario
         </a>
     </div>
 
@@ -40,7 +60,7 @@
                 
                 <hr class="text-muted opacity-25 my-4">
                 
-                <div class="d-flex justify-content-end">
+                <div class="d-flex justify-content-end gap-2 lic-form-actions">
                     <a href="javascript:history.back()" class="btn btn-light border me-2 px-4">Cancelar</a>
                     <button type="submit" class="btn btn-primary px-4">Guardar Cambios</button>
                 </div>

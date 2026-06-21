@@ -1,0 +1,274 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>{{ doc_titulo }} {{ numero }}</title>
+<style>
+    @page {
+        size: {{ paper_size|default:"letter" }};
+        margin: 1.5cm 1.5cm 2.2cm 1.5cm;
+        @frame footer_frame {
+            -pdf-frame-content: footer_content;
+            left: 1.5cm; width: 18cm; bottom: 0.5cm; height: 1.3cm;
+        }
+    }
+    body {
+        font-family: Helvetica, Arial, sans-serif;
+        font-size: 10pt;
+        color: #333;
+        margin: 0; padding: 0;
+        line-height: 1.45;
+    }
+
+    {% if preview_mode %}
+    .pdf-preview {
+        background: #525659;
+        min-height: 100vh;
+        padding: 18px 0;
+    }
+    .pdf-preview .page-paper {
+        background: #fff;
+        box-shadow: 0 14px 34px rgba(0, 0, 0, 0.24);
+        box-sizing: border-box;
+        margin: 0 auto;
+        min-height: 11in;
+        padding: 0.65in;
+        width: 8.5in;
+    }
+    .pdf-preview.paper-a4 .page-paper {
+        min-height: 297mm;
+        padding: 16mm;
+        width: 210mm;
+    }
+    .pdf-preview #footer_content {
+        margin-top: 18px;
+        position: static;
+    }
+    @media (max-width: 900px) {
+        .pdf-preview .page-paper,
+        .pdf-preview.paper-a4 .page-paper {
+            min-height: auto;
+            padding: 18px;
+            width: calc(100% - 24px);
+        }
+    }
+    @media print {
+        .pdf-preview {
+            background: #fff;
+            padding: 0;
+        }
+        .pdf-preview .page-paper,
+        .pdf-preview.paper-a4 .page-paper {
+            box-shadow: none;
+            min-height: auto;
+            padding: 0;
+            width: auto;
+        }
+    }
+    {% endif %}
+
+    /* === HEADER === */
+    .header { margin-bottom: 18px; }
+    .header table { width: 100%; border-collapse: collapse; }
+    .header .brand-cell { width: 11cm; vertical-align: middle; }
+
+    /* Logo en imagen */
+    .brand-logo {
+        max-height: 60px;
+        max-width: 260px;
+        display: block;
+    }
+    /* Fallback en texto si no carga la imagen */
+    .brand-name-text {
+        color: #df6e12;
+        font-size: 28pt;
+        font-weight: 900;
+        letter-spacing: 0;
+        line-height: 1;
+    }
+    .brand-name-text .tech { color: #4a4a4a; font-weight: 500; }
+    .brand-sub {
+        color: #6c7480;
+        font-size: 8.5pt;
+        margin-top: 4px;
+    }
+
+    .header .doc-meta-cell {
+        width: 7cm;
+        text-align: right;
+        vertical-align: middle;
+    }
+    .header .doc-num-badge {
+        background: #df6e12;
+        color: #fff;
+        padding: 6px 14px;
+        display: inline-block;
+        font-weight: bold;
+        font-size: 12pt;
+        border-radius: 4px;
+        letter-spacing: 0;
+    }
+    .header .doc-tipo {
+        font-size: 8pt;
+        color: #6c7480;
+        text-transform: uppercase;
+        letter-spacing: 0;
+        margin-top: 4px;
+    }
+    .header .doc-date {
+        font-size: 9pt;
+        color: #555;
+        margin-top: 2px;
+    }
+
+    .accent-line { height: 3px; background: #df6e12; margin-bottom: 16px; }
+
+    .document-band {
+        background: #fff8f2;
+        border: 1px solid #f0d8c0;
+        border-left: 6px solid #df6e12;
+        margin: 0 0 16px 0;
+        padding: 10px 12px;
+    }
+    .document-band table { width: 100%; border-collapse: collapse; }
+    .document-band .band-title {
+        color: #252b36;
+        font-size: 12pt;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+    .document-band .band-value {
+        color: #df6e12;
+        font-size: 15pt;
+        font-weight: bold;
+        text-align: right;
+    }
+    .document-band .band-meta {
+        color: #6c7480;
+        font-size: 8pt;
+        margin-top: 3px;
+    }
+
+    .seccion-titulo {
+        font-size: 11pt;
+        font-weight: bold;
+        color: #252b36;
+        text-transform: uppercase;
+        letter-spacing: 0;
+        margin: 18px 0 6px 0;
+    }
+    .seccion-desc {
+        font-size: 9.5pt;
+        color: #4a4a4a;
+        text-align: justify;
+        margin-bottom: 10px;
+    }
+
+    .info-grid {
+        margin: 10px 0;
+        background: #fff8f2;
+        border: 1px solid #f0d8c0;
+        border-radius: 4px;
+        padding: 10px 14px;
+    }
+    .info-grid table { width: 100%; }
+    .info-grid .label { color: #6c7480; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0; }
+    .info-grid .value { font-weight: bold; font-size: 10pt; color: #252b36; }
+
+    .items-table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+    .items-table thead th {
+        background: #fff; color: #252b36; font-weight: bold; font-size: 9.5pt;
+        padding: 8px 10px; border-bottom: 2px solid #252b36; text-align: left;
+    }
+    .items-table thead th.text-right { text-align: right; }
+    .items-table thead th.text-center { text-align: center; }
+    .items-table tbody td {
+        padding: 9px 10px; font-size: 9.5pt; vertical-align: top;
+        border-bottom: 1px solid #e8d8c5;
+    }
+    .items-table tbody td.text-right { text-align: right; }
+    .items-table tbody td.text-center { text-align: center; }
+    .items-table .item-name { font-weight: bold; color: #252b36; }
+    .items-table .item-desc { color: #888; font-size: 8.5pt; margin-top: 2px; }
+
+    .totales-table { width: 9cm; margin: 14px 0 14px auto; border-collapse: collapse; }
+    .totales-table td { padding: 5px 10px; font-size: 9.5pt; }
+    .totales-table .label { text-align: right; color: #6c7480; }
+    .totales-table .value { text-align: right; font-weight: bold; width: 100px; }
+    .totales-table .total-row td {
+        background: #df6e12; color: #fff;
+        font-size: 11pt; font-weight: bold; padding: 10px;
+    }
+
+    .fine-print {
+        border-top: 1px solid #e8d8c5;
+        color: #555;
+        font-size: 8pt;
+        margin-top: 14px;
+        padding-top: 8px;
+    }
+
+    .estado-badge { display: inline-block; padding: 4px 12px; border-radius: 4px; font-size: 8pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0; }
+    .estado-PENDIENTE  { background: #fff3cd; color: #856404; }
+    .estado-APROBADA   { background: #d4edda; color: #155724; }
+    .estado-RECHAZADA  { background: #f8d7da; color: #721c24; }
+    .estado-FACTURADA  { background: #d1ecf1; color: #0c5460; }
+    .estado-BORRADOR   { background: #e2e3e5; color: #383d41; }
+    .estado-ANULADA    { background: #f8d7da; color: #721c24; }
+    .estado-EMITIDA    { background: #cce5ff; color: #004085; }
+    .estado-PAGADA     { background: #d4edda; color: #155724; }
+
+    .observaciones {
+        margin-top: 12px; padding: 10px 14px;
+        background: #fafafa; border-left: 4px solid #df6e12;
+        font-size: 9pt; color: #4a4a4a;
+    }
+    .observaciones .label { font-weight: bold; text-transform: uppercase; font-size: 7.5pt; color: #6c7480; letter-spacing: 0; display: block; margin-bottom: 4px; }
+
+    .legal-text { margin-top: 16px; font-size: 8.5pt; color: #555; line-height: 1.6; }
+    .legal-text strong { color: #252b36; }
+
+    #footer_content { text-align: center; font-size: 7pt; color: #999; border-top: 1px solid #e0e0e0; padding-top: 6px; }
+    #footer_content .brand-footer { color: #df6e12; font-weight: bold; font-size: 8pt; }
+</style>
+</head>
+<body class="{% if preview_mode %}pdf-preview paper-{{ paper_class|default:'letter' }}{% endif %}">
+
+{% if preview_mode %}<main class="page-paper">{% endif %}
+
+<div class="header">
+    <table>
+        <tr>
+            <td class="brand-cell">
+                {# Logo: usa imagen si esta disponible, sino texto estilizado #}
+                {% if logo_url %}
+                    <img class="brand-logo" src="{{ logo_url }}" alt="mamaya tech">
+                {% else %}
+                    <div class="brand-name-text">mamaya<span class="tech">tech</span></div>
+                {% endif %}
+                <div class="brand-sub">Partner Oficial en Bolivia de Microsoft</div>
+            </td>
+            <td class="doc-meta-cell">
+                <div class="doc-num-badge">{{ numero }}</div>
+                <div class="doc-tipo">{{ doc_titulo }}</div>
+                <div class="doc-date">Fecha: <strong>{{ fecha|date:"d/m/Y" }}</strong></div>
+            </td>
+        </tr>
+    </table>
+</div>
+<div class="accent-line"></div>
+
+{% block doc_body %}{% endblock %}
+
+<div id="footer_content">
+    <span class="brand-footer">MAMAYA TECH LTDA.</span> &middot;
+    Santa Cruz de la Sierra, Bolivia &middot;
+    Documento generado el {{ fecha|date:"d/m/Y" }} &middot;
+    {% if preview_mode %}Vista previa{% else %}Pagina <pdf:pagenumber> de <pdf:pagecount>{% endif %}
+</div>
+
+{% if preview_mode %}</main>{% endif %}
+
+</body>
+</html>

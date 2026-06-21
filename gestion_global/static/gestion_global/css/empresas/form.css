@@ -1,0 +1,6 @@
+.gg-form-shell { display: flex; flex-direction: column; gap: 1rem; }
+.gg-form-actions { background: #fffdf9; bottom: 0; position: sticky; z-index: 2; }
+@media (max-width: 767.98px) {
+  .gg-form-actions { padding-top: 0.9rem; }
+  .gg-form-actions .btn { flex: 1 1 0; }
+}

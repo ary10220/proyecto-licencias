@@ -7,6 +7,7 @@ class GerenciaDivision(models.Model):
     empresa = models.ForeignKey('licencias.Empresa', on_delete=models.CASCADE, related_name='divisiones')
     codigo = models.CharField(max_length=10, help_text="Código identificador de la división. Ej: GDO")
     nombre = models.CharField(max_length=100)
+    activo = models.BooleanField(default=True)
 
     class Meta:
         verbose_name = "Gerencia de División"
@@ -25,6 +26,7 @@ class GerenciaArea(models.Model):
     division = models.ForeignKey(GerenciaDivision, on_delete=models.CASCADE, related_name='areas', null=True, blank=True)
     codigo = models.CharField(max_length=10, help_text="Código identificador del área. Ej: GHC", blank=True, null=True)
     nombre = models.CharField(max_length=100)
+    activo = models.BooleanField(default=True)
 
     class Meta:
         verbose_name = "Gerencia de Área"
@@ -41,6 +43,7 @@ class Unidad(models.Model):
     """
     area = models.ForeignKey(GerenciaArea, on_delete=models.CASCADE, related_name='unidades')
     nombre = models.CharField(max_length=100)
+    activo = models.BooleanField(default=True)
 
     def __str__(self):
         return f"{self.nombre} ({self.area.codigo})"

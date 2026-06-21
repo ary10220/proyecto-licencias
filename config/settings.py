@@ -22,6 +22,8 @@ INSTALLED_APPS = [
     'user',
     'empleados',
     'licencias.apps.LicenciasConfig',
+    'facturacion.apps.FacturacionConfig',
+    'gestion_global.apps.GestionGlobalConfig',
     'axes',
 ]
 
@@ -148,6 +150,10 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'arianyclaure@gmail.com'
 EMAIL_HOST_PASSWORD = 'pusuvtrgfykwdila'
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+# Dias antes del vencimiento en los que se envia la alerta automatica (management command enviar_alertas).
+# Se avisa cuando faltan EXACTAMENTE estos dias para el vencimiento de una licencia.
+ALERTAS_DIAS_AVISO = [30, 15, 7, 1]
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

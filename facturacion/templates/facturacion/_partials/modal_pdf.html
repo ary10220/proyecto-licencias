@@ -1,0 +1,178 @@
+<!-- Modal preview PDF -->
+<style>
+    #modalPdfPreview .pdf-modal-header {
+        align-items: center;
+        gap: 0.65rem;
+    }
+    #modalPdfPreview .pdf-modal-actions {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-left: auto;
+        margin-right: 0.75rem;
+    }
+    #modalPdfPreview #pdf-modal-paper {
+        width: 104px;
+    }
+    #modalPdfPreview .pdf-modal-body {
+        background: #525659;
+        height: 78vh;
+    }
+    @media (max-width: 767.98px) {
+        #modalPdfPreview .modal-dialog {
+            margin: 0.5rem;
+            max-width: calc(100vw - 1rem);
+        }
+        #modalPdfPreview .pdf-modal-header {
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+        #modalPdfPreview .modal-title {
+            flex: 1 1 calc(100% - 42px);
+            font-size: 1rem;
+            min-width: 0;
+        }
+        #modalPdfPreview .pdf-modal-actions {
+            display: grid;
+            flex: 1 1 100%;
+            grid-template-columns: 1fr 1fr;
+            margin: 0;
+            order: 3;
+            width: 100%;
+        }
+        #modalPdfPreview #pdf-modal-paper,
+        #modalPdfPreview .pdf-modal-actions .btn,
+        #modalPdfPreview .pdf-modal-actions a,
+        #modalPdfPreview .pdf-modal-actions button {
+            justify-content: center;
+            min-width: 0;
+            width: 100%;
+        }
+        #modalPdfPreview .pdf-modal-body {
+            height: 68vh;
+        }
+    }
+    @media (max-width: 480px) {
+        #modalPdfPreview .pdf-modal-actions {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+<div class="modal fade" id="modalPdfPreview" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-light pdf-modal-header">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-file-pdf text-danger me-2"></i>
+                    <span id="pdf-modal-title">Vista previa</span>
+                </h5>
+                <div class="pdf-modal-actions">
+                    <select id="pdf-modal-paper" class="form-select form-select-sm" title="Formato de hoja">
+                        <option value="letter">Carta</option>
+                        <option value="a4">A4</option>
+                    </select>
+                    <a href="#" id="pdf-modal-download" class="btn btn-sm btn-primary">
+                        <i class="fa-solid fa-download me-1"></i>Descargar
+                    </a>
+                    <button type="button" id="pdf-modal-print" class="btn btn-sm btn-outline-secondary">
+                        <i class="fa-solid fa-print me-1"></i>Imprimir
+                    </button>
+                    <a href="#" id="pdf-modal-open" target="_blank" class="btn btn-sm btn-outline-secondary" title="Abrir en pestana nueva">
+                        <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                    </a>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-0 pdf-modal-body">
+                <iframe id="pdf-modal-iframe" src="about:blank" style="width:100%; height:100%; border:0;"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function(){
+    let currentUrl = '';
+    let currentTitle = 'documento';
+    let currentPaper = 'letter';
+
+    function buildUrl(extraParams) {
+        if (!currentUrl) return '#';
+        const url = new URL(currentUrl, window.location.href);
+        url.searchParams.delete('download');
+        url.searchParams.delete('preview');
+        url.searchParams.delete('paper');
+        url.searchParams.set('paper', currentPaper);
+        Object.keys(extraParams || {}).forEach((key) => {
+            url.searchParams.set(key, extraParams[key]);
+        });
+        return url.pathname + url.search + url.hash;
+    }
+
+    function refreshModalUrls() {
+        const iframe = document.getElementById('pdf-modal-iframe');
+        const dl = document.getElementById('pdf-modal-download');
+        const op = document.getElementById('pdf-modal-open');
+        const previewUrl = buildUrl({ preview: '1' });
+        const downloadUrl = buildUrl({ download: '1' });
+
+        if (iframe) iframe.src = previewUrl;
+        if (dl) {
+            dl.href = downloadUrl;
+            dl.setAttribute('download', currentTitle.replace(/[^a-zA-Z0-9-_]/g, '_') + '.pdf');
+        }
+        if (op) op.href = previewUrl;
+    }
+
+    function abrirModal(url, title) {
+        currentUrl = url;
+        currentTitle = title || 'documento';
+        const paperSelect = document.getElementById('pdf-modal-paper');
+        currentPaper = paperSelect && paperSelect.value ? paperSelect.value : 'letter';
+        const titleEl = document.getElementById('pdf-modal-title');
+        if (titleEl) titleEl.textContent = currentTitle;
+        refreshModalUrls();
+
+        const modalEl = document.getElementById('modalPdfPreview');
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+    }
+
+    // Click handler global: cualquier elemento con data-pdf-url
+    document.addEventListener('click', (e) => {
+        const trigger = e.target.closest('[data-pdf-url]');
+        if (!trigger) return;
+        e.preventDefault();
+        const url = trigger.getAttribute('data-pdf-url');
+        const title = trigger.getAttribute('data-pdf-title') || 'Documento PDF';
+        abrirModal(url, title);
+    });
+
+    // Imprimir: dispara print() del iframe (same-origin garantizado)
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#pdf-modal-print')) return;
+        e.preventDefault();
+        const iframe = document.getElementById('pdf-modal-iframe');
+        if (!iframe || !iframe.contentWindow) return;
+        try {
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+        } catch (err) {
+            console.warn('Print directo fallo, abriendo en pestana nueva', err);
+            window.open(buildUrl({ preview: '1' }), '_blank');
+        }
+    });
+
+    document.getElementById('pdf-modal-paper')?.addEventListener('change', (event) => {
+        currentPaper = event.target.value || 'letter';
+        refreshModalUrls();
+    });
+
+    // Limpiar iframe al cerrar para liberar memoria
+    document.getElementById('modalPdfPreview')?.addEventListener('hidden.bs.modal', () => {
+        const iframe = document.getElementById('pdf-modal-iframe');
+        if (iframe) iframe.src = 'about:blank';
+    });
+})();
+</script>
