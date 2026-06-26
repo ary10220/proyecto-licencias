@@ -19,6 +19,7 @@ Salida (dict) consumida por el widget JS:
 from __future__ import annotations
 
 import json
+import unicodedata
 
 from ...infrastructure import catalogo as cat
 from ...infrastructure import openai_client as ai
@@ -26,19 +27,33 @@ from ...infrastructure import openai_client as ai
 ESTADOS = ['', 'DISPONIBLE', 'ASIGNADA', 'VENCIDA', 'POR_VENCER', 'SUSPENDIDA', 'PENDIENTE_ACTIVACION', 'REVOCADA']
 ORIGENES = ['', 'MANUAL', 'FACTURA', 'SYNC']
 VISTAS = ['reportes', 'lista', 'ninguna']
+ACCIONES = ['filtrar', 'exportar', 'limpiar']
+FORMATOS = ['', 'PDF', 'EXCEL', 'CSV']
+
+# Etiquetas legibles para construir la confirmacion autoritativa de filtros.
+ESTADO_LABELS = {
+    'DISPONIBLE': 'Disponible', 'ASIGNADA': 'Asignada', 'VENCIDA': 'Vencida',
+    'POR_VENCER': 'Por vencer', 'SUSPENDIDA': 'Suspendida',
+    'PENDIENTE_ACTIVACION': 'Pendiente de activación', 'REVOCADA': 'Revocada',
+}
+ORIGEN_LABELS = {'MANUAL': 'Manual', 'FACTURA': 'Factura', 'SYNC': 'Sincronización'}
 
 # Reglas reutilizables (las usa tambien el prompt combinado de AsistenteChat).
 REGLAS_FILTROS = """\
 - tenant, empresa, tipo, proveedor: devolve el id EXACTO del catalogo cuyo nombre coincida (acepta errores de \
 tipeo, mayusculas y coincidencias parciales). Si no se menciona o no hay coincidencia clara, devolve 0.
 - estado: "DISPONIBLE" si dice disponible/libre/sin asignar; "ASIGNADA" si asignada/en uso/ocupada; \
-"VENCIDA" si vencida/caducada/expirada; "POR_VENCER" si por vencer/proxima a vencer/vence pronto; \
-"SUSPENDIDA", "PENDIENTE_ACTIVACION" o "REVOCADA" segun corresponda; "" si no aplica.
+"VENCIDA" si vencida/caducada/expirada; "POR_VENCER" si por vencer/proxima a vencer/vence pronto/vence en los proximos 30 dias; \
+"SUSPENDIDA" si suspendida/pausada/inhabilitada temporalmente; "PENDIENTE_ACTIVACION" si pendiente de activacion/sin activar/falta activar; \
+"REVOCADA" si revocada/cancelada/anulada; "" si no aplica.
 - origen: "FACTURA" si pide licencias generadas por factura/compra; "SYNC" si por sincronizacion/Microsoft 365/M365; \
 "MANUAL" si registro manual; "" si no aplica.
 - vista: "lista" si pide la lista/detalle/buscar una licencia o filtrar por estado/proveedor/texto; \
 "reportes" si pide graficos/indicadores/KPIs/resumen/dashboard.
 - texto: termino de busqueda libre (nombre de software, fabricante, codigo SKU o numero de factura) si lo menciona; si no, "".
+- accion: "exportar" si pide crear/generar/descargar un reporte; si no, "filtrar".
+- accion: "limpiar" si pide limpiar/quitar/restablecer filtros.
+- formato: "PDF", "EXCEL" o "CSV" si pide exportar; "" si no aplica.
 - respuesta: una frase corta, amable, en espanol, confirmando que filtraste."""
 
 SYSTEM_PROMPT = (
@@ -60,9 +75,11 @@ SCHEMA = {
         'estado': {'type': 'string', 'enum': ESTADOS},
         'origen': {'type': 'string', 'enum': ORIGENES},
         'texto': {'type': 'string'},
+        'accion': {'type': 'string', 'enum': ACCIONES},
+        'formato': {'type': 'string', 'enum': FORMATOS},
         'respuesta': {'type': 'string'},
     },
-    'required': ['vista', 'tenant', 'empresa', 'tipo', 'proveedor', 'estado', 'origen', 'texto', 'respuesta'],
+    'required': ['vista', 'tenant', 'empresa', 'tipo', 'proveedor', 'estado', 'origen', 'texto', 'accion', 'formato', 'respuesta'],
 }
 
 
@@ -76,9 +93,90 @@ def _int(valor) -> int:
         return 0
 
 
+def _normalizar_texto(valor: str) -> str:
+    text = unicodedata.normalize('NFKD', str(valor or ''))
+    text = ''.join(ch for ch in text if not unicodedata.combining(ch))
+    return ' '.join(text.lower().split())
+
+
+def _score_nombre(nombre: str, consulta_normalizada: str) -> int:
+    nombre_norm = _normalizar_texto(nombre)
+    if not nombre_norm:
+        return 0
+    if nombre_norm in consulta_normalizada:
+        return 100 + len(nombre_norm)
+    consulta_tokens = set(consulta_normalizada.split())
+    tokens = [token for token in nombre_norm.split() if len(token) > 2]
+    return sum(1 for token in tokens if token in consulta_tokens)
+
+
+def _buscar_id_catalogo(items: list[dict], consulta: str) -> int:
+    consulta_norm = _normalizar_texto(consulta)
+    mejor_id = 0
+    mejor_score = 0
+    empate = False
+    for item in items:
+        score = _score_nombre(item.get('nombre', ''), consulta_norm)
+        if score > mejor_score:
+            mejor_id = item.get('id') or 0
+            mejor_score = score
+            empate = False
+        elif score and score == mejor_score:
+            empate = True
+    return 0 if empate and mejor_score < 100 else int(mejor_id or 0)
+
+
+def _inferir_accion_formato(consulta: str) -> tuple[str, str]:
+    q = _normalizar_texto(consulta)
+    if any(k in q for k in ('limpiar filtros', 'quitar filtros', 'sacar filtros', 'restablecer filtros')):
+        return 'limpiar', ''
+    exportar = any(k in q for k in (
+        'export', 'descarg', 'generar reporte', 'genera reporte',
+        'crear reporte', 'crea reporte', 'reporte en', 'reporte pdf',
+        'reporte excel', 'reporte csv',
+    ))
+    formato = ''
+    if 'pdf' in q:
+        formato = 'PDF'
+    elif 'excel' in q or 'xlsx' in q:
+        formato = 'EXCEL'
+    elif 'csv' in q:
+        formato = 'CSV'
+    if exportar:
+        return 'exportar', formato or 'PDF'
+    return 'filtrar', ''
+
+
+def interpretar_local(consulta: str, catalogo: dict) -> dict:
+    """Parser deterministico para reconocer pedidos comunes aunque la IA falle."""
+    inferidos = _inferir(consulta)
+    accion, formato = _inferir_accion_formato(consulta)
+    empresa = _buscar_id_catalogo(catalogo.get('empresas', []), consulta)
+    tenant = _buscar_id_catalogo(catalogo.get('tenants', []), consulta)
+    if empresa and not tenant:
+        for item in catalogo.get('empresas', []):
+            if item.get('id') == empresa:
+                tenant = int(item.get('tenant') or 0)
+                break
+    tiene_filtros = bool(empresa or tenant or inferidos['estado'] or inferidos['origen'])
+    return {
+        'vista': _inferir_vista(consulta, tiene_filtros),
+        'tenant': tenant,
+        'empresa': empresa,
+        'tipo': _buscar_id_catalogo(catalogo.get('tipos', []), consulta),
+        'proveedor': _buscar_id_catalogo(catalogo.get('proveedores', []), consulta),
+        'estado': inferidos['estado'],
+        'origen': inferidos['origen'],
+        'texto': '',
+        'accion': accion,
+        'formato': formato,
+        'respuesta': '',
+    }
+
+
 def _inferir(consulta: str) -> dict:
     """Fallback por palabras clave para estado y origen."""
-    q = consulta.lower()
+    q = _normalizar_texto(consulta)
 
     estado = ''
     if any(k in q for k in ('por vencer', 'proxima a vencer', 'próxima a vencer', 'vence pronto', 'a vencer')):
@@ -108,7 +206,7 @@ def _inferir(consulta: str) -> dict:
 
 
 def _inferir_vista(consulta: str, tiene_filtros: bool) -> str:
-    q = consulta.lower()
+    q = _normalizar_texto(consulta)
     claves_lista = ['lista', 'listar', 'detalle', 'buscar', 'busca', 'mostrame', 'mostrar', 'cuales', 'cuáles']
     if any(k in q for k in claves_lista):
         return 'lista'
@@ -154,6 +252,8 @@ def normalizar_filtros(parsed: dict, catalogo: dict, consulta: str) -> dict:
     origen = str(parsed.get('origen') or '')
     vista = str(parsed.get('vista') or 'ninguna')
     texto = str(parsed.get('texto') or '').strip()
+    accion = str(parsed.get('accion') or 'filtrar')
+    formato = str(parsed.get('formato') or '').upper()
 
     inferidos = _inferir(consulta)
     if not estado:
@@ -168,14 +268,97 @@ def normalizar_filtros(parsed: dict, catalogo: dict, consulta: str) -> dict:
     estado = estado if estado in ESTADOS else ''
     origen = origen if origen in ORIGENES else ''
     vista = vista if vista in VISTAS else 'ninguna'
+    accion = accion if accion in ACCIONES else 'filtrar'
+    formato = formato if formato in FORMATOS else ''
 
-    tiene_filtros = bool(tenant or empresa or tipo or proveedor or estado or origen)
+    if empresa and not tenant:
+        for item in catalogo['empresas']:
+            if item['id'] == empresa:
+                tenant = int(item.get('tenant') or 0)
+                break
 
-    # Los filtros del asistente operan EXCLUSIVAMENTE sobre el dashboard de reportes.
-    # Los demas modulos no se navegan/filtran desde aca (solo ayuda de uso).
-    vista = 'reportes'
+    tiene_filtros_basicos = bool(tenant or empresa or tipo or proveedor or estado or origen or texto)
+    if vista == 'ninguna':
+        vista = _inferir_vista(consulta, tiene_filtros_basicos)
+    if accion == 'exportar':
+        vista = 'reportes'
+        formato = formato or 'PDF'
 
-    respuesta = _normalizar_respuesta(str(parsed.get('respuesta') or '').strip(), vista, tiene_filtros)
+    # "Quitar / limpiar filtros / ver todo": solo si NO se pidio un filtro concreto.
+    if accion == 'filtrar' and not tiene_filtros_basicos:
+        _q = _normalizar_texto(consulta)
+        if any(k in _q for k in (
+            'limpiar filtro', 'limpia filtro', 'limpiar los filtro', 'quitar filtro', 'quita filtro',
+            'quita los filtro', 'quitale los filtro', 'sacar filtro', 'saca filtro', 'saca los filtro',
+            'borrar filtro', 'borra los filtro', 'sin filtro', 'reiniciar filtro', 'resetear filtro',
+            'restablecer filtro', 'reiniciar el tablero', 'ver todo', 'ver todas las licencia',
+            'mostrar todo', 'mostrame todo', 'mostrar todas las licencia', 'todo el inventario',
+            'todas las licencia', 'sin ningun filtro', 'quitar todos', 'limpiar todo',
+        )):
+            accion = 'limpiar'
+            vista = 'reportes'
+
+    # Confirmacion AUTORITATIVA: se arma desde los ids YA validados contra el
+    # catalogo (nombres reales), no desde la frase libre del modelo. Asi el texto
+    # nunca afirma un filtro que no se va a aplicar.
+    def _nombre(lista, _id):
+        for x in lista:
+            if x['id'] == _id:
+                return x['nombre']
+        return None
+
+    filtros_aplicados = []
+    if tenant:
+        n = _nombre(catalogo['tenants'], tenant)
+        if n:
+            filtros_aplicados.append('Tenant: ' + n)
+    if empresa:
+        n = _nombre(catalogo['empresas'], empresa)
+        if n:
+            filtros_aplicados.append('Empresa: ' + n)
+    if tipo:
+        n = _nombre(catalogo['tipos'], tipo)
+        if n:
+            filtros_aplicados.append('Tipo: ' + n)
+    if proveedor:
+        n = _nombre(catalogo['proveedores'], proveedor)
+        if n:
+            filtros_aplicados.append('Proveedor: ' + n)
+    if estado:
+        filtros_aplicados.append('Estado: ' + ESTADO_LABELS.get(estado, estado))
+    if origen:
+        filtros_aplicados.append('Origen: ' + ORIGEN_LABELS.get(origen, origen))
+
+    aplicar = bool(filtros_aplicados) or accion in ('exportar', 'limpiar')
+    if accion == 'limpiar':
+        respuesta = 'Listo, quité los filtros: te muestro todo el inventario en el dashboard.'
+    elif accion == 'exportar':
+        detalle = ', '.join(filtros_aplicados) if filtros_aplicados else 'el inventario general'
+        respuesta = f'Genero el reporte {formato or "PDF"} para {detalle}.'
+    elif filtros_aplicados:
+        destino = 'la lista' if vista == 'lista' else 'el dashboard'
+        adjetivo = 'filtrada' if vista == 'lista' else 'filtrado'
+        respuesta = 'Te muestro ' + destino + ' ' + adjetivo + ' por ' + ', '.join(filtros_aplicados) + '.'
+    else:
+        # No se resolvio ningun filtro: usamos la ACLARACION contextual que escribio el
+        # modelo (reconoce lo pedido y aclara que SI puede filtrar), salvo que afirme
+        # falsamente un exito; en ese caso, aclaracion generica.
+        modelo_resp = str(parsed.get('respuesta') or '').strip()
+        _falso_exito = any(
+            s in modelo_resp.lower()
+            for s in ('te muestro el dashboard', 'filtrado por', 'abri el dashboard', 'abrí el dashboard',
+                      'aplique el filtro', 'apliqué el filtro', 'abierto el dashboard',
+                      'he filtrado', 'filtrado las', 'ya filtre', 'ya filtré')
+        )
+        if modelo_resp and not _falso_exito:
+            respuesta = modelo_resp
+        else:
+            respuesta = (
+                '¿Sobre qué querés el reporte? El dashboard se filtra por empresa, estado '
+                '(disponible, asignada, vencida, por vencer, suspendida, pendiente o revocada), '
+                'tipo de licencia, origen (manual, factura o sincronización), proveedor o tenant. '
+                'Por ejemplo: "licencias vencidas" o "disponibles de Microsoft".'
+            )
 
     return {
         'vista': vista,
@@ -186,6 +369,10 @@ def normalizar_filtros(parsed: dict, catalogo: dict, consulta: str) -> dict:
         'estado': estado,
         'origen': origen,
         'texto': texto,
+        'accion': accion,
+        'formato': formato,
+        'aplicar': aplicar,
+        'filtros_aplicados': filtros_aplicados,
         'respuesta': respuesta,
     }
 
@@ -195,6 +382,8 @@ def filtros_vacios() -> dict:
     return {
         'vista': 'ninguna', 'tenant': 0, 'empresa': 0, 'tipo': 0,
         'proveedor': 0, 'estado': '', 'origen': '', 'texto': '',
+        'accion': 'filtrar', 'formato': '',
+        'aplicar': False, 'filtros_aplicados': [],
     }
 
 
@@ -220,16 +409,16 @@ class InterpretarConsulta:
                 schema_name='filtros_dashboard', temperature=0, max_tokens=400, timeout=20,
             )
         except ai.AsistenteNoConfigurado:
-            return self._fallback('El asistente todavia no esta configurado (falta la clave OPENAI_API_KEY).')
+            return {'ok': True, **normalizar_filtros(interpretar_local(consulta, catalogo), catalogo, consulta)}
         except ai.AsistenteError:
-            return self._fallback('No pude consultar al asistente en este momento. Proba de nuevo.')
+            return {'ok': True, **normalizar_filtros(interpretar_local(consulta, catalogo), catalogo, consulta)}
 
         try:
             parsed = json.loads(texto_modelo)
         except (json.JSONDecodeError, TypeError):
             parsed = None
         if not isinstance(parsed, dict):
-            return self._fallback('No entendi bien la consulta. La podes reformular?')
+            return {'ok': True, **normalizar_filtros(interpretar_local(consulta, catalogo), catalogo, consulta)}
 
         return {'ok': True, **normalizar_filtros(parsed, catalogo, consulta)}
 

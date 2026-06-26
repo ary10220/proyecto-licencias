@@ -5,6 +5,7 @@ Cada submodulo implementa un Caso de Uso del flujo comercial:
 
     Propuestas comerciales  -> use_cases/propuestas.py
     Facturas + generacion stock -> use_cases/facturas.py
+    Pagos de facturas -> use_cases/pagos.py
 
 Re-export para imports cortos:
 
@@ -30,6 +31,14 @@ from .facturas import (
     uc_generar_stock_factura,
     uc_emitir_factura_desde_propuesta,
 )
+from .pagos import (
+    construir_resumen_pagos,
+    uc_anular_pago,
+    uc_crear_pago_directo,
+    uc_editar_pago,
+    uc_listar_pagos,
+    uc_registrar_pago,
+)
 
 __all__ = [
     "uc_listar_propuestas",
@@ -47,4 +56,10 @@ __all__ = [
     "uc_eliminar_factura",
     "uc_generar_stock_factura",
     "uc_emitir_factura_desde_propuesta",
+    "uc_listar_pagos",
+    "construir_resumen_pagos",
+    "uc_registrar_pago",
+    "uc_editar_pago",
+    "uc_crear_pago_directo",
+    "uc_anular_pago",
 ]

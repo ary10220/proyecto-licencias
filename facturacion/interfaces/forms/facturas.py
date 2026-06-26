@@ -2,7 +2,7 @@ from django import forms
 from django.db.models import Q
 
 from licencias.models import Empresa, Tenant
-from ...infrastructure.models import DetalleFactura, Factura
+from ...infrastructure.models import DetalleFactura, Factura, PagoFactura
 
 
 class FacturaForm(forms.ModelForm):
@@ -123,4 +123,66 @@ class DetalleFacturaForm(forms.ModelForm):
         precio = cleaned_data.get('precio_unitario')
         if tipo and (precio is None or precio == 0):
             cleaned_data['precio_unitario'] = getattr(tipo, 'precio_venta', 0) or 0
+        return cleaned_data
+
+
+class PagoFacturaForm(forms.ModelForm):
+    """Registro de pagos asociados a una factura."""
+
+    class Meta:
+        model = PagoFactura
+        fields = ['fecha_pago', 'monto', 'metodo_pago', 'referencia', 'comprobante', 'observaciones']
+        widgets = {
+            'fecha_pago': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'monto': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0.01'}),
+            'metodo_pago': forms.Select(attrs={'class': 'form-select'}),
+            'referencia': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Transaccion, comprobante o recibo',
+            }),
+            'comprobante': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+            'observaciones': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Notas internas del pago',
+            }),
+        }
+
+    def __init__(self, *args, factura=None, **kwargs):
+        instance = kwargs.get('instance')
+        self.factura = factura or getattr(instance, 'factura', None)
+        super().__init__(*args, **kwargs)
+        if self.factura and not self.is_bound and not self.instance.pk:
+            self.fields['monto'].initial = self.factura.saldo_pendiente
+            self.fields['metodo_pago'].initial = self.factura.metodo_pago
+
+    def _saldo_editable(self):
+        if not self.factura:
+            return None
+        saldo = self.factura.saldo_pendiente
+        if self.instance.pk and self.instance.estado == PagoFactura.ESTADO_ACTIVO:
+            saldo += self.instance.monto
+        return saldo
+
+    def clean_monto(self):
+        monto = self.cleaned_data.get('monto')
+        if monto is None:
+            return monto
+        if monto <= 0:
+            raise forms.ValidationError('El monto del pago debe ser mayor a cero.')
+        if self.factura:
+            saldo = self._saldo_editable()
+            if saldo is not None and monto > saldo:
+                raise forms.ValidationError(f'El monto no puede superar el saldo disponible ({saldo:.2f}).')
+        return monto
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if self.factura and self.factura.estado == 'ANULADA':
+            raise forms.ValidationError('No se pueden registrar pagos en una factura anulada.')
+        if self.instance.pk and self.instance.estado == PagoFactura.ESTADO_ANULADO:
+            raise forms.ValidationError('No se puede editar un pago anulado.')
+        saldo = self._saldo_editable()
+        if self.factura and saldo is not None and saldo <= 0:
+            raise forms.ValidationError('La factura no tiene saldo pendiente.')
         return cleaned_data

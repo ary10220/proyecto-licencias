@@ -9,7 +9,9 @@ Estructura:
 from datetime import date, timedelta
 from decimal import Decimal
 
+from django.conf import settings
 from django.db import models
+from django.db.models import Sum
 from django.utils import timezone
 
 from licencias.models import Empresa, Licencia, Proveedor, Tenant, TipoLicencia
@@ -203,6 +205,7 @@ class Factura(models.Model):
     ESTADOS = (
         ('BORRADOR', 'Borrador'),
         ('EMITIDA', 'Emitida'),
+        ('PAGO_PARCIAL', 'Pago parcial'),
         ('PAGADA', 'Pagada'),
         ('ANULADA', 'Anulada'),
     )
@@ -299,6 +302,71 @@ class Factura(models.Model):
     def total(self):
         return self.subtotal_con_descuento + self.impuesto_calculado
 
+    @property
+    def monto_pagado(self):
+        if not self.pk:
+            return Decimal('0')
+        total = self.pagos.filter(estado=PagoFactura.ESTADO_ACTIVO).aggregate(
+            total=Sum('monto')
+        )['total']
+        return Decimal(str(total or 0))
+
+    @property
+    def saldo_pendiente(self):
+        saldo = Decimal(str(self.total)) - Decimal(str(self.monto_pagado))
+        return saldo if saldo > 0 else Decimal('0')
+
+    @property
+    def porcentaje_pagado(self):
+        total = Decimal(str(self.total))
+        if total <= 0:
+            return Decimal('100') if self.monto_pagado > 0 else Decimal('0')
+        porcentaje = (Decimal(str(self.monto_pagado)) / total) * Decimal('100')
+        return porcentaje if porcentaje < 100 else Decimal('100')
+
+    @property
+    def estado_pago_calculado(self):
+        if self.estado == 'ANULADA':
+            return 'ANULADA'
+        if self.saldo_pendiente <= 0 and self.total > 0:
+            return 'PAGADA'
+        if self.monto_pagado > 0:
+            return 'PAGO_PARCIAL'
+        return 'PENDIENTE'
+
+    @property
+    def estado_pago_label(self):
+        labels = {
+            'PENDIENTE': 'Pendiente',
+            'PAGO_PARCIAL': 'Pago parcial',
+            'PAGADA': 'Pagada',
+            'ANULADA': 'Anulada',
+        }
+        return labels.get(self.estado_pago_calculado, self.estado_pago_calculado)
+
+    def sincronizar_estado_pago(self, metodo_pago=None):
+        if self.estado == 'ANULADA':
+            return self.estado
+
+        nuevo_estado = self.estado
+        if self.saldo_pendiente <= 0 and self.total > 0:
+            nuevo_estado = 'PAGADA'
+        elif self.monto_pagado > 0:
+            nuevo_estado = 'PAGO_PARCIAL'
+        elif self.estado in {'PAGADA', 'PAGO_PARCIAL'}:
+            nuevo_estado = 'EMITIDA'
+
+        update_fields = []
+        if nuevo_estado != self.estado:
+            self.estado = nuevo_estado
+            update_fields.append('estado')
+        if metodo_pago and metodo_pago != self.metodo_pago:
+            self.metodo_pago = metodo_pago
+            update_fields.append('metodo_pago')
+        if update_fields:
+            self.save(update_fields=update_fields)
+        return self.estado
+
 
 class DetalleFactura(models.Model):
     factura = models.ForeignKey(Factura, on_delete=models.CASCADE, related_name='detalles')
@@ -368,3 +436,42 @@ class DetalleFactura(models.Model):
             for _ in range(self.cantidad)
         ]
         return Licencia.objects.bulk_create(licencias)
+
+
+class PagoFactura(models.Model):
+    ESTADO_ACTIVO = 'ACTIVO'
+    ESTADO_ANULADO = 'ANULADO'
+    ESTADOS = (
+        (ESTADO_ACTIVO, 'Activo'),
+        (ESTADO_ANULADO, 'Anulado'),
+    )
+
+    factura = models.ForeignKey(Factura, on_delete=models.CASCADE, related_name='pagos')
+    fecha_pago = models.DateField(default=timezone.now)
+    monto = models.DecimalField(max_digits=12, decimal_places=2)
+    metodo_pago = models.CharField(max_length=20, choices=Factura.METODOS_PAGO, default='TRANSFERENCIA')
+    referencia = models.CharField(max_length=120, blank=True)
+    comprobante = models.FileField(upload_to='comprobantes_pagos/', blank=True, null=True)
+    observaciones = models.TextField(blank=True)
+    estado = models.CharField(max_length=12, choices=ESTADOS, default=ESTADO_ACTIVO)
+    creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='pagos_facturacion',
+    )
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Pago de factura"
+        verbose_name_plural = "Pagos de factura"
+        ordering = ['-fecha_pago', '-id']
+        indexes = [
+            models.Index(fields=['estado', 'fecha_pago']),
+            models.Index(fields=['metodo_pago', 'fecha_pago']),
+        ]
+
+    def __str__(self):
+        return f"Pago {self.factura.numero} - {self.monto}"

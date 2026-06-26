@@ -65,8 +65,14 @@
             <a href="{% url 'gestionar_licencias' %}" class="btn btn-primary">
                 <i class="fa-solid fa-key me-2"></i>Gestionar licencias
             </a>
-            <a href="{% url 'exportar_general' %}" class="btn btn-success">
+            <a data-export="excel" href="{% url 'exportar_general' %}" class="btn btn-success" title="Exportar a Excel con los filtros actuales">
                 <i class="fa-solid fa-file-excel me-2"></i>Excel
+            </a>
+            <a data-export="pdf" href="{% url 'exportar_pdf_general' %}?download=1" class="btn btn-danger" title="Exportar a PDF con los filtros actuales">
+                <i class="fa-solid fa-file-pdf me-2"></i>PDF
+            </a>
+            <a data-export="csv" href="{% url 'exportar_csv_general' %}" class="btn btn-secondary" title="Exportar a CSV con los filtros actuales">
+                <i class="fa-solid fa-file-csv me-2"></i>CSV
             </a>
         </div>
     </div>
@@ -339,7 +345,13 @@
 <script src="{% static 'facturacion/js/comercial_filters.js' %}"></script>
 <script>
 (function () {
-    var DASH = { tenantId: {{ tenant_seleccionado.id|default:"null" }}, baseUrl: "{% url 'dashboard_general' %}" };
+    var DASH = {
+        tenantId: {{ tenant_seleccionado.id|default:"null" }},
+        baseUrl: "{% url 'dashboard_general' %}",
+        excelUrl: "{% url 'exportar_general' %}",
+        pdfUrl: "{% url 'exportar_pdf_general' %}",
+        csvUrl: "{% url 'exportar_csv_general' %}"
+    };
     var PALETA = ['#df6e12', '#0d6efd', '#198754', '#dc3545', '#6f42c1', '#fd7e14', '#20c997', '#6610f2'];
     var NARANJA = '#df6e12', AZUL = '#0d6efd';
     var charts = [];
@@ -380,14 +392,21 @@
         var url = queryString ? (base + '?' + queryString) : base;
         var cur = document.querySelector('.dash-shell');
         if (cur) { cur.style.opacity = '0.55'; }
-        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-            .then(function (r) { return r.text(); })
+        return fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (r) {
+                // Sesion expirada: login_required redirige (302) -> recargamos para ir a login
+                // en vez de inyectar el HTML de login dentro del dashboard.
+                if (r.redirected) { window.location.assign(url); return null; }
+                return r.text();
+            })
             .then(function (html) {
+                if (html === null) { return; }
                 var fresh = new DOMParser().parseFromString(html, 'text/html').querySelector('.dash-shell');
                 var dest = document.querySelector('.dash-shell');
                 if (fresh && dest) { dest.innerHTML = fresh.innerHTML; dest.style.opacity = '1'; }
                 DASH.tenantId = tenantId || null;
                 initDashboardCharts();
+                actualizarExports();
                 try { history.pushState(null, '', url); } catch (e) {}
             })
             .catch(function () { window.location.assign(url); });
@@ -400,6 +419,19 @@
             if (el && el.value) { qp.set(k, el.value); }
         });
         return qp.toString();
+    }
+
+    // Mantiene los links de exportacion (Excel/PDF/CSV) con los filtros activos.
+    function baseTenant(url, tid) { return tid ? (url + tid + '/') : url; }
+    function actualizarExports() {
+        var form = document.querySelector('[data-commercial-filter-form]');
+        var qs = form ? queryDesdeForm(form) : '';
+        document.querySelectorAll('[data-export]').forEach(function (a) {
+            var tipo = a.getAttribute('data-export');
+            var base = baseTenant(DASH[tipo + 'Url'], DASH.tenantId);
+            var params = (tipo === 'pdf') ? (qs ? qs + '&download=1' : 'download=1') : qs;
+            a.href = params ? (base + '?' + params) : base;
+        });
     }
 
     // Handler global usado por los onchange de TODOS los selects del formulario.
@@ -415,20 +447,29 @@
 
     // API que usa el asistente de IA para filtrar el dashboard en vivo.
     window.dashboardAplicarFiltros = function (f) {
-        var qp = new URLSearchParams();
+        // "limpiar": quita TODOS los filtros (mantiene el tenant actual).
+        if (f.accion === 'limpiar') {
+            return aplicarFiltros(DASH.tenantId, '');
+        }
+        // ACUMULAR: partimos de los filtros que ya estan aplicados (form) y agregamos/
+        // actualizamos los nuevos, para poder combinar varios filtros entre mensajes.
+        var form = document.querySelector('[data-commercial-filter-form]');
+        var qp = new URLSearchParams(form ? queryDesdeForm(form) : '');
         if (f.empresa) { qp.set('empresa', f.empresa); }
         if (f.tipo) { qp.set('tipo', f.tipo); }
         if (f.origen) { qp.set('origen', f.origen); }
         if (f.estado) { qp.set('estado', f.estado); }
         if (f.proveedor) { qp.set('proveedor', f.proveedor); }
-        aplicarFiltros(f.tenant ? String(f.tenant) : '', qp.toString());
+        var tenant = f.tenant ? String(f.tenant) : DASH.tenantId;
+        return aplicarFiltros(tenant, qp.toString());
     };
 
     window.addEventListener('popstate', function () { window.location.reload(); });
+    function iniciar() { initDashboardCharts(); actualizarExports(); }
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initDashboardCharts);
+        document.addEventListener('DOMContentLoaded', iniciar);
     } else {
-        initDashboardCharts();
+        iniciar();
     }
 })();
 </script>

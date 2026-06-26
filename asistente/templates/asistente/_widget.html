@@ -1,8 +1,8 @@
 {% comment %}
 Widget flotante del Asistente de IA (unificado). Se incluye al final de
 templates/base.html. Un solo chat: el modelo decide si responde una AYUDA
-(como funciona / donde esta algo) o arma un FILTRO/REPORTE del tablero.
-Sin dependencias extra: usa los estilos/JS ya cargados por base.html.
+(como funciona / como hacer algo) o arma un FILTRO del dashboard.
+Persiste la conversacion en sessionStorage (sobrevive a la navegacion).
 {% endcomment %}
 <style>
     .asis-launcher {
@@ -77,17 +77,18 @@ Sin dependencias extra: usa los estilos/JS ya cargados por base.html.
         display: inline-flex; align-items: center; justify-content: center;
         background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.24);
     }
-    .asis-head .asis-titles { display: flex; flex-direction: column; line-height: 1.15; }
+    .asis-head .asis-titles { display: flex; flex-direction: column; line-height: 1.15; flex: 1; min-width: 0; }
     .asis-head .asis-titles strong { font-size: .96rem; font-weight: 800; }
     .asis-head .asis-titles small { font-size: .72rem; opacity: .85; }
-    .asis-head .asis-close {
-        margin-left: auto; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.24);
-        color: #fff; height: 30px; width: 30px; border-radius: 8px; cursor: pointer;
+    .asis-head .asis-iconbtn {
+        background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.24);
+        color: #fff; height: 30px; width: 30px; border-radius: 8px; cursor: pointer; flex: 0 0 30px;
     }
+    .asis-head .asis-iconbtn:hover { background: rgba(255,255,255,.26); }
 
     .asis-messages {
-        flex: 1; min-height: 260px; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 11px;
-        scrollbar-width: thin;
+        flex: 1; min-height: 260px; overflow-y: auto; overscroll-behavior: contain;
+        padding: 14px; display: flex; flex-direction: column; gap: 11px; scrollbar-width: thin;
     }
     .asis-hint { font-size: .82rem; color: var(--text-muted, #6c7480); line-height: 1.5; }
     .asis-hint strong { color: #b65a11; }
@@ -95,13 +96,6 @@ Sin dependencias extra: usa los estilos/JS ya cargados por base.html.
     .asis-msg.user { align-self: flex-end; background: #ffe1c7; color: #7a3c06; border-bottom-right-radius: 4px; }
     .asis-msg.bot { align-self: flex-start; background: #f4f1ec; color: #2c3038; border-bottom-left-radius: 4px; }
     .asis-msg.bot.error { background: #fdeeee; color: #a12b2b; }
-    .asis-apply {
-        align-self: flex-start; display: inline-flex; align-items: center; gap: 7px;
-        background: #edf5f7; border: 1px solid rgba(47, 93, 104, 0.28); color: #23424a;
-        font-weight: 700; font-size: .82rem; padding: 7px 12px; border-radius: 8px;
-        cursor: pointer; text-decoration: none;
-    }
-    .asis-apply:hover { background: #dfecef; color: #16313a; }
     .asis-typing { align-self: flex-start; color: var(--text-muted, #6c7480); font-size: .82rem; }
 
     .asis-inputbar {
@@ -153,12 +147,13 @@ Sin dependencias extra: usa los estilos/JS ya cargados por base.html.
             <strong>Asistente</strong>
             <small>Ayuda y reportes del sistema</small>
         </span>
-        <button type="button" class="asis-close" id="asisClose" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+        <button type="button" class="asis-iconbtn" id="asisClear" aria-label="Limpiar conversación" title="Limpiar conversación"><i class="fa-solid fa-trash-can"></i></button>
+        <button type="button" class="asis-iconbtn" id="asisClose" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button>
     </div>
 
-    <div class="asis-messages" id="asisMessages">
+    <div class="asis-messages" id="asisMessages" role="log" aria-live="polite" aria-atomic="false">
         <div class="asis-hint" id="asisHint">
-            Preguntame <strong>cómo usar el sistema</strong> o pedime un <strong>reporte</strong>. Por ejemplo:
+            Preguntame <strong>cómo hacer algo</strong> o pedime un <strong>reporte</strong>. Por ejemplo:
             <strong>&ldquo;¿cómo asigno una licencia?&rdquo;</strong> · <strong>&ldquo;licencias vencidas&rdquo;</strong> ·
             <strong>&ldquo;disponibles de Microsoft&rdquo;</strong>. Tocá el micrófono para hablar.
         </div>
@@ -166,7 +161,7 @@ Sin dependencias extra: usa los estilos/JS ya cargados por base.html.
 
     <div class="asis-inputbar">
         <input type="text" id="asisInput" placeholder="Escribí o hablá…" aria-label="Tu consulta" autocomplete="off">
-        <button type="button" class="asis-ic mic" id="asisMic" aria-label="Hablar"><i class="fa-solid fa-microphone"></i></button>
+        <button type="button" class="asis-ic mic" id="asisMic" aria-label="Hablar" title="Hablar"><i class="fa-solid fa-microphone"></i></button>
         <button type="button" class="asis-ic send" id="asisSend" aria-label="Enviar"><i class="fa-solid fa-paper-plane"></i></button>
     </div>
 </section>
@@ -176,6 +171,9 @@ Sin dependencias extra: usa los estilos/JS ya cargados por base.html.
         chatUrl: "{% url 'asistente:chat' %}",
         dashboardUrl: "{% url 'dashboard_general' %}",
         licenciasUrl: "{% url 'gestionar_licencias' %}",
+        exportExcelUrl: "{% url 'exportar_general' %}",
+        exportPdfUrl: "{% url 'exportar_pdf_general' %}",
+        exportCsvUrl: "{% url 'exportar_csv_general' %}",
         csrf: "{{ csrf_token }}"
     };
 
@@ -184,6 +182,7 @@ Sin dependencias extra: usa los estilos/JS ya cargados por base.html.
         const launcher = document.getElementById('asisLauncher');
         const panel = document.getElementById('asisPanel');
         const closeBtn = document.getElementById('asisClose');
+        const clearBtn = document.getElementById('asisClear');
         const messages = document.getElementById('asisMessages');
         const hint = document.getElementById('asisHint');
         const input = document.getElementById('asisInput');
@@ -193,40 +192,116 @@ Sin dependencias extra: usa los estilos/JS ya cargados por base.html.
 
         let busy = false;
 
-        const openPanel = () => {
-            panel.hidden = false;
-            launcher.setAttribute('aria-expanded', 'true');
-            setTimeout(() => input.focus(), 60);
+        // ---------- Persistencia del chat (sessionStorage: sobrevive a la navegacion) ----------
+        const KEY_HIST = 'asisChatHist';
+        const KEY_OPEN = 'asisChatOpen';
+        const MAX = 50;
+        const leerHistorial = () => {
+            try { const raw = sessionStorage.getItem(KEY_HIST); const a = raw ? JSON.parse(raw) : []; return Array.isArray(a) ? a : []; }
+            catch (e) { return []; }
         };
-        const closePanel = () => {
-            panel.hidden = true;
-            launcher.setAttribute('aria-expanded', 'false');
+        const guardarHistorial = (who, text, isError) => {
+            try {
+                const a = leerHistorial();
+                a.push({ who: who, text: text, error: !!isError });
+                if (a.length > MAX) a.splice(0, a.length - MAX);
+                sessionStorage.setItem(KEY_HIST, JSON.stringify(a));
+            } catch (e) { /* storage no disponible: el chat sigue en memoria */ }
         };
-
-        launcher.addEventListener('click', () => panel.hidden ? openPanel() : closePanel());
-        closeBtn.addEventListener('click', closePanel);
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !panel.hidden) closePanel(); });
 
         const scrollDown = () => { messages.scrollTop = messages.scrollHeight; };
 
-        const addMsg = (who, text, isError) => {
+        const addMsg = (who, text, isError, persist) => {
             const el = document.createElement('div');
             el.className = 'asis-msg ' + who + (isError ? ' error' : '');
             el.textContent = text;
             messages.appendChild(el);
             scrollDown();
+            if (persist !== false) guardarHistorial(who, text, isError);
             return el;
         };
 
-        const buildUrl = (f) => {
-            // Los filtros del asistente operan SOLO sobre el dashboard de reportes.
+        const restaurarHistorial = () => {
+            const a = leerHistorial();
+            if (!a.length) return;
+            if (hint) hint.style.display = 'none';
+            a.forEach((m) => addMsg(m.who, m.text, m.error, false));
+        };
+
+        const limpiarChat = () => {
+            try { sessionStorage.removeItem(KEY_HIST); } catch (e) {}
+            messages.querySelectorAll('.asis-msg, .asis-typing').forEach((el) => el.remove());
+            if (hint) hint.style.display = '';
+            input.focus();
+        };
+
+        // ---------- Panel ----------
+        const openPanel = (focusInput) => {
+            panel.hidden = false;
+            launcher.setAttribute('aria-expanded', 'true');
+            try { sessionStorage.setItem(KEY_OPEN, '1'); } catch (e) {}
+            if (focusInput !== false) setTimeout(() => input.focus(), 60);
+        };
+        const closePanel = () => {
+            panel.hidden = true;
+            launcher.setAttribute('aria-expanded', 'false');
+            try { sessionStorage.removeItem(KEY_OPEN); } catch (e) {}
+            launcher.focus();
+        };
+
+        // Restaurar conversacion previa y, si el panel estaba abierto, reabrirlo (sin robar foco).
+        restaurarHistorial();
+        let estabaAbierto = false;
+        try { estabaAbierto = sessionStorage.getItem(KEY_OPEN) === '1'; } catch (e) {}
+        if (estabaAbierto) openPanel(false);
+
+        launcher.addEventListener('click', () => panel.hidden ? openPanel() : closePanel());
+        closeBtn.addEventListener('click', closePanel);
+        if (clearBtn) clearBtn.addEventListener('click', limpiarChat);
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !panel.hidden) closePanel(); });
+        // Limpiar el chat al cerrar sesion (form de logout en base.html).
+        document.querySelectorAll('form.logout-form').forEach((f) => f.addEventListener('submit', () => {
+            try { sessionStorage.removeItem(KEY_HIST); sessionStorage.removeItem(KEY_OPEN); } catch (e) {}
+        }));
+
+        // ---------- Estado ocupado: bloquea boton enviar y microfono (no el input) ----------
+        const setBusy = (on) => {
+            busy = on;
+            sendBtn.disabled = on;
+            if (micBtn) micBtn.disabled = on;
+        };
+
+        const baseTenant = (url, tenantId) => tenantId ? (url + tenantId + '/') : url;
+
+        const buildQuery = (f, includeText) => {
             const qp = new URLSearchParams();
-            const base = f.tenant ? (cfg.dashboardUrl + f.tenant + '/') : cfg.dashboardUrl;
             if (f.empresa) qp.set('empresa', f.empresa);
             if (f.tipo) qp.set('tipo', f.tipo);
             if (f.origen) qp.set('origen', f.origen);
             if (f.estado) qp.set('estado', f.estado);
             if (f.proveedor) qp.set('proveedor', f.proveedor);
+            if (includeText && f.texto) qp.set('q', f.texto);
+            return qp;
+        };
+
+        const buildUrl = (f) => {
+            const accion = f.accion || 'filtrar';
+            const formato = (f.formato || '').toUpperCase();
+            const vista = f.vista || 'reportes';
+            const isExport = accion === 'exportar';
+            let base = f.tenant ? (cfg.dashboardUrl + f.tenant + '/') : cfg.dashboardUrl;
+            let qp = buildQuery(f, false);
+
+            if (isExport) {
+                if (formato === 'EXCEL') base = baseTenant(cfg.exportExcelUrl, f.tenant);
+                else if (formato === 'CSV') base = baseTenant(cfg.exportCsvUrl, f.tenant);
+                else base = baseTenant(cfg.exportPdfUrl, f.tenant);
+                qp = buildQuery(f, false);
+                if (formato === 'PDF' || !formato) qp.set('download', '1');
+            } else if (vista === 'lista') {
+                base = f.tenant ? (cfg.licenciasUrl + 'tenant/' + f.tenant + '/') : cfg.licenciasUrl;
+                qp = buildQuery(f, true);
+            }
             const s = qp.toString();
             return s ? base + '?' + s : base;
         };
@@ -243,6 +318,11 @@ Sin dependencias extra: usa los estilos/JS ya cargados por base.html.
                 },
                 body: JSON.stringify({ consulta })
             });
+            // Sesion expirada: login_required redirige (302) -> fetch sigue al HTML de login.
+            const ct = res.headers.get('content-type') || '';
+            if (res.redirected || ct.indexOf('application/json') === -1) {
+                const err = new Error('session'); err.sessionExpired = true; throw err;
+            }
             if (!res.ok) throw new Error('HTTP ' + res.status);
             return res.json();
         };
@@ -251,8 +331,7 @@ Sin dependencias extra: usa los estilos/JS ya cargados por base.html.
             const text = (input.value || '').trim();
             if (!text || busy) return;
             if (hint) hint.style.display = 'none';
-            busy = true;
-            sendBtn.disabled = true;
+            setBusy(true);
             addMsg('user', text);
             input.value = '';
 
@@ -265,37 +344,48 @@ Sin dependencias extra: usa los estilos/JS ya cargados por base.html.
             try {
                 const data = await post(cfg.chatUrl, text);
                 typing.remove();
+                // El backend es autoritativo: data.respuesta ya confirma el filtro real
+                // o pide aclaracion. data.aplicar dice si hay que aplicar algo.
                 addMsg('bot', data.respuesta || 'Sin respuesta.', data.ok === false);
-                if (data.intencion === 'filtros' && data.ok && tieneFiltro(data)) {
-                    if (typeof window.dashboardAplicarFiltros === 'function') {
-                        // Estamos en el dashboard: filtra EN VIVO, sin recargar (el chat queda abierto).
-                        window.dashboardAplicarFiltros(data);
-                    } else {
-                        // Estamos en otra pagina: lleva al dashboard ya filtrado.
-                        const yendo = document.createElement('div');
-                        yendo.className = 'asis-typing';
-                        yendo.textContent = 'Abriendo el dashboard…';
-                        messages.appendChild(yendo);
+                if (data.intencion === 'filtros' && data.ok && data.aplicar) {
+                    const isExport = data.accion === 'exportar';
+                    const isDashboard = !isExport && (data.vista || 'reportes') === 'reportes';
+                    if (isDashboard && typeof window.dashboardAplicarFiltros === 'function') {
+                        // En el dashboard: filtra EN VIVO, con feedback (el chat queda abierto).
+                        const aplicando = document.createElement('div');
+                        aplicando.className = 'asis-typing';
+                        aplicando.textContent = 'Aplicando filtro…';
+                        messages.appendChild(aplicando);
                         scrollDown();
+                        try { await window.dashboardAplicarFiltros(data); }
+                        catch (e) { addMsg('bot', 'No pude aplicar el filtro en vivo. Recargá el dashboard.', true); }
+                        finally { aplicando.remove(); }
+                    } else {
+                        // En otra pagina: abre la vista o descarga el reporte solicitado.
+                        const destino = isExport
+                            ? 'Preparando el reporte…'
+                            : ((data.vista || 'reportes') === 'lista' ? 'Abriendo la lista…' : 'Abriendo el dashboard…');
+                        addMsg('bot', destino, false, false);
                         setTimeout(() => window.location.assign(buildUrl(data)), 450);
                     }
-                } else if (data.intencion === 'filtros' && data.ok) {
-                    addMsg('bot', 'No identifiqué un filtro claro. Probá por empresa, estado, tipo de licencia, origen o proveedor.', true);
                 }
             } catch (err) {
                 typing.remove();
-                addMsg('bot', 'No pude conectar con el asistente. Probá de nuevo.', true);
+                if (err && err.sessionExpired) {
+                    addMsg('bot', 'Tu sesión expiró. Recargá la página e iniciá sesión otra vez.', true);
+                } else {
+                    addMsg('bot', 'No pude conectar con el asistente. Probá de nuevo.', true);
+                }
             } finally {
-                busy = false;
-                sendBtn.disabled = false;
-                input.focus();
+                setBusy(false);
+                if (!panel.hidden) input.focus();
             }
         };
 
         sendBtn.addEventListener('click', send);
         input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); send(); } });
 
-        // --- Dictado por voz (Web Speech API), opcional ---
+        // ---------- Dictado por voz (Web Speech API) ----------
         const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SR) {
             micBtn.style.display = 'none';
@@ -304,17 +394,60 @@ Sin dependencias extra: usa los estilos/JS ya cargados por base.html.
             rec.lang = 'es-ES';
             rec.interimResults = false;
             rec.maxAlternatives = 1;
-            let recording = false;
+
+            let recording = false;   // estado logico del toggle (optimista)
+            let cancelado = false;   // true => apagado manual: no enviar
+            const placeholderBase = input.getAttribute('placeholder') || 'Escribí o hablá…';
+
+            // Reset visual/estado centralizado: se invoca en TODOS los caminos.
+            const setUI = (on) => {
+                recording = on;
+                micBtn.classList.toggle('rec', on);
+                micBtn.setAttribute('aria-label', on ? 'Detener dictado' : 'Hablar');
+                micBtn.setAttribute('title', on ? 'Detener dictado' : 'Hablar');
+                input.setAttribute('placeholder', on ? 'Escuchando…' : placeholderBase);
+            };
+
+            // Apagar SIEMPRE: abort() corta de inmediato y no dispara envio.
+            const apagar = (cancel) => {
+                cancelado = !!cancel;
+                try { rec.abort(); } catch (e) { /* noop */ }
+                setUI(false);
+            };
 
             micBtn.addEventListener('click', () => {
-                if (recording) { rec.stop(); return; }
-                try { rec.start(); } catch (e) { /* ya activo */ }
+                if (busy) return;                        // no dictar mientras hay una consulta en curso
+                if (recording) { apagar(true); return; } // segundo click: apaga/cancela SIN enviar
+                cancelado = false;
+                setUI(true);                             // estado optimista (no esperamos al evento 'start')
+                try {
+                    rec.start();
+                } catch (e) {
+                    try { rec.abort(); } catch (_) { /* noop */ }
+                    setUI(false);
+                    addMsg('bot', 'No pude iniciar el dictado. Probá de nuevo.', true);
+                }
             });
-            rec.addEventListener('start', () => { recording = true; micBtn.classList.add('rec'); });
-            rec.addEventListener('end', () => { recording = false; micBtn.classList.remove('rec'); });
-            rec.addEventListener('error', () => { recording = false; micBtn.classList.remove('rec'); });
+
+            rec.addEventListener('start', () => setUI(true));
+            rec.addEventListener('end', () => setUI(false));
+            rec.addEventListener('error', (e) => {
+                setUI(false);
+                cancelado = true;
+                const tipo = e && e.error;
+                if (tipo === 'not-allowed' || tipo === 'service-not-allowed') {
+                    addMsg('bot', 'No tengo permiso para usar el micrófono. Habilitalo en el navegador (ícono junto a la dirección) y volvé a intentar.', true);
+                } else if (tipo === 'no-speech') {
+                    addMsg('bot', 'No te escuché. Tocá el micrófono e intentá de nuevo.', true);
+                } else if (tipo !== 'aborted') {
+                    addMsg('bot', 'Hubo un problema con el dictado por voz. Probá de nuevo.', true);
+                }
+            });
             rec.addEventListener('result', (e) => {
-                const said = e.results[0][0].transcript;
+                setUI(false);
+                if (cancelado || busy) return;           // apagado manual o consulta en curso: no enviar
+                const said = (e.results[0][0].transcript || '').trim();
+                if (!said) return;
                 input.value = said;
                 send();
             });

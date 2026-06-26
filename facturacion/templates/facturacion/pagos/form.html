@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}{% if modo == 'editar' %}Editar pago{% else %}Registrar pago{% endif %} {{ factura.numero }}{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'gestion_global/css/common.css' %}">
+<link rel="stylesheet" href="{% static 'facturacion/css/comercial.css' %}">
+
+<div class="gg-shell">
+    <div class="page-header">
+        <h2 class="page-title">
+            <span class="page-title-icon"><i class="fa-solid fa-money-bill-transfer"></i></span>
+            <span class="page-title-text">{% if modo == 'editar' %}Editar pago{% else %}Registrar pago{% endif %}</span>
+        </h2>
+        <div class="page-actions">
+            <a href="{% if next %}{{ next }}{% else %}{% url 'lista_pagos' %}{% endif %}" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-arrow-left me-1"></i>Volver
+            </a>
+        </div>
+    </div>
+
+    <div class="module-nav mb-3">
+        <a href="{% url 'lista_cotizaciones' %}" class="module-nav-link">
+            <i class="fa-solid fa-file-signature"></i><span>Cotizaciones</span>
+        </a>
+        <a href="{% url 'lista_facturas' %}" class="module-nav-link">
+            <i class="fa-solid fa-file-invoice-dollar"></i><span>Facturas</span>
+        </a>
+        <a href="{% url 'lista_pagos' %}" class="module-nav-link active">
+            <i class="fa-solid fa-money-check-dollar"></i><span>Pagos</span>
+        </a>
+    </div>
+
+    <div class="payment-form-layout">
+        <div class="card payment-summary-card">
+            <div class="card-header bg-white">
+                <h5 class="mb-0 fw-bold text-primary">
+                    <i class="fa-solid fa-receipt me-2"></i>{{ factura.numero }}
+                </h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-5 text-muted">Empresa</dt>
+                    <dd class="col-sm-7 fw-bold">{{ factura.empresa.nombre }}</dd>
+                    <dt class="col-sm-5 text-muted">Tenant</dt>
+                    <dd class="col-sm-7">{{ factura.tenant.nombre }}</dd>
+                    <dt class="col-sm-5 text-muted">Fecha</dt>
+                    <dd class="col-sm-7">{{ factura.fecha|date:"d/m/Y" }}</dd>
+                    <dt class="col-sm-5 text-muted">Metodo factura</dt>
+                    <dd class="col-sm-7">{{ factura.get_metodo_pago_display }}</dd>
+                    <dt class="col-sm-5 text-muted">Estado</dt>
+                    <dd class="col-sm-7">{{ factura.estado_pago_label }}</dd>
+                </dl>
+
+                <div class="payment-balance-box mt-3">
+                    <div>
+                        <span>Total factura</span>
+                        <strong>$ {{ factura.total|floatformat:2 }}</strong>
+                    </div>
+                    <div>
+                        <span>Pagado</span>
+                        <strong class="text-success">$ {{ factura.monto_pagado|floatformat:2 }}</strong>
+                    </div>
+                    <div>
+                        <span>Saldo pendiente</span>
+                        <strong class="text-danger">$ {{ factura.saldo_pendiente|floatformat:2 }}</strong>
+                    </div>
+                </div>
+
+                <div class="payment-progress payment-progress-lg mt-3" title="{{ factura.porcentaje_pagado|floatformat:0 }}% cobrado">
+                    <span style="width: {{ factura.porcentaje_pagado|floatformat:0 }}%;"></span>
+                </div>
+            </div>
+        </div>
+
+        <form method="post" enctype="multipart/form-data" class="card payment-entry-card" data-confirm-title="{% if modo == 'editar' %}Actualizar pago{% else %}Registrar pago{% endif %}" data-confirm="{% if modo == 'editar' %}Actualizar este pago de la factura {{ factura.numero }}?{% else %}Registrar este pago para la factura {{ factura.numero }}?{% endif %}" data-confirm-icon="question" data-confirm-ok="{% if modo == 'editar' %}Actualizar{% else %}Registrar{% endif %}">
+            {% csrf_token %}
+            {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+            <div class="card-header bg-white">
+                <h5 class="mb-0 fw-bold text-primary">
+                    <i class="fa-solid fa-cash-register me-2"></i>{% if modo == 'editar' %}Datos del pago registrado{% else %}Datos del pago{% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger border-0">{{ form.non_field_errors|striptags }}</div>
+                {% endif %}
+                <div class="row g-3">
+                    <div class="col-12 col-md-6">
+                        <label class="form-label fw-bold small text-secondary text-uppercase">{{ form.fecha_pago.label }}</label>
+                        {{ form.fecha_pago }}
+                        {% if form.fecha_pago.errors %}<div class="text-danger small mt-1 fw-bold">{{ form.fecha_pago.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label fw-bold small text-secondary text-uppercase">{{ form.metodo_pago.label }}</label>
+                        {{ form.metodo_pago }}
+                        {% if form.metodo_pago.errors %}<div class="text-danger small mt-1 fw-bold">{{ form.metodo_pago.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label fw-bold small text-secondary text-uppercase">{{ form.monto.label }}</label>
+                        {{ form.monto }}
+                        {% if form.monto.errors %}<div class="text-danger small mt-1 fw-bold">{{ form.monto.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label fw-bold small text-secondary text-uppercase">{{ form.referencia.label }}</label>
+                        {{ form.referencia }}
+                        {% if form.referencia.errors %}<div class="text-danger small mt-1 fw-bold">{{ form.referencia.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold small text-secondary text-uppercase">{{ form.comprobante.label }}</label>
+                        {{ form.comprobante }}
+                        {% if form.comprobante.errors %}<div class="text-danger small mt-1 fw-bold">{{ form.comprobante.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold small text-secondary text-uppercase">{{ form.observaciones.label }}</label>
+                        {{ form.observaciones }}
+                        {% if form.observaciones.errors %}<div class="text-danger small mt-1 fw-bold">{{ form.observaciones.errors|striptags }}</div>{% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer bg-white d-flex justify-content-end gap-2">
+                <a href="{% if next %}{{ next }}{% else %}{% url 'lista_pagos' %}{% endif %}" class="btn btn-outline-secondary">Cancelar</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-floppy-disk me-2"></i>{% if modo == 'editar' %}Actualizar pago{% else %}Registrar pago{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

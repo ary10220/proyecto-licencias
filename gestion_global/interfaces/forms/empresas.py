@@ -16,13 +16,20 @@ class EmpresaForm(forms.ModelForm):
 
     class Meta:
         model = Empresa
-        fields = ['tenant', 'nombre']
+        fields = ['tenant', 'nombre', 'email_facturacion']
         widgets = {
             'tenant': forms.Select(attrs={'class': 'form-select select2-busqueda'}),
             'nombre': forms.TextInput(attrs={
                 'class': 'form-control',
                 'placeholder': 'Ej: Razon Social',
             }),
+            'email_facturacion': forms.EmailInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'facturacion@empresa.com',
+            }),
+        }
+        labels = {
+            'email_facturacion': 'Correo de facturacion',
         }
 
     def clean(self):

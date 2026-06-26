@@ -110,3 +110,13 @@ def log_exportar_pdf(request, tenant_label=None):
         modulo=MODULOS["REPORTES"],
         descripcion=f"Exportó reporte PDF{detalle}.",
     )
+
+
+def log_exportar_csv(request, tenant_label=None):
+    detalle = f" ({tenant_label})" if tenant_label else ""
+    log_event(
+        request=request,
+        accion=ACCIONES["EXPORTAR"],
+        modulo=MODULOS["REPORTES"],
+        descripcion=f"Exportó reporte CSV{detalle}.",
+    )

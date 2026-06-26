@@ -33,8 +33,13 @@ def crear_usuario(request):
             usuario = uc_crear_usuario(request, form)
             messages.success(
                 request,
-                f"Usuario {usuario.username} creado correctamente. Puedes revisar o completar sus datos.",
+                f"Usuario {usuario.username} creado correctamente. Debe cambiar su contrasena en el primer ingreso.",
             )
+            if getattr(form, 'temporary_password', None):
+                messages.warning(
+                    request,
+                    f"Contrasena temporal de {usuario.username}: {form.temporary_password}",
+                )
             return redirect('lista_usuarios')
     else:
         form = UserForm(current_user=request.user)

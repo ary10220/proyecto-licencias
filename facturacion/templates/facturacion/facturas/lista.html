@@ -22,6 +22,9 @@
             <a href="{% url 'lista_facturas' %}" class="module-nav-link {% if facturacion_active == 'facturas' %}active{% endif %}">
                 <i class="fa-solid fa-file-invoice-dollar"></i><span>Facturas</span>
             </a>
+            <a href="{% url 'lista_pagos' %}" class="module-nav-link {% if facturacion_active == 'pagos' %}active{% endif %}">
+                <i class="fa-solid fa-money-check-dollar"></i><span>Pagos</span>
+            </a>
         </div>
 
         <div class="gg-actions-bar">
@@ -74,6 +77,7 @@
                 <option value="todos" {% if estado == 'todos' %}selected{% endif %}>Todos</option>
                 <option value="BORRADOR" {% if estado == 'BORRADOR' %}selected{% endif %}>Borrador</option>
                 <option value="EMITIDA" {% if estado == 'EMITIDA' %}selected{% endif %}>Emitida</option>
+                <option value="PAGO_PARCIAL" {% if estado == 'PAGO_PARCIAL' %}selected{% endif %}>Pago parcial</option>
                 <option value="PAGADA" {% if estado == 'PAGADA' %}selected{% endif %}>Pagada</option>
                 <option value="ANULADA" {% if estado == 'ANULADA' %}selected{% endif %}>Anulada</option>
             </select>
@@ -97,11 +101,14 @@
         <button type="submit" class="btn btn-outline-secondary gg-filter-submit">
             <i class="fa-solid fa-filter me-1"></i>Filtrar
         </button>
+        <a href="{% url 'lista_facturas' %}" class="btn btn-outline-secondary gg-filter-reset" title="Limpiar filtros">
+            <i class="fa-solid fa-eraser me-1"></i><span>Limpiar</span>
+        </a>
     </form>
 
     <div class="card gg-table-card">
         <div class="table-responsive">
-            <table class="table table-hover mb-0">
+            <table class="table table-hover align-middle mb-0 commercial-data-table">
                 <thead>
                     <tr>
                         <th>Numero</th>
@@ -124,6 +131,7 @@
                         <td>
                             {% if f.estado == 'BORRADOR' %}<span class="badge bg-secondary gg-status-badge">Borrador</span>
                             {% elif f.estado == 'EMITIDA' %}<span class="badge bg-primary gg-status-badge">Emitida</span>
+                            {% elif f.estado == 'PAGO_PARCIAL' %}<span class="badge bg-warning text-dark gg-status-badge">Pago parcial</span>
                             {% elif f.estado == 'PAGADA' %}<span class="badge bg-success gg-status-badge">Pagada</span>
                             {% elif f.estado == 'ANULADA' %}<span class="badge bg-danger gg-status-badge">Anulada</span>
                             {% endif %}
@@ -138,6 +146,11 @@
                                 <a href="{% url 'detalle_factura' f.id %}" class="btn btn-outline-secondary" title="Ver detalle">
                                     <i class="fa-solid fa-eye"></i>
                                 </a>
+                                {% if perms.facturacion.change_factura and f.saldo_pendiente and f.estado != 'ANULADA' %}
+                                <a href="{% url 'registrar_pago' f.id %}?next={% url 'lista_facturas' %}" class="btn btn-outline-success" title="Registrar pago">
+                                    <i class="fa-solid fa-money-bill-transfer"></i>
+                                </a>
+                                {% endif %}
                                 <a href="#" data-pdf-url="{% url 'pdf_factura' f.id %}" data-pdf-title="Factura {{ f.numero }}" class="btn btn-outline-info" title="Vista previa PDF"><i class="fa-solid fa-file-pdf"></i></a>
                                 {% if f.estado != 'ANULADA' %}
                                 <a href="{% url 'editar_factura' f.id %}" class="btn btn-outline-info" title="Editar">

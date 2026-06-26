@@ -1,0 +1,288 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Gestionar pagos{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'gestion_global/css/common.css' %}">
+<link rel="stylesheet" href="{% static 'facturacion/css/comercial.css' %}">
+
+<div class="gg-shell">
+    <div class="gg-header-block">
+        <div class="gg-title-row">
+            <h2 class="page-title">
+                <span class="page-title-icon"><i class="fa-solid fa-cash-register"></i></span>
+                Gestionar pagos
+            </h2>
+        </div>
+
+        <div class="module-nav">
+            <a href="{% url 'lista_cotizaciones' %}" class="module-nav-link {% if facturacion_active == 'propuestas' %}active{% endif %}">
+                <i class="fa-solid fa-file-signature"></i><span>Cotizaciones</span>
+            </a>
+            <a href="{% url 'lista_facturas' %}" class="module-nav-link {% if facturacion_active == 'facturas' %}active{% endif %}">
+                <i class="fa-solid fa-file-invoice-dollar"></i><span>Facturas</span>
+            </a>
+            <a href="{% url 'lista_pagos' %}" class="module-nav-link {% if facturacion_active == 'pagos' %}active{% endif %}">
+                <i class="fa-solid fa-money-check-dollar"></i><span>Pagos</span>
+            </a>
+        </div>
+
+        <div class="gg-actions-bar">
+            <div class="left">{{ resumen.cantidad_facturas }} factura(s) en gestion</div>
+            <a href="{% url 'lista_facturas' %}" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-file-invoice-dollar me-1"></i>Ver facturas
+            </a>
+        </div>
+    </div>
+
+    <form method="get" class="gg-filter-card gg-filter-bar commercial-filter-bar payments-filter-bar" data-gg-autofilter data-commercial-filter-form>
+        <div class="commercial-filter-wide">
+            <label class="form-label small fw-bold text-secondary">BUSCAR</label>
+            <input type="search" name="q" value="{{ q }}" class="form-control" placeholder="Factura, empresa, NIT o referencia">
+        </div>
+        <div>
+            <label class="form-label small fw-bold text-secondary">TENANT</label>
+            <select name="tenant" class="form-select">
+                <option value="">Todos</option>
+                {% for tenant in tenants %}
+                {% with tenant_id=tenant.id|stringformat:"s" %}
+                <option value="{{ tenant.id }}" {% if tenant_filtro == tenant_id %}selected{% endif %}>{{ tenant.nombre }}</option>
+                {% endwith %}
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="form-label small fw-bold text-secondary">EMPRESA</label>
+            <select name="empresa" class="form-select">
+                <option value="">Todas</option>
+                {% for empresa in empresas %}
+                {% with empresa_id=empresa.id|stringformat:"s" %}
+                <option value="{{ empresa.id }}" data-tenant="{{ empresa.tenant_id }}" {% if empresa_filtro == empresa_id %}selected{% endif %}>{{ empresa.nombre }}</option>
+                {% endwith %}
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="form-label small fw-bold text-secondary">ESTADO PAGO</label>
+            <select name="estado_pago" class="form-select">
+                <option value="todos" {% if estado_pago == 'todos' %}selected{% endif %}>Todos</option>
+                <option value="PENDIENTE" {% if estado_pago == 'PENDIENTE' %}selected{% endif %}>Pendiente</option>
+                <option value="PAGO_PARCIAL" {% if estado_pago == 'PAGO_PARCIAL' %}selected{% endif %}>Pago parcial</option>
+                <option value="PAGADA" {% if estado_pago == 'PAGADA' %}selected{% endif %}>Pagada</option>
+                <option value="ANULADA" {% if estado_pago == 'ANULADA' %}selected{% endif %}>Anulada</option>
+            </select>
+        </div>
+        <div>
+            <label class="form-label small fw-bold text-secondary">METODO</label>
+            <select name="metodo_pago" class="form-select">
+                <option value="todos" {% if metodo_pago_filtro == 'todos' %}selected{% endif %}>Todos</option>
+                {% for value,label in metodos_pago %}
+                <option value="{{ value }}" {% if metodo_pago_filtro == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="form-label small fw-bold text-secondary">DESDE</label>
+            <input type="date" name="fecha_desde" value="{{ fecha_desde }}" class="form-control">
+        </div>
+        <div>
+            <label class="form-label small fw-bold text-secondary">HASTA</label>
+            <input type="date" name="fecha_hasta" value="{{ fecha_hasta }}" class="form-control">
+        </div>
+        <a href="{% url 'lista_pagos' %}" class="btn btn-outline-secondary gg-filter-reset" title="Limpiar filtros">
+            <i class="fa-solid fa-eraser me-1"></i><span>Limpiar</span>
+        </a>
+    </form>
+
+    <div class="card gg-table-card payments-dashboard-card">
+        <div class="payments-kpi-grid">
+            <div class="payment-kpi">
+                <span class="payment-kpi-label">Facturado</span>
+                <strong>$ {{ resumen.total_facturado|floatformat:2 }}</strong>
+                <i class="fa-solid fa-file-invoice-dollar"></i>
+            </div>
+            <div class="payment-kpi is-paid">
+                <span class="payment-kpi-label">Cobrado</span>
+                <strong>$ {{ resumen.total_pagado|floatformat:2 }}</strong>
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <div class="payment-kpi is-pending">
+                <span class="payment-kpi-label">Saldo pendiente</span>
+                <strong>$ {{ resumen.saldo_pendiente|floatformat:2 }}</strong>
+                <i class="fa-solid fa-hourglass-half"></i>
+            </div>
+            <div class="payment-kpi is-count">
+                <span class="payment-kpi-label">Estado cartera</span>
+                <strong>{{ resumen.pagadas }} / {{ resumen.parciales }} / {{ resumen.pendientes }}</strong>
+                <small>Pagadas / Parciales / Pendientes</small>
+            </div>
+        </div>
+
+        <div class="payments-section-header">
+            <div>
+                <h5><i class="fa-solid fa-table-list me-2"></i>Facturas y saldos</h5>
+                <span>{{ facturas|length }} resultado(s) segun filtros actuales</span>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 payments-table commercial-data-table">
+                <thead>
+                    <tr>
+                        <th>Factura</th>
+                        <th>Empresa</th>
+                        <th>Fecha</th>
+                        <th>Metodo</th>
+                        <th>Estado pago</th>
+                        <th class="text-end">Total</th>
+                        <th class="text-end">Pagado</th>
+                        <th class="text-end">Saldo</th>
+                        <th class="text-end" style="width:230px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in facturas %}
+                    {% with estado=f.estado_pago_calculado %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'detalle_factura' f.id %}" class="fw-bold text-primary text-decoration-none">{{ f.numero }}</a>
+                            {% if f.propuesta %}
+                            <small class="text-muted d-block">Cot. {{ f.propuesta.numero }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <strong>{{ f.empresa.nombre }}</strong>
+                            <small class="text-muted d-block">{{ f.tenant.nombre }}</small>
+                        </td>
+                        <td><small>{{ f.fecha|date:"d/m/Y" }}</small></td>
+                        <td>{{ f.get_metodo_pago_display }}</td>
+                        <td>
+                            {% if estado == 'PAGADA' %}
+                            <span class="badge bg-success gg-status-badge">Pagada</span>
+                            {% elif estado == 'PAGO_PARCIAL' %}
+                            <span class="badge bg-warning text-dark gg-status-badge">Pago parcial</span>
+                            {% elif estado == 'ANULADA' %}
+                            <span class="badge bg-danger gg-status-badge">Anulada</span>
+                            {% else %}
+                            <span class="badge bg-secondary gg-status-badge">Pendiente</span>
+                            {% endif %}
+                            <div class="payment-progress mt-2" title="{{ f.porcentaje_pagado|floatformat:0 }}% cobrado">
+                                <span style="width: {{ f.porcentaje_pagado|floatformat:0 }}%;"></span>
+                            </div>
+                        </td>
+                        <td class="text-end fw-bold">$ {{ f.total|floatformat:2 }}</td>
+                        <td class="text-end text-success fw-bold">$ {{ f.monto_pagado|floatformat:2 }}</td>
+                        <td class="text-end {% if f.saldo_pendiente %}text-danger{% else %}text-success{% endif %} fw-bold">$ {{ f.saldo_pendiente|floatformat:2 }}</td>
+                        <td>
+                            <div class="gg-actions">
+                                <a href="{% url 'detalle_factura' f.id %}" class="btn btn-outline-secondary" title="Ver factura">
+                                    <i class="fa-solid fa-eye"></i>
+                                </a>
+                                {% if puede_registrar and estado != 'ANULADA' %}
+                                <a href="{% url 'editar_factura' f.id %}" class="btn btn-outline-primary" title="Editar datos fiscales">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </a>
+                                {% endif %}
+                                {% if puede_registrar and f.saldo_pendiente and estado != 'ANULADA' %}
+                                <a href="{% url 'registrar_pago' f.id %}?next={% url 'lista_pagos' %}" class="btn btn-outline-success" title="Registrar pago">
+                                    <i class="fa-solid fa-money-bill-transfer"></i>
+                                </a>
+                                {% endif %}
+                                <a href="#" data-pdf-url="{% url 'pdf_factura' f.id %}" data-pdf-title="Factura {{ f.numero }}" class="btn btn-outline-info" title="Vista previa PDF">
+                                    <i class="fa-solid fa-file-pdf"></i>
+                                </a>
+                                <a href="{% url 'pdf_factura' f.id %}?download=1" class="btn btn-outline-secondary" title="Descargar PDF" download>
+                                    <i class="fa-solid fa-download"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endwith %}
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center text-muted py-4">No hay facturas para los filtros seleccionados.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="payments-section-header payments-history-title">
+            <div>
+                <h5><i class="fa-solid fa-clock-rotate-left me-2"></i>Movimientos recientes</h5>
+                <span>Ultimos pagos registrados dentro del contexto filtrado</span>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 payments-table commercial-data-table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Factura</th>
+                        <th>Empresa</th>
+                        <th>Metodo</th>
+                        <th>Referencia</th>
+                        <th>Usuario</th>
+                        <th>Estado</th>
+                        <th class="text-end">Monto</th>
+                        <th class="text-end" style="width:180px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pago in pagos_recientes %}
+                    <tr class="{% if pago.estado == 'ANULADO' %}payment-row-muted{% endif %}">
+                        <td>{{ pago.fecha_pago|date:"d/m/Y" }}</td>
+                        <td><a href="{% url 'detalle_factura' pago.factura.id %}" class="fw-bold text-primary text-decoration-none">{{ pago.factura.numero }}</a></td>
+                        <td>{{ pago.factura.empresa.nombre }}</td>
+                        <td>{{ pago.get_metodo_pago_display }}</td>
+                        <td>{{ pago.referencia|default:"-" }}</td>
+                        <td>{{ pago.creado_por.username|default:"-" }}</td>
+                        <td>
+                            {% if pago.estado == 'ACTIVO' %}
+                            <span class="badge bg-success gg-status-badge">Activo</span>
+                            {% else %}
+                            <span class="badge bg-secondary gg-status-badge">Anulado</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end fw-bold">$ {{ pago.monto|floatformat:2 }}</td>
+                        <td>
+                            <div class="gg-actions">
+                                <a href="{% url 'detalle_factura' pago.factura.id %}" class="btn btn-outline-secondary" title="Ver factura">
+                                    <i class="fa-solid fa-eye"></i>
+                                </a>
+                                {% if pago.comprobante %}
+                                <a href="{{ pago.comprobante.url }}" target="_blank" class="btn btn-outline-info" title="Ver comprobante">
+                                    <i class="fa-solid fa-paperclip"></i>
+                                </a>
+                                {% endif %}
+                                {% if puede_registrar and pago.estado == 'ACTIVO' %}
+                                <a href="{% url 'editar_pago' pago.id %}?next={% url 'lista_pagos' %}" class="btn btn-outline-primary" title="Editar pago">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </a>
+                                <form method="post" action="{% url 'anular_pago' pago.id %}" data-confirm-title="Anular pago" data-confirm="Anular el pago de la factura {{ pago.factura.numero }}? El movimiento quedara historico, no se eliminara." data-confirm-icon="warning" data-confirm-ok="Anular">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{% url 'lista_pagos' %}">
+                                    <button type="submit" class="btn btn-outline-warning" title="Anular pago">
+                                        <i class="fa-solid fa-ban"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center text-muted py-4">No hay pagos registrados para los filtros actuales.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% include 'facturacion/_partials/modal_pdf.html' %}
+<script src="{% static 'facturacion/js/comercial_filters.js' %}"></script>
+<script src="{% static 'gestion_global/js/filters.js' %}"></script>
+{% endblock %}

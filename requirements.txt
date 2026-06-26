@@ -9,5 +9,6 @@ pandas==3.0.1
 python-dateutil==2.9.0.post0
 six==1.17.0
 sqlparse==0.5.5
+stripe==13.0.1
 tzdata==2025.3
 xhtml2pdf==0.2.17

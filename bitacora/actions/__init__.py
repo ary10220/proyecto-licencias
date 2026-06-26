@@ -11,9 +11,14 @@ from .licencias import (  # noqa: F401
     log_editar_licencia,
     log_eliminar_licencia,
     log_eliminar_licencias_masivo,
+    log_exportar_csv,
     log_exportar_excel,
     log_exportar_pdf,
     log_liberar_licencia,
+)
+
+from .asistente import (  # noqa: F401
+    log_asistente_consulta,
 )
 
 from .usuarios import (  # noqa: F401
@@ -53,6 +58,9 @@ from .facturacion import (  # noqa: F401
     log_factura_anular,
     log_factura_eliminar,
     log_factura_generar_stock,
+    log_pago_anular,
+    log_pago_editar,
+    log_pago_registrar,
 )
 
 from .configuracion import (  # noqa: F401

@@ -17,7 +17,7 @@ def construir_catalogo() -> dict:
             for t in Tenant.objects.filter(activo=True).order_by('nombre')
         ],
         'empresas': [
-            {'id': e.id, 'nombre': e.nombre}
+            {'id': e.id, 'nombre': e.nombre, 'tenant': e.tenant_id}
             for e in Empresa.objects.filter(activo=True).order_by('nombre')
         ],
         'tipos': [

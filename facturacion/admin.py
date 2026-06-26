@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import DetalleFactura, DetallePropuesta, Factura, PropuestaLicencia
+from .models import DetalleFactura, DetallePropuesta, Factura, PagoFactura, PropuestaLicencia
 
 
 class DetallePropuestaInline(admin.TabularInline):
@@ -27,4 +27,12 @@ class FacturaAdmin(admin.ModelAdmin):
     list_filter = ('estado', 'tenant', 'stock_generado')
     search_fields = ('numero', 'empresa__nombre', 'razon_social', 'nit')
     inlines = [DetalleFacturaInline]
+
+
+@admin.register(PagoFactura)
+class PagoFacturaAdmin(admin.ModelAdmin):
+    list_display = ('factura', 'fecha_pago', 'monto', 'metodo_pago', 'estado', 'creado_por')
+    list_filter = ('estado', 'metodo_pago', 'fecha_pago')
+    search_fields = ('factura__numero', 'factura__empresa__nombre', 'referencia')
+    autocomplete_fields = ('factura', 'creado_por')
 

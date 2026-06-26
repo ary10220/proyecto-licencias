@@ -68,186 +68,75 @@ def exigir_algun_permiso(request, permisos):
 
 @login_required
 def exportar_excel(request, tenant_id=None):
-    """
-    Genera un reporte consolidado en formato Excel (.xlsx) de los activos de software.
-    Implementa OpenPyXL para el formateo directo del buffer de memoria sin escritura en disco.
-    """
+    """Reporte .xlsx completo: hoja Resumen (KPIs + graficos) + hoja Detalle.
+    Respeta los mismos filtros activos del dashboard (tenant/empresa/tipo/origen/estado/proveedor)."""
     exigir_permiso(request, 'licencias.view_licencia')
-    tenant_label = None
-    if tenant_id:
-        tenant_label = Tenant.objects.filter(pk=tenant_id).values_list('nombre', flat=True).first()
-    log_exportar_excel(request, tenant_label=tenant_label)
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Reporte Completo"
+    from . import reportes
+    dataset = reportes.construir_dataset(request, tenant_id)
+    log_exportar_excel(request, tenant_label=dataset['tenant_label'])
+    return reportes.excel_response(dataset)
 
-    headers = [
-        'Tipo Licencia', 'Fabricante', 'Proveedor', 'Tenant', 'Empresa Duena',
-        'Estado', 'Origen', 'Factura Origen', 'Fecha Inicio', 'Usuario Asignado',
-        'Email Usuario', 'Centro de Costos', 'Gerencia/Area', 'Division',
-        'Unidad', 'Fecha Asignacion', 'Fecha Vencimiento'
-    ]
-    ws.append(headers)
 
-    # Estilos de la cabecera
-    header_font = Font(bold=True, color="FFFFFF")
-    header_fill = PatternFill(start_color="DF6E12", end_color="DF6E12", fill_type="solid")
-    for cell in ws[1]:
-        cell.font = header_font
-        cell.fill = header_fill
-
-    # Optimización de consultas usando select_related para evitar el problema N+1
-    if tenant_id:
-        licencias = Licencia.objects.filter(tenant_id=tenant_id).select_related('tipo', 'empresa', 'tenant', 'proveedor', 'factura_origen')
-    else:
-        licencias = Licencia.objects.all().select_related('tipo', 'empresa', 'tenant', 'proveedor', 'factura_origen')
-
-    for lic in licencias:
-        asignacion = lic.usuario_activo
-        
-        # Variables por defecto para registros sin asignación
-        usuario_nombre = "DISPONIBLE"
-        email_usuario = "-"
-        centro_costos = "-"
-        area_code = "-"
-        division_code = "-"
-        unidad_nombre = "-"
-        fecha_asignacion_str = "-"
-
-        if asignacion:
-            emp = asignacion.empleado
-            
-            # Refresco del ORM para garantizar la captura de campos cacheados en memoria
-            try:
-                emp.refresh_from_db()
-            except Exception:
-                pass 
-
-            usuario_nombre = emp.nombre_completo
-            email_usuario = getattr(emp, 'email_principal', getattr(emp, 'email', '-')) or "-"
-            centro_costos = emp.centro_de_costos if emp.centro_de_costos else "-"
-            
-            if asignacion.fecha_asignacion:
-                fecha_asignacion_str = asignacion.fecha_asignacion.strftime('%d/%m/%Y')
-
-            # Extracción de estructura organizacional
-            if emp.area: area_code = emp.area.codigo
-            if emp.division: division_code = emp.division.codigo
-            if hasattr(emp, 'unidad') and emp.unidad: unidad_nombre = emp.unidad.nombre
-
-        ws.append([
-            lic.tipo.nombre,
-            lic.tipo.fabricante,
-            lic.proveedor.nombre if lic.proveedor else "Directo",
-            lic.tenant.nombre,
-            lic.empresa.nombre if lic.empresa else "-",
-            lic.estado,
-            lic.get_origen_display(),
-            lic.factura_origen.numero if lic.factura_origen else "-",
-            lic.fecha_inicio or lic.fecha_compra,
-            usuario_nombre,
-            email_usuario,
-            centro_costos,
-            area_code,
-            division_code,
-            unidad_nombre,
-            fecha_asignacion_str, 
-            lic.fecha_vencimiento,
-        ])
-
-    # Autoajuste dinámico de columnas
-    for col in ws.columns:
-        max_length = 0
-        column = col[0].column_letter
-        for cell in col:
-            try:
-                if len(str(cell.value)) > max_length: 
-                    max_length = len(str(cell.value))
-            except Exception: 
-                pass
-        adjusted_width = min(max_length + 2, 50)
-        ws.column_dimensions[column].width = adjusted_width
-
-    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    fecha = timezone.now().strftime('%d-%m-%Y')
-    response['Content-Disposition'] = f'attachment; filename="Reporte_Licencias_{fecha}.xlsx"'
-    wb.save(response)
-    
-    return response
+@login_required
+def exportar_csv(request, tenant_id=None):
+    """Reporte .csv del detalle (respeta los filtros activos)."""
+    exigir_permiso(request, 'licencias.view_licencia')
+    from . import reportes
+    from bitacora.actions import log_exportar_csv
+    dataset = reportes.construir_dataset(request, tenant_id)
+    log_exportar_csv(request, tenant_label=dataset['tenant_label'])
+    return reportes.csv_response(dataset)
 
 
 @login_required
 def exportar_pdf(request, tenant_id=None):
-    """
-    Genera un reporte PDF de una pagina (resumen ejecutivo) de las licencias.
-    Reutiliza el servicio de PDF de facturacion (xhtml2pdf).
-    """
+    """Reporte PDF ejecutivo (KPIs + distribucion por estado/origen/tipo + proximos vencimientos).
+    Respeta los mismos filtros activos del dashboard (xhtml2pdf con barras CSS)."""
     exigir_permiso(request, 'licencias.view_licencia')
     from facturacion.services.pdf import _pdf_response
+    from . import reportes
 
-    tenant_label = None
-    if tenant_id:
-        tenant_label = Tenant.objects.filter(pk=tenant_id).values_list('nombre', flat=True).first()
-    log_exportar_pdf(request, tenant_label=tenant_label)
+    dataset = reportes.construir_dataset(request, tenant_id)
+    log_exportar_pdf(request, tenant_label=dataset['tenant_label'])
 
-    if tenant_id:
-        licencias = Licencia.objects.filter(tenant_id=tenant_id).select_related('tipo', 'empresa', 'tenant', 'proveedor')
-    else:
-        licencias = Licencia.objects.all().select_related('tipo', 'empresa', 'tenant', 'proveedor')
-
-    hoy = timezone.now().date()
-    limite_30_dias = hoy + timedelta(days=30)
-
-    total = licencias.count()
-    asignadas = licencias.filter(asignaciones__activo=True).distinct().count()
-    vencidas = licencias.filter(fecha_vencimiento__lt=hoy).count()
-    por_vencer = licencias.filter(fecha_vencimiento__gte=hoy, fecha_vencimiento__lte=limite_30_dias).count()
-    disponibles = (
-        licencias
-        .filter(estado_operativo=Licencia.ESTADO_DISPONIBLE, fecha_vencimiento__gte=hoy)
-        .exclude(asignaciones__activo=True)
-        .distinct()
-        .count()
-    )
-
-    estado_labels = dict(Licencia.ESTADOS_OPERATIVOS)
-    desglose_estado = [
-        {'estado': estado_labels.get(row['estado_operativo'], row['estado_operativo']), 'total': row['total']}
-        for row in licencias.values('estado_operativo').annotate(total=Count('id')).order_by('-total')
-    ]
-
+    hoy = dataset['hoy']
     proximas = (
-        licencias
-        .filter(fecha_vencimiento__gte=hoy, fecha_vencimiento__lte=limite_30_dias)
-        .order_by('fecha_vencimiento')[:10]
+        dataset['licencias']
+        .filter(fecha_vencimiento__gte=hoy, fecha_vencimiento__lte=dataset['limite'])
+        .order_by('fecha_vencimiento')[:12]
     )
 
+    def con_pct(filas):
+        maximo = max((total for _, total in filas), default=0) or 1
+        return [{'label': nombre, 'total': total, 'pct': round(total * 100 / maximo)} for nombre, total in filas]
+
+    kpis = dataset['kpis']
     contexto = {
         'doc_titulo': 'REPORTE DE LICENCIAS',
-        'numero': tenant_label or 'GENERAL',
+        'numero': dataset['tenant_label'] or 'GENERAL',
         'fecha': hoy,
-        'kpi_total': total,
-        'kpi_asignadas': asignadas,
-        'kpi_disponibles': disponibles,
-        'kpi_vencidas': vencidas,
-        'kpi_por_vencer': por_vencer,
-        'desglose_estado': desglose_estado,
+        'kpi_total': kpis['total'],
+        'kpi_asignadas': kpis['asignadas'],
+        'kpi_disponibles': kpis['disponibles'],
+        'kpi_vencidas': kpis['vencidas'],
+        'kpi_por_vencer': kpis['por_vencer'],
+        'por_estado': con_pct(dataset['por_estado']),
+        'por_origen': con_pct(dataset['por_origen']),
+        'por_tipo': con_pct(dataset['por_tipo']),
         'proximas': proximas,
-        'tenant_label': tenant_label,
+        'tenant_label': dataset['tenant_label'],
+        'filtros': dataset['filtros'],
     }
 
     fecha_str = hoy.strftime('%d-%m-%Y')
     filename = f'Reporte_Licencias_{fecha_str}.pdf'
-    download = request.GET.get('download') == '1'
-    preview = request.GET.get('preview') == '1'
-    paper_size = request.GET.get('paper') or 'letter'
     return _pdf_response(
         'licencias/pdf/reporte_licencias.html',
         contexto,
         filename,
-        download=download,
-        preview=preview,
-        paper_size=paper_size,
+        download=request.GET.get('download') == '1',
+        preview=request.GET.get('preview') == '1',
+        paper_size=request.GET.get('paper') or 'letter',
     )
 
 

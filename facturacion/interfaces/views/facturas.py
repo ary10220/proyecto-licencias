@@ -15,7 +15,7 @@ from django.http import HttpResponseRedirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
-from ...infrastructure.models import Factura
+from ...infrastructure.models import Factura, PagoFactura
 
 from .base import exigir_permiso, filtros_comerciales_context
 from ..forms import DetalleFacturaForm, FacturaFiscalForm, FacturaForm
@@ -25,6 +25,7 @@ from ...application.use_cases import (
     uc_editar_datos_fiscales_factura,
     uc_editar_factura,
     uc_eliminar_factura,
+    uc_crear_pago_directo,
     uc_listar_facturas,
 )
 from ...infrastructure import repositories as repo
@@ -234,7 +235,7 @@ def detalle_factura(request, pk):
     from ...infrastructure.models import Factura
     factura = get_object_or_404(
         Factura.objects.select_related('empresa', 'tenant', 'proveedor', 'propuesta')
-                       .prefetch_related('detalles__tipo_licencia'),
+                       .prefetch_related('detalles__tipo_licencia', 'pagos__creado_por'),
         pk=pk,
     )
     return render(request, 'facturacion/facturas/detalle.html', {
@@ -271,12 +272,12 @@ def iniciar_pago_stripe(request, pk):
     factura = get_object_or_404(Factura, pk=pk)
     
     # Prevenir doble pago
-    if factura.estado == 'PAGADA':
+    if factura.saldo_pendiente <= 0:
         messages.info(request, "Esta factura ya se encuentra pagada.")
         return redirect('detalle_factura', pk=factura.pk)
 
     # Stripe maneja los montos en centavos (ej. 100.50 BOB -> 10050)
-    monto_centavos = int(factura.total * 100)
+    monto_centavos = int(factura.saldo_pendiente * 100)
 
     try:
         session = stripe.checkout.Session.create(
@@ -313,14 +314,28 @@ def pago_exitoso(request):
     """
     factura_id = request.GET.get('factura_id')
     factura = get_object_or_404(Factura, pk=factura_id)
-    
-    # Cambiamos el estado de la factura a Pagada
-    if factura.estado != 'PAGADA':
-        factura.estado = 'PAGADA'
-        factura.metodo_pago = 'TARJETA'
-        factura.save()
-        messages.success(request, f"¡Pago exitoso! La factura {factura.numero} ha sido cancelada correctamente.")
-        
+
+    session_id = request.GET.get('session_id') or ''
+    referencia = f"STRIPE:{session_id}" if session_id else "STRIPE"
+    if session_id and PagoFactura.objects.filter(referencia=referencia).exists():
+        messages.info(request, f"El pago de la factura {factura.numero} ya estaba registrado.")
+        return redirect('detalle_factura', pk=factura.pk)
+
+    monto = factura.saldo_pendiente
+    if monto <= 0:
+        messages.info(request, f"La factura {factura.numero} ya no tiene saldo pendiente.")
+        return redirect('detalle_factura', pk=factura.pk)
+
+    ok, info, _ = uc_crear_pago_directo(
+        request=request,
+        factura=factura,
+        monto=monto,
+        metodo_pago='TARJETA',
+        referencia=referencia,
+        observaciones='Pago registrado automaticamente desde Stripe Checkout.',
+    )
+    (messages.success if ok else messages.error)(request, info)
+
     return redirect('detalle_factura', pk=factura.pk)
 
 

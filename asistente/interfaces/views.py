@@ -56,4 +56,15 @@ def asistente_chat(request):
     consulta = _leer_consulta(request)
     rol = ', '.join(request.user.groups.values_list('name', flat=True))
     puede_ver_licencias = request.user.is_superuser or request.user.has_perm('licencias.view_licencia')
-    return JsonResponse(AsistenteChat().execute(consulta, rol, puede_ver_licencias=puede_ver_licencias))
+    resultado = AsistenteChat().execute(consulta, rol, puede_ver_licencias=puede_ver_licencias)
+
+    if consulta:
+        from bitacora.actions import log_asistente_consulta
+        intencion = resultado.get('intencion')
+        aplico_filtro = bool(resultado.get('aplicar')) if intencion == 'filtros' else False
+        log_asistente_consulta(
+            request, consulta=consulta, intencion=intencion,
+            respuesta=resultado.get('respuesta'), aplico_filtro=aplico_filtro,
+        )
+
+    return JsonResponse(resultado)

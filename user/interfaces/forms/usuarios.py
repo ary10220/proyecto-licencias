@@ -3,6 +3,7 @@ from django.contrib.auth.models import Group, User
 
 from empleados.models import Cargo
 
+from ...infrastructure.password_validation import generate_temporary_password
 from ...models import AreaUsuario, PerfilUsuario
 
 
@@ -66,6 +67,7 @@ class UserForm(forms.ModelForm):
     def __init__(self, *args, current_user=None, **kwargs):
         self.current_user = current_user
         self.password_changed = False
+        self.temporary_password = None
         super().__init__(*args, **kwargs)
 
         self.fields['groups'].queryset = Group.objects.order_by('name')
@@ -148,7 +150,8 @@ class UserForm(forms.ModelForm):
         user = super().save(commit=False)
         creating = user.pk is None
         if creating:
-            user.set_password(user.username)
+            self.temporary_password = generate_temporary_password()
+            user.set_password(self.temporary_password)
 
         if commit:
             user.save()

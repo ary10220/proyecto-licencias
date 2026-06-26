@@ -20,6 +20,7 @@ ACCIONES = {
     "REACTIVAR": "REACTIVAR",
     "SINCRONIZAR": "SINCRONIZAR",
     "EXPORTAR": "EXPORTAR",
+    "CONSULTAR": "CONSULTAR",
     "LOGIN": "LOGIN",
     "LOGOUT": "LOGOUT",
     "ERROR": "ERROR",
@@ -45,6 +46,8 @@ MODULOS = {
     "COMERCIAL": "Comercial y Facturacion",
     "PROPUESTAS": "Comercial y Facturacion",
     "FACTURAS": "Comercial y Facturacion",
+    "PAGOS": "Gestion de Pagos",
+    "ASISTENTE_IA": "Asistente IA",
 }
 
 NIVEL_INFO = "INFO"
@@ -63,6 +66,7 @@ _NIVEL_POR_ACCION = {
     "REACTIVAR": NIVEL_INFO,
     "SINCRONIZAR": NIVEL_INFO,
     "EXPORTAR": NIVEL_INFO,
+    "CONSULTAR": NIVEL_INFO,
     "LOGIN": NIVEL_INFO,
     "LOGOUT": NIVEL_INFO,
     "ERROR": NIVEL_CRITICO,
@@ -116,6 +120,11 @@ _LABELS_NORMALIZADOS.update(
         "usuarios y accesos": MODULOS["USUARIOS_ACCESOS"],
         "perfil": MODULOS["PERFIL"],
         "bitacora": MODULOS["BITACORA"],
+        "pago": MODULOS["PAGOS"],
+        "pagos": MODULOS["PAGOS"],
+        "gestion de pagos": MODULOS["PAGOS"],
+        "cobro": MODULOS["PAGOS"],
+        "cobranza": MODULOS["PAGOS"],
     }
 )
 
@@ -158,6 +167,8 @@ def inferir_modulo(descripcion, accion=None):
         return MODULOS["PERFIL"]
     if any(token in text for token in ("sincroniz", "m365", "excel", "export", "reporte")):
         return MODULOS["INICIO_DASHBOARD"]
+    if any(token in text for token in ("pago", "cobro", "cobranza", "saldo pendiente")):
+        return MODULOS["PAGOS"]
     if "licencia" in text or "asignacion" in text or "asigno" in text or "libero" in text:
         return MODULOS["INICIO_DASHBOARD"]
     if "empleado" in text:

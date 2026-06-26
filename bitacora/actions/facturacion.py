@@ -4,6 +4,7 @@ Actions de bitacora para el modulo Facturacion (Comercial).
 Cubre:
   - Propuestas comerciales (crear, editar, aprobar, rechazar, eliminar)
   - Facturas (crear, editar, anular, eliminar, generar stock de licencias)
+  - Pagos de facturas (registrar, editar, anular)
 
 Estas funciones se llaman desde los use cases de `facturacion/application/`.
 """
@@ -128,5 +129,50 @@ def log_factura_generar_stock(request, factura, cantidad_licencias: int):
         descripcion=(
             f"Genero stock de {cantidad_licencias} licencia(s) "
             f"desde la factura {_safe_str(factura)}."
+        ),
+    )
+
+
+def log_pago_registrar(request, pago):
+    factura = getattr(pago, 'factura', None)
+    empresa = getattr(getattr(factura, 'empresa', None), 'nombre', None) or 'N/D'
+    log_event(
+        request=request,
+        accion=ACCIONES["CREAR"],
+        modulo=MODULOS["PAGOS"],
+        descripcion=(
+            f"Registro pago de {getattr(pago, 'monto', 0)} para {_safe_str(factura)} "
+            f"(Empresa: {empresa}; Metodo: {getattr(pago, 'metodo_pago', 'N/D')})."
+        ),
+    )
+
+
+def log_pago_editar(request, pago, monto_anterior=None):
+    factura = getattr(pago, 'factura', None)
+    empresa = getattr(getattr(factura, 'empresa', None), 'nombre', None) or 'N/D'
+    detalle_monto = ""
+    if monto_anterior is not None and monto_anterior != getattr(pago, 'monto', None):
+        detalle_monto = f" Monto anterior: {monto_anterior}."
+    log_event(
+        request=request,
+        accion=ACCIONES["EDITAR"],
+        modulo=MODULOS["PAGOS"],
+        descripcion=(
+            f"Actualizo pago de {getattr(pago, 'monto', 0)} para {_safe_str(factura)} "
+            f"(Empresa: {empresa}; Metodo: {getattr(pago, 'metodo_pago', 'N/D')})."
+            f"{detalle_monto}"
+        ),
+    )
+
+
+def log_pago_anular(request, pago):
+    factura = getattr(pago, 'factura', None)
+    log_event(
+        request=request,
+        accion=ACCIONES["EDITAR"],
+        modulo=MODULOS["PAGOS"],
+        descripcion=(
+            f"Anulo pago de {getattr(pago, 'monto', 0)} "
+            f"asociado a {_safe_str(factura)}."
         ),
     )

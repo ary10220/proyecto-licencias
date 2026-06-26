@@ -59,6 +59,8 @@ urlpatterns = [
     path('exportar/<int:tenant_id>/', views.exportar_excel, name='exportar_tenant'),
     path('exportar-pdf/', views.exportar_pdf, name='exportar_pdf_general'),
     path('exportar-pdf/<int:tenant_id>/', views.exportar_pdf, name='exportar_pdf_tenant'),
+    path('exportar-csv/', views.exportar_csv, name='exportar_csv_general'),
+    path('exportar-csv/<int:tenant_id>/', views.exportar_csv, name='exportar_csv_tenant'),
 
     # Modulo de Licencias
     path('licencia/nueva/', views.crear_licencia, name='crear_licencia'),

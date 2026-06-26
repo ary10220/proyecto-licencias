@@ -44,6 +44,10 @@ class Empresa(models.Model):
     """Razón social específica vinculada a un Tenant."""
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='empresas')
     nombre = models.CharField(max_length=100)
+    email_facturacion = models.EmailField(
+        blank=True,
+        help_text="Correo donde se enviaran facturas y documentos comerciales.",
+    )
     activo = models.BooleanField(default=True)
     
     def __str__(self):

@@ -10,6 +10,9 @@
                 <div class="band-meta">
                     Alcance: {{ tenant_label|default:"Todos los tenants" }} &middot; Generado el {{ fecha|date:"d/m/Y" }}
                 </div>
+                {% if filtros %}
+                <div class="band-meta">Filtros: {% for f in filtros %}{{ f }}{% if not forloop.last %} &middot; {% endif %}{% endfor %}</div>
+                {% endif %}
             </td>
             <td class="band-value">{{ kpi_total }}</td>
         </tr>
@@ -40,14 +43,57 @@
 
 <div class="seccion-titulo">Distribucion por estado</div>
 <table class="items-table">
-    <thead>
-        <tr><th>Estado</th><th class="text-right">Cantidad</th></tr>
-    </thead>
     <tbody>
-        {% for fila in desglose_estado %}
-        <tr><td>{{ fila.estado }}</td><td class="text-right">{{ fila.total }}</td></tr>
+        {% for fila in por_estado %}
+        <tr>
+            <td style="width:28%;">{{ fila.label }}</td>
+            <td style="width:60%;">
+                <div style="background-color:#eeeeee; height:9px; width:100%;">
+                    <div style="background-color:#df6e12; height:9px; width:{{ fila.pct }}%;"></div>
+                </div>
+            </td>
+            <td class="text-right" style="width:12%;">{{ fila.total }}</td>
+        </tr>
         {% empty %}
-        <tr><td colspan="2" class="text-center">Sin datos.</td></tr>
+        <tr><td class="text-center">Sin datos.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div class="seccion-titulo">Origen del inventario</div>
+<table class="items-table">
+    <tbody>
+        {% for fila in por_origen %}
+        <tr>
+            <td style="width:28%;">{{ fila.label }}</td>
+            <td style="width:60%;">
+                <div style="background-color:#eeeeee; height:9px; width:100%;">
+                    <div style="background-color:#0d6efd; height:9px; width:{{ fila.pct }}%;"></div>
+                </div>
+            </td>
+            <td class="text-right" style="width:12%;">{{ fila.total }}</td>
+        </tr>
+        {% empty %}
+        <tr><td class="text-center">Sin datos.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div class="seccion-titulo">Top tipos de licencia</div>
+<table class="items-table">
+    <tbody>
+        {% for fila in por_tipo %}
+        <tr>
+            <td style="width:28%;">{{ fila.label }}</td>
+            <td style="width:60%;">
+                <div style="background-color:#eeeeee; height:9px; width:100%;">
+                    <div style="background-color:#198754; height:9px; width:{{ fila.pct }}%;"></div>
+                </div>
+            </td>
+            <td class="text-right" style="width:12%;">{{ fila.total }}</td>
+        </tr>
+        {% empty %}
+        <tr><td class="text-center">Sin datos.</td></tr>
         {% endfor %}
     </tbody>
 </table>

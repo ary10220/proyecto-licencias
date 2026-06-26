@@ -22,6 +22,11 @@ urlpatterns = [
     path('facturas/<int:pk>/anular/',                views.anular_factura,      name='anular_factura'),
     path('facturas/<int:pk>/eliminar/',              views.eliminar_factura,    name='eliminar_factura'),
 
+    # === PAGOS ===
+    path('pagos/',                                   views.lista_pagos,         name='lista_pagos'),
+    path('pagos/factura/<int:factura_id>/registrar/', views.registrar_pago,     name='registrar_pago'),
+    path('pagos/<int:pk>/editar/',                   views.editar_pago,         name='editar_pago'),
+    path('pagos/<int:pk>/anular/',                   views.anular_pago,         name='anular_pago'),
 
     # === Detalle (solo lectura) ===
     path('cotizaciones/<int:pk>/detalle/',           views.detalle_cotizacion,  name='detalle_cotizacion'),
