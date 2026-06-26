@@ -42,4 +42,9 @@ urlpatterns = [
     path('propuestas/<int:pk>/rechazar/',            views.rechazar_propuesta,  name='rechazar_propuesta'),
     path('propuestas/<int:pk>/eliminar/',            views.eliminar_propuesta,  name='eliminar_propuesta'),
     path('facturas/crear/',                          views.seleccionar_cotizacion, name='crear_factura'),
+
+    # === PAGOS STRIPE ===
+    path('facturas/<int:pk>/pagar/',                 views.iniciar_pago_stripe, name='pagar_factura_stripe'),
+    path('facturas/pago-exitoso/',                   views.pago_exitoso,        name='pago_exitoso'),
+    path('facturas/<int:pk>/pago-cancelado/',        views.pago_cancelado,      name='pago_cancelado'),
 ]

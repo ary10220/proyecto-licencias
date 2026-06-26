@@ -1,4 +1,5 @@
 import os
+import stripe
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -186,6 +187,9 @@ DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
 
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
 OPENAI_MODEL = os.environ.get('OPENAI_MODEL', 'gpt-4o-mini')
+
+STRIPE_PUBLIC_KEY = 'pk_test_51Tc5FXR9Wz6slWaNeuH4AGQqWGAjlQ7luu98uqC0rfl8jKDunmE0NBZ6h5SguicsOfVSUNSVEvbOQGKf2aeZcqSh00uasCg6dJ'
+STRIPE_SECRET_KEY = 'sk_test_51Tc5FXR9Wz6slWaNIjuGNGdpakQ6syneIW2WBdMjJ8uXwhQGM2OyFfSMSnPRIMcw89iHecn4dJglCmmDDgvM84r400tk1dGDQc'
 
 # Dias antes del vencimiento en los que se envia la alerta automatica (management command enviar_alertas).
 # Se avisa cuando faltan EXACTAMENTE estos dias para el vencimiento de una licencia.

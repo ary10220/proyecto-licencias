@@ -14,6 +14,12 @@
             <span class="badge bg-{% if factura.estado == 'EMITIDA' %}primary{% elif factura.estado == 'PAGADA' %}success{% elif factura.estado == 'ANULADA' %}danger{% else %}secondary{% endif %} ms-2">{{ factura.get_estado_display }}</span>
         </h2>
         <div class="page-actions commercial-doc-actions">
+            
+            {% if factura.estado == 'EMITIDA' %}
+                <a href="{% url 'pagar_factura_stripe' factura.id %}" class="btn btn-success fw-bold shadow-sm">
+                    <i class="fa-solid fa-credit-card me-1"></i>Pagar con Tarjeta
+                </a>
+            {% endif %}
             <a href="#" data-pdf-url="{% url 'pdf_factura' factura.id %}"
                data-pdf-title="Factura {{ factura.numero }}"
                class="btn btn-outline-info">
